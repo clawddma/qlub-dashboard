@@ -406,8 +406,6 @@ a{text-decoration:none;color:inherit;}
   <nav class="top-tabs" id="top-tabs">
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
-    <div class="ttab" data-tab="rep" onclick="switchTab('rep')"><span class="ti">📑</span> Reportes</div>
-    <div class="ttab" data-tab="acc" onclick="switchTab('acc')"><span class="ti">✅</span> Plan de Acción</div>
   </nav>
   <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
 </header>
@@ -422,8 +420,6 @@ a{text-decoration:none;color:inherit;}
 <nav id="bottom-nav">
   <div class="bnav-btn active" data-tab="fin" onclick="switchTab('fin')"><div class="bnav-icon">💰</div><div class="bnav-lbl">Finan.</div></div>
   <div class="bnav-btn" data-tab="ope" onclick="switchTab('ope')"><div class="bnav-icon">📊</div><div class="bnav-lbl">Admin.</div></div>
-  <div class="bnav-btn" data-tab="rep" onclick="switchTab('rep')"><div class="bnav-icon">📑</div><div class="bnav-lbl">Report.</div></div>
-  <div class="bnav-btn" data-tab="acc" onclick="switchTab('acc')"><div class="bnav-icon">✅</div><div class="bnav-lbl">Plan</div></div>
 </nav>
 
 <!-- ═══ CONTENT ═══ -->
@@ -1933,32 +1929,7 @@ function buildOpeEps(){
    REPORTES / HALLAZGOS — Sala de Estrategia
    ════════════════════════════════════════ */
 function buildReportes(){
-  const hallazgos=[
-    {sev:'alta',ico:'⚖️',title:'Tesoro pierde plata; Oviedo la genera',
-      metric:'+$1.370M <small>Oviedo</small> &nbsp; −$550M <small>Tesoro</small>',
-      body:'Oviedo gana <strong>$1.370M netos (margen 11.3%)</strong>, mientras Tesoro <strong>pierde −$550M netos</strong> tras la carga del impuesto consolidado. La sede madre subsidia fiscalmente a la nueva.',
-      action:'<b>Decisión:</b> evaluar una <b>fusión / consolidación fiscal</b> que reparta mejor la carga tributaria y no castigue a Tesoro por el resultado del grupo.'},
-    {sev:'alta',ico:'💊',title:'El CMV de Farmacia se come el margen',
-      metric:'+58% <small>CMV Farmacia</small> vs +40% <small>ingresos</small>',
-      body:'El <strong>costo de farmacia crece +58%</strong> mientras los ingresos crecen +40%. Cada peso de venta nuevo trae más costo de medicamentos que antes: el margen bruto se erosiona.',
-      action:'<b>Palanca #1 de margen:</b> renegociar compras de farmacia de alto volumen y auditar mermas. Es la acción de mayor retorno del año.'},
-    {sev:'alta',ico:'🏦',title:'Dependencia crítica de un solo pagador',
-      metric:'~55% <small>facturación vía SURA</small>',
-      body:'<strong>SURA concentra cerca del 55%</strong> de la facturación. Un cambio de tarifa o de contrato con SURA mueve el negocio entero — es el mayor riesgo estructural del P&amp;G.',
-      action:'<b>Mitigación:</b> abrir canal particular y nuevas prepagadas (Colsanitas, Coomeva). Meta: bajar SURA por debajo del 45% en 12 meses.'},
-    {sev:'op',ico:'🩺',title:'Endocrina: la hora de quirófano más rentable',
-      metric:'Cirugía Endocrina <small>· líder $/hora (Oviedo)</small>',
-      body:'<strong>Cirugía Endocrina</strong> es la especialidad más rentable por hora de sala, concentrada en Oviedo. Es un mix de alto ticket que hoy no se aprovecha en Tesoro.',
-      action:'<b>Oportunidad:</b> replicar la agenda de Endocrina en Tesoro y darle bloques fijos de sala. Sube el $/hora del grupo sin CapEx.'},
-    {sev:'media',ico:'🕐',title:'Hay capacidad ociosa para crecer sin invertir',
-      metric:'~58% <small>ocupación promedio</small>',
-      body:'La ocupación promedio ronda el <strong>58%</strong>. Hay sala disponible para crecer volumen <strong>sin CapEx</strong>. Lunes y martes son los días más flojos.',
-      action:'<b>Acción comercial:</b> concentrar agenda electiva en lunes-martes y empujar campañas para llenar esos huecos. Capacidad ya pagada.'},
-    {sev:'op',ico:'📅',title:'Sábado Oviedo, casi saturado',
-      metric:'91% <small>ocupación sábado · Oviedo</small>',
-      body:'El <strong>sábado de Oviedo opera al 91%</strong> — casi al tope. Es la señal de que la demanda existe y que ampliar franja sabatina (o en Tesoro) tiene mercado.',
-      action:'<b>Lectura:</b> el sábado vende. Replicar el modelo de agenda sabatina de Oviedo en Tesoro antes de pensar en nueva sala.'}
-  ];
+  const hallazgos=[];
   const sevCls={alta:'sev-alta',media:'sev-media',op:'sev-op'};
   const sevTag={alta:['alta','Severidad alta'],media:['media','Atención media'],op:['op','Oportunidad']};
   document.getElementById('sec-rep').innerHTML=
@@ -1966,11 +1937,11 @@ function buildReportes(){
     '<div class="sec-sub">Lectura estratégica de la asesoría — conclusiones del negocio y alertas de gestión derivadas del análisis financiero y operativo</div>'+
     '<div class="find-hero">'+
       '<h2>El grupo crece, pero el margen y el riesgo piden decisiones</h2>'+
-      '<p>El negocio más que duplicó su escala en dos años de la mano de Oviedo. La rentabilidad, sin embargo, depende de tres frentes: la carga fiscal que castiga a Tesoro, un costo de farmacia que crece más rápido que las ventas, y una concentración peligrosa en SURA. Hay, en paralelo, capacidad ociosa lista para vender.</p>'+
+      '<p>El negocio más que duplicó su escala en dos años de la mano de Oviedo. Las dos sedes son operativamente rentables — la diferencia que muestran los libros se debe a que Tesoro carga el overhead corporativo de ambas, y se corrige reclasificando esos costos de forma equitativa. La rentabilidad sí depende de dos frentes reales: un costo de farmacia que crece más rápido que las ventas y una concentración peligrosa en SURA. Hay, en paralelo, capacidad ociosa lista para vender.</p>'+
       '<div class="fh-tags">'+
-        '<span class="fh-tag"><b>3</b> alertas de severidad alta</span>'+
+        '<span class="fh-tag"><b>2</b> alertas de severidad alta</span>'+
         '<span class="fh-tag"><b>2</b> oportunidades de upside</span>'+
-        '<span class="fh-tag"><b>1</b> foco de capacidad</span>'+
+        '<span class="fh-tag"><b>1</b> ajuste contable</span>'+
       '</div>'+
     '</div>'+
     '<div class="find-grid">'+
