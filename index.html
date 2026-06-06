@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel 360° — Qlub Quirófanos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+<style>
+/* ═══════════════ ROOT ═══════════════ */
+:root{
+  --qlub-dark:#0E2240; --qlub-tesoro:#1B3A6B; --qlub-oviedo:#1A6B35;
+  --qlub-consol:#4A4A4A; --qlub-acento:#D4A843; --pos:#1A7A3C; --neg:#C0392B;
+  --bg:#F0F3F7; --white:#fff; --gray-md:#9AA8BD; --gray-lt:#f5f7fa;
+  --border:#E9ECEF; --warn:#E08E0B;
+  --shadow:0 2px 10px rgba(14,34,64,.10); --radius:10px;
+  --hdr-h:56px; --snav-h:48px; --bnav-h:62px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{height:100%;scroll-behavior:smooth;}
+body{
+  height:100%;font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:#16243a;font-size:14px;
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none;
+}
+a{text-decoration:none;color:inherit;}
+
+/* ═══ HEADER ═══ */
+#hdr{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  background:var(--qlub-dark);height:var(--hdr-h);
+  display:flex;align-items:center;
+  border-bottom:2px solid var(--qlub-acento);
+}
+.hdr-brand{
+  padding:0 22px;display:flex;align-items:center;gap:15px;height:100%;
+  border-right:1px solid rgba(255,255,255,.12);min-width:286px;
+}
+.hdr-brand .qlub-logo{
+  flex-shrink:0;display:block;height:38px;width:auto;
+  object-fit:contain;align-self:center;
+}
+.hdr-brand .name{line-height:1.2;}
+.hdr-brand .name .n1{font-weight:700;font-size:14.5px;color:#fff;}
+.hdr-brand .name .n2{font-size:10px;color:var(--gray-md);}
+.top-tabs{display:flex;align-items:stretch;height:var(--hdr-h);flex:1;}
+.ttab{
+  padding:0 20px;display:flex;align-items:center;gap:8px;
+  color:var(--gray-md);cursor:pointer;font-size:13px;font-weight:500;
+  border-bottom:3px solid transparent;transition:all .2s;border-top:3px solid transparent;
+  white-space:nowrap;
+}
+.ttab:hover{color:#fff;background:rgba(255,255,255,.05);}
+.ttab.active{color:var(--qlub-acento);border-bottom-color:var(--qlub-acento);}
+.ttab .ti{font-size:16px;}
+.ttab .tab-wip{font-size:9.5px;color:var(--gray-md);font-style:normal;margin-left:3px;}
+.hdr-meta{margin-left:auto;padding-right:16px;font-size:11px;color:var(--gray-md);white-space:nowrap;text-align:right;line-height:1.4;}
+
+/* ═══ SUB-NAV (pills) ═══ */
+#sub-nav-wrap{
+  position:fixed;top:var(--hdr-h);left:0;right:0;z-index:150;
+  background:var(--qlub-tesoro);height:var(--snav-h);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  display:flex;align-items:center;
+}
+.snav{
+  display:flex;align-items:center;gap:7px;overflow-x:auto;
+  padding:0 18px;height:100%;flex:1;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.snav::-webkit-scrollbar{display:none;}
+.snav-btn{
+  display:none;align-items:center;gap:6px;white-space:nowrap;
+  padding:6px 15px;border-radius:20px;flex-shrink:0;
+  font-size:12px;font-weight:500;color:rgba(255,255,255,.62);
+  cursor:pointer;transition:all .18s;border:1px solid rgba(255,255,255,.12);
+}
+.snav-btn.show{display:flex;}
+.snav-btn .si{font-size:13px;}
+.snav-btn:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+.snav-btn.active{background:var(--qlub-acento);color:var(--qlub-dark);font-weight:700;border-color:transparent;}
+
+/* ═══ PERIOD / FILTER BAR ═══ */
+#period-bar{
+  position:fixed;top:calc(var(--hdr-h) + var(--snav-h));left:0;right:0;z-index:140;
+  background:#0a1a32;border-bottom:1px solid rgba(212,168,67,.18);
+  padding:7px 18px;display:flex;flex-wrap:wrap;gap:7px 16px;align-items:center;
+}
+.pb-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.pb-lbl{color:rgba(212,168,67,.78);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;white-space:nowrap;}
+.chip{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);
+  color:#c4d0e2;border-radius:20px;padding:4px 13px;font-size:11.5px;font-weight:600;
+  cursor:pointer;transition:all .15s;white-space:nowrap;
+}
+.chip:hover{border-color:rgba(212,168,67,.5);color:#fff;}
+.chip.on{background:var(--qlub-acento);color:var(--qlub-dark);border-color:var(--qlub-acento);}
+.chip-clear{background:transparent;border-color:rgba(192,57,43,.5);color:#e8a59c;}
+.chip-clear:hover{background:rgba(192,57,43,.18);color:#fff;}
+.pb-select{
+  background:#13294a;border:1px solid rgba(255,255,255,.18);color:#dfe7f2;
+  border-radius:8px;padding:5px 9px;font-size:12px;font-family:inherit;cursor:pointer;
+  max-width:190px;
+}
+
+/* ═══ MULTISELECT (dropdown checkboxes) ═══ */
+.pb-group.ms{position:relative;}
+.ms-btn{
+  display:inline-flex;align-items:center;gap:6px;background:#13294a;
+  border:1px solid rgba(255,255,255,.18);color:#dfe7f2;border-radius:8px;
+  padding:5px 10px;font-size:12px;font-family:inherit;cursor:pointer;transition:all .15s;
+  max-width:180px;white-space:nowrap;
+}
+.ms-btn:hover{border-color:rgba(212,168,67,.55);}
+.ms-btn.has{border-color:var(--qlub-acento);color:#fff;}
+.ms-btn .ms-cnt{background:var(--qlub-acento);color:var(--qlub-dark);font-weight:800;font-size:10px;
+  border-radius:9px;min-width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+.ms-btn .ms-cnt:empty{display:none;}
+.ms-btn .ms-car{font-size:9px;opacity:.7;transition:transform .15s;}
+.pb-group.ms.open .ms-car{transform:rotate(180deg);}
+.ms-pop{
+  display:none;position:absolute;top:calc(100% + 6px);left:0;z-index:300;
+  background:#fff;border:1px solid var(--border);border-radius:10px;
+  box-shadow:0 10px 30px rgba(7,18,38,.4);min-width:210px;max-width:280px;overflow:hidden;
+}
+.pb-group.ms.open .ms-pop{display:block;}
+.ms-pop-hd{padding:7px 10px;border-bottom:1px solid var(--border);background:var(--gray-lt);}
+.ms-pop-hd button{background:none;border:none;color:var(--qlub-tesoro);font-weight:700;font-size:11px;cursor:pointer;font-family:inherit;}
+.ms-pop-hd button:hover{color:var(--neg);}
+.ms-pop-bd{max-height:280px;overflow-y:auto;padding:4px;}
+.dd-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;
+  font-size:12px;color:#2a3a52;line-height:1.3;transition:background .12s;}
+.dd-item:hover{background:var(--gray-lt);}
+.dd-item.on{background:rgba(212,168,67,.14);color:var(--qlub-dark);font-weight:600;}
+.dd-item input{accent-color:var(--qlub-tesoro);width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+.dd-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* chips activos (lo seleccionado) */
+.pb-active{display:flex;flex-wrap:wrap;gap:6px;flex-basis:100%;margin-top:2px;}
+.active-chip{background:var(--qlub-acento);color:var(--qlub-dark);border:none;border-radius:20px;
+  padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:opacity .15s;}
+.active-chip span{opacity:.7;font-weight:800;}
+.active-chip:hover{opacity:.82;}
+
+/* ═══ CONTENT ═══ */
+#content{padding-top:calc(var(--hdr-h) + var(--snav-h));}
+#content.has-period{padding-top:calc(var(--hdr-h) + var(--snav-h) + 42px);}
+.sec{display:none;padding:20px 22px 80px;max-width:1500px;margin:0 auto;}
+.sec.active{display:block;}
+.subsec{display:none;}
+.subsec.active{display:block;}
+.sec-title{font-family:'DM Serif Display',serif;font-size:25px;color:var(--qlub-dark);
+  margin-bottom:4px;line-height:1.15;display:flex;align-items:center;gap:11px;flex-wrap:wrap;}
+.sec-sub{font-size:12.5px;color:#5d7290;margin-bottom:18px;}
+.st-badge{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;background:var(--qlub-acento);
+  color:var(--qlub-dark);padding:3px 11px;border-radius:20px;line-height:1.5;}
+
+/* ═══ KPI CARDS ═══ */
+.kpis{display:grid;gap:12px;margin-bottom:18px;}
+.kpis.k4{grid-template-columns:repeat(4,minmax(0,1fr));}
+.kpis.k3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.kpis.k6{grid-template-columns:repeat(6,minmax(0,1fr));}
+.kpis.k2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.kpi{background:var(--white);border-radius:var(--radius);padding:14px 16px;
+  box-shadow:var(--shadow);border-top:3px solid var(--qlub-tesoro);min-width:0;overflow:hidden;}
+.kpi.gold{border-top-color:var(--qlub-acento);}
+.kpi.green{border-top-color:var(--qlub-oviedo);}
+.kpi.navy{border-top-color:var(--qlub-dark);}
+.kpi.red{border-top-color:var(--neg);}
+.kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7f9c;margin-bottom:5px;font-weight:600;}
+.kpi-val{font-size:23px;font-weight:800;color:var(--qlub-dark);line-height:1.1;overflow-wrap:break-word;}
+.kpi-sub{font-size:11px;margin-top:4px;color:#6b7f9c;overflow-wrap:break-word;}
+.kpi-sub .p{color:var(--pos);font-weight:700;}
+.kpi-sub .n{color:var(--neg);font-weight:700;}
+
+/* ═══ GRID ═══ */
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px;}
+.g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;}
+.g6040{display:grid;grid-template-columns:62% calc(38% - 16px);gap:16px;margin-bottom:16px;}
+.g4060{display:grid;grid-template-columns:calc(38% - 16px) 62%;gap:16px;margin-bottom:16px;}
+.gfull{margin-bottom:16px;}
+
+/* ═══ CARD ═══ */
+.card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;min-width:0;}
+.card-hdr{background:var(--qlub-dark);color:#fff;padding:11px 15px;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.card-hdr h3{font-size:12.5px;font-weight:600;letter-spacing:.2px;flex:1;min-width:140px;line-height:1.35;}
+.card-hdr .badge{font-size:10px;background:rgba(255,255,255,.15);padding:2px 9px;border-radius:10px;white-space:nowrap;}
+.card-hdr .badge.gold{background:rgba(212,168,67,.28);color:var(--qlub-acento);}
+.card-body{padding:14px;}
+.chart-wrap{position:relative;height:300px;}
+.chart-wrap.tall{height:420px;}
+.chart-wrap.short{height:230px;}
+.card .chart-wrap canvas{max-width:100%;}
+
+/* ═══ TABLES ═══ */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:560px;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{background:var(--qlub-dark);color:#fff;padding:8px 10px;text-align:right;
+  font-size:11px;font-weight:600;letter-spacing:.2px;white-space:nowrap;position:sticky;top:0;z-index:2;}
+.tbl th:first-child{text-align:left;}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;}
+.tbl td:first-child{text-align:left;font-weight:500;}
+.tbl tr:hover td{background:var(--gray-lt);}
+.tbl .sub td{background:#eef3fa;font-weight:700;border-top:1px solid #cdddf0;}
+.tbl .tot td{background:var(--qlub-dark);color:#fff;font-weight:700;}
+.tbl .tot td:first-child{color:#fff;}
+.pos{color:var(--pos);font-weight:700;}
+.neg{color:var(--neg);font-weight:700;}
+
+/* ═══ INSIGHT BOX ═══ */
+.insight{border-left:3px solid var(--qlub-acento);background:#fbf6ea;
+  padding:11px 15px;border-radius:0 6px 6px 0;font-size:12.5px;line-height:1.55;
+  margin-top:14px;color:#3a3220;}
+.insight strong{color:var(--qlub-dark);}
+.insight.green{border-left-color:var(--qlub-oviedo);background:#eef7f1;color:#1f3a28;}
+.insight.warn{border-left-color:var(--warn);background:#fdf6e8;}
+.insight.neg{border-left-color:var(--neg);background:#fbeceb;}
+
+/* ═══ FOOTNOTE ═══ */
+.footnote{font-size:11px;color:#7d8ca3;margin-top:10px;line-height:1.5;padding-left:2px;}
+.footnote b{color:#516181;}
+
+/* ═══ WIP / ACCION ═══ */
+.wip-box{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:40px 30px;text-align:center;border:1px dashed var(--gray-md);}
+.wip-box .wip-ico{font-size:46px;margin-bottom:10px;}
+.wip-box h2{font-family:'DM Serif Display',serif;font-size:24px;color:var(--qlub-dark);margin-bottom:8px;}
+.wip-box p{color:#5d7290;font-size:13px;max-width:560px;margin:0 auto 18px;line-height:1.6;}
+.wip-axes{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;}
+.wip-axis{background:var(--gray-lt);border:1px solid var(--border);border-radius:8px;padding:12px 16px;
+  font-size:12.5px;color:#3a4a63;text-align:left;max-width:230px;}
+.wip-axis b{display:block;color:var(--qlub-dark);margin-bottom:3px;font-size:13px;}
+
+.action-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:16px;}
+.action-card{background:var(--white);border-radius:var(--radius);padding:16px 18px;
+  box-shadow:var(--shadow);border-left:4px solid var(--qlub-tesoro);}
+.action-card.p1{border-left-color:var(--neg);}
+.action-card.p2{border-left-color:var(--warn);}
+.action-card.p3{border-left-color:var(--qlub-oviedo);}
+.ac-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.ac-title{font-weight:700;font-size:14px;color:var(--qlub-dark);}
+.ac-tag{font-size:10px;padding:3px 9px;border-radius:10px;font-weight:700;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:.4px;}
+.ac-tag.alta{background:#fbeceb;color:var(--neg);}
+.ac-tag.media{background:#fdf6e8;color:var(--warn);}
+.ac-tag.ok{background:#eef7f1;color:var(--pos);}
+.action-card p{font-size:12.5px;color:#4a5d78;line-height:1.55;}
+.action-card .ac-meta{margin-top:9px;font-size:11px;color:#6b7f9c;}
+
+/* ═══ LOADER / ERROR ═══ */
+#loader{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;
+  align-items:center;justify-content:center;flex-direction:column;gap:14px;}
+#loader .sp{width:42px;height:42px;border:4px solid var(--border);border-top-color:var(--qlub-tesoro);
+  border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loader .lt{font-size:13px;color:#5d7290;}
+#err-box{display:none;max-width:560px;background:#fff;border-radius:12px;padding:30px;
+  box-shadow:var(--shadow);text-align:center;border-top:4px solid var(--neg);}
+#err-box h2{color:var(--neg);font-size:20px;margin-bottom:10px;font-family:'DM Serif Display',serif;}
+#err-box p{color:#4a5d78;font-size:13px;line-height:1.6;}
+#err-box code{background:var(--gray-lt);padding:2px 7px;border-radius:5px;font-size:12px;}
+
+/* ═══ BOTTOM NAV (mobile) ═══ */
+#bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;
+  background:var(--qlub-dark);border-top:1.5px solid var(--qlub-acento);
+  height:calc(var(--bnav-h) + env(safe-area-inset-bottom,0px));
+  padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -4px 20px rgba(0,0,0,.25);}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;cursor:pointer;color:var(--gray-md);transition:all .15s;padding:8px 4px;touch-action:manipulation;}
+.bnav-btn.active{color:var(--qlub-acento);}
+.bnav-icon{font-size:20px;line-height:1;}
+.bnav-lbl{font-size:9px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+
+/* ═══ YTD TOGGLE ═══ */
+.ytd-toggle{
+  display:inline-flex;align-items:center;gap:7px;background:#13294a;
+  border:1px solid rgba(212,168,67,.45);color:#dfe7f2;border-radius:20px;
+  padding:5px 13px;font-size:11.5px;font-weight:700;font-family:inherit;cursor:pointer;
+  transition:all .15s;letter-spacing:.3px;white-space:nowrap;
+}
+.ytd-toggle:hover{border-color:var(--qlub-acento);color:#fff;}
+.ytd-toggle.on{background:var(--qlub-acento);color:var(--qlub-dark);border-color:var(--qlub-acento);}
+.ytd-toggle .yt-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .15s;}
+.ytd-toggle.on .yt-dot{background:var(--qlub-dark);}
+
+/* ═══ METRIC SELECTOR (chips) ═══ */
+.met-sel{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:3px 8px 3px 6px;border-radius:22px;background:rgba(212,168,67,.10);
+  border:1px solid rgba(212,168,67,.30);}
+.met-sel .pb-lbl{margin-right:2px;}
+.met-chip{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);
+  color:#c4d0e2;border-radius:18px;padding:4px 12px;font-size:11.5px;font-weight:700;
+  cursor:pointer;transition:all .15s;font-family:inherit;}
+.met-chip .mc-ico{font-size:13px;line-height:1;}
+.met-chip:hover{border-color:rgba(212,168,67,.6);color:#fff;}
+.met-chip.on{background:var(--qlub-acento);color:var(--qlub-dark);border-color:var(--qlub-acento);box-shadow:0 1px 6px rgba(212,168,67,.4);}
+@media(max-width:767px){.met-chip{font-size:13px;padding:6px 13px;}}
+
+/* ═══ EXPAND BUTTON + MODAL ═══ */
+.card-hdr .card-acts{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.expand-btn{
+  background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;
+  width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:14px;line-height:1;transition:all .15s;padding:0;flex-shrink:0;
+}
+.expand-btn:hover{background:var(--qlub-acento);color:var(--qlub-dark);}
+#chart-modal{
+  display:none;position:fixed;inset:0;z-index:600;background:rgba(8,18,38,.78);
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
+  align-items:center;justify-content:center;padding:24px;
+}
+#chart-modal.open{display:flex;}
+.cm-box{
+  background:var(--white);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.5);
+  width:min(1100px,96vw);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.cm-hdr{background:var(--qlub-dark);color:#fff;padding:14px 20px;display:flex;
+  align-items:center;justify-content:space-between;gap:12px;}
+.cm-hdr h3{font-size:15px;font-weight:600;line-height:1.3;}
+.cm-close{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:8px;
+  width:34px;height:34px;font-size:19px;cursor:pointer;line-height:1;flex-shrink:0;transition:all .15s;}
+.cm-close:hover{background:var(--neg);}
+.cm-body{padding:20px;flex:1;min-height:0;}
+.cm-canvas-wrap{position:relative;width:100%;height:68vh;}
+
+/* ═══ REPORTES / HALLAZGOS ═══ */
+.find-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:18px;}
+.find-card{background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:18px 20px;border-left:5px solid var(--qlub-tesoro);position:relative;overflow:hidden;}
+.find-card.sev-alta{border-left-color:var(--neg);}
+.find-card.sev-media{border-left-color:var(--warn);}
+.find-card.sev-op{border-left-color:var(--qlub-oviedo);}
+.fc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.fc-ico{font-size:26px;line-height:1;flex-shrink:0;}
+.fc-sev{font-size:10px;padding:4px 11px;border-radius:12px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.5px;white-space:nowrap;flex-shrink:0;}
+.fc-sev.alta{background:#fbeceb;color:var(--neg);}
+.fc-sev.media{background:#fdf6e8;color:var(--warn);}
+.fc-sev.op{background:#eef7f1;color:var(--pos);}
+.fc-title{font-family:'DM Serif Display',serif;font-size:19px;color:var(--qlub-dark);line-height:1.2;margin-bottom:8px;}
+.fc-metric{font-size:22px;font-weight:800;color:var(--qlub-dark);margin-bottom:8px;line-height:1;}
+.fc-metric small{font-size:12px;font-weight:600;color:#6b7f9c;}
+.fc-body{font-size:13px;color:#4a5d78;line-height:1.6;}
+.fc-body strong{color:var(--qlub-dark);}
+.fc-action{margin-top:12px;padding-top:11px;border-top:1px solid var(--border);
+  font-size:12px;color:#516181;line-height:1.5;}
+.fc-action b{color:var(--qlub-tesoro);}
+.find-hero{background:linear-gradient(135deg,var(--qlub-dark),var(--qlub-tesoro));color:#fff;
+  border-radius:var(--radius);padding:22px 26px;margin-bottom:20px;box-shadow:var(--shadow);}
+.find-hero h2{font-family:'DM Serif Display',serif;font-size:23px;margin-bottom:8px;line-height:1.2;}
+.find-hero p{font-size:13.5px;color:#cfdaea;line-height:1.65;max-width:920px;}
+.find-hero .fh-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.find-hero .fh-tag{background:rgba(255,255,255,.13);border:1px solid rgba(212,168,67,.4);
+  border-radius:20px;padding:5px 13px;font-size:11.5px;font-weight:600;}
+.find-hero .fh-tag b{color:var(--qlub-acento);}
+
+/* ═══ RESPONSIVE ═══ */
+@media(max-width:1023px){
+  .find-grid{grid-template-columns:1fr;}
+  .kpis.k6{grid-template-columns:repeat(3,1fr);}
+  .g3{grid-template-columns:1fr 1fr;}
+  .g6040,.g4060{grid-template-columns:1fr;}
+}
+@media(max-width:767px){
+  :root{--hdr-h:52px;}
+  .hdr-brand{min-width:auto;border-right:none;padding:0 12px;gap:8px;}
+  .hdr-brand .name .n2{display:none;}
+  .top-tabs{display:none;}
+  .hdr-meta{display:none;}
+  #content{padding-top:calc(var(--hdr-h) + var(--snav-h));padding-bottom:calc(var(--bnav-h) + 10px);}
+  #content.has-period{padding-top:calc(var(--hdr-h) + var(--snav-h) + 70px);}
+  #period-bar{gap:6px 10px;}
+  .sec{padding:14px 12px 30px;}
+  .sec-title{font-size:20px;}
+  .kpis{gap:8px;margin-bottom:12px;}
+  .kpis.k4,.kpis.k6{grid-template-columns:repeat(2,1fr);}
+  .kpis.k3{grid-template-columns:repeat(2,1fr);}
+  .kpi-val{font-size:18px;}
+  .g2,.g3{grid-template-columns:1fr;gap:10px;}
+  .chart-wrap{height:240px;}
+  .chart-wrap.tall{height:340px;}
+  .action-grid{grid-template-columns:1fr;}
+  .pb-select{font-size:16px;}
+  .chip{font-size:13px;padding:6px 14px;}
+  .ms-btn{font-size:13px;padding:7px 11px;}
+  .dd-item{font-size:14px;padding:9px 8px;}
+  .ms-pop{min-width:240px;}
+  .active-chip{font-size:12px;padding:5px 12px;}
+  #bottom-nav{display:flex;}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header id="hdr">
+  <div class="hdr-brand">
+    <img class="qlub-logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPoAAABkCAYAAACvgC0OAAAEw2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4KPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNS41LjAiPgogPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4KICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iCiAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIKICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIKICAgZXhpZjpQaXhlbFhEaW1lbnNpb249IjI1MCIKICAgZXhpZjpQaXhlbFlEaW1lbnNpb249IjEwMCIKICAgZXhpZjpDb2xvclNwYWNlPSI2NTUzNSIKICAgdGlmZjpJbWFnZVdpZHRoPSIyNTAiCiAgIHRpZmY6SW1hZ2VMZW5ndGg9IjEwMCIKICAgdGlmZjpSZXNvbHV0aW9uVW5pdD0iMiIKICAgdGlmZjpYUmVzb2x1dGlvbj0iNzIuMCIKICAgdGlmZjpZUmVzb2x1dGlvbj0iNzIuMCIKICAgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIKICAgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9IlNNUFRFIFJQIDQzMS0yLTIwMDcgRENJIChQMykiCiAgIHhtcDpN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" alt="Qlub Quirófanos - Grupo UroGine" />
+    <div class="name">
+      <div class="n1">Panel 360°</div>
+      <div class="n2">Tesoro · Oviedo · Medellín</div>
+    </div>
+  </div>
+  <nav class="top-tabs" id="top-tabs">
+    <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
+    <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
+    <div class="ttab" data-tab="rep" onclick="switchTab('rep')"><span class="ti">📑</span> Reportes</div>
+    <div class="ttab" data-tab="acc" onclick="switchTab('acc')"><span class="ti">✅</span> Plan de Acción</div>
+  </nav>
+  <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
+</header>
+
+<!-- ═══ SUB-NAV ═══ -->
+<div id="sub-nav-wrap"><div class="snav" id="snav"></div></div>
+
+<!-- ═══ PERIOD / FILTER BAR ═══ -->
+<div id="period-bar"></div>
+
+<!-- ═══ BOTTOM NAV ═══ -->
+<nav id="bottom-nav">
+  <div class="bnav-btn active" data-tab="fin" onclick="switchTab('fin')"><div class="bnav-icon">💰</div><div class="bnav-lbl">Finan.</div></div>
+  <div class="bnav-btn" data-tab="ope" onclick="switchTab('ope')"><div class="bnav-icon">📊</div><div class="bnav-lbl">Admin.</div></div>
+  <div class="bnav-btn" data-tab="rep" onclick="switchTab('rep')"><div class="bnav-icon">📑</div><div class="bnav-lbl">Report.</div></div>
+  <div class="bnav-btn" data-tab="acc" onclick="switchTab('acc')"><div class="bnav-icon">✅</div><div class="bnav-lbl">Plan</div></div>
+</nav>
+
+<!-- ═══ CONTENT ═══ -->
+<div id="content">
+
+<!-- ============ FINANCIERO ============ -->
+<section class="sec active" id="sec-fin">
+  <div class="subsec active" id="fin-inicio"></div>
+  <div class="subsec" id="fin-pnl"></div>
+  <div class="subsec" id="fin-margen"></div>
+  <div class="subsec" id="fin-costos"></div>
+  <div class="subsec" id="fin-balance"></div>
+  <div class="subsec" id="fin-flujo"></div>
+  <div class="subsec" id="fin-anual"></div>
+</section>
+
+<!-- ============ ADMINISTRATIVO / OPERACIONAL ============ -->
+<section class="sec" id="sec-ope">
+  <div class="subsec active" id="ope-inicio"></div>
+  <div class="subsec" id="ope-esp"></div>
+  <div class="subsec" id="ope-cir"></div>
+  <div class="subsec" id="ope-qx"></div>
+  <div class="subsec" id="ope-sedes"></div>
+  <div class="subsec" id="ope-ocup"></div>
+  <div class="subsec" id="ope-eps"></div>
+</section>
+
+<!-- ============ REPORTES / HALLAZGOS ============ -->
+<section class="sec" id="sec-rep"></section>
+
+<!-- ============ PLAN DE ACCIÓN ============ -->
+<section class="sec" id="sec-acc"></section>
+
+</div>
+
+<!-- ═══ CHART EXPAND MODAL ═══ -->
+<div id="chart-modal" onclick="if(event.target===this)closeChartModal()">
+  <div class="cm-box">
+    <div class="cm-hdr"><h3 id="cm-title">Gráfico</h3><button class="cm-close" onclick="closeChartModal()" aria-label="Cerrar">✕</button></div>
+    <div class="cm-body"><div class="cm-canvas-wrap"><canvas id="cm-canvas"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ═══ LOADER ═══ -->
+<div id="loader">
+  <div class="sp"></div>
+  <div class="lt">Cargando datos de Qlub…</div>
+  <div id="err-box">
+    <h2>No se pudieron cargar los datos</h2>
+    <p>Este panel necesita servirse por <b>HTTP</b>, no abrirse con <code>file://</code>.<br>
+    Ejecuta en la carpeta del panel:<br><br>
+    <code>python3 -m http.server 8000</code><br><br>
+    y abre <code>http://localhost:8000</code></p>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   QLUB QUIRÓFANOS — PANEL 360°
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── Paleta ── */
+const C = {
+  dark:'#0E2240', tesoro:'#1B3A6B', oviedo:'#1A6B35', consol:'#4A4A4A',
+  acento:'#D4A843', pos:'#1A7A3C', neg:'#C0392B', grid:'#E9ECEF', txt:'#6b7f9c'
+};
+const YR_CLR = {2024:'#9AA8BD', 2025:'#1B3A6B', 2026:'#D4A843'};
+const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+/* ── Formato números (Colombia) ── */
+function fmtNum(n){
+  if(n===null||n===undefined||isNaN(n)) return '0';
+  return Math.round(n).toLocaleString('es-CO');
+}
+function fmtM(m){
+  if(m===null||m===undefined||isNaN(m)) return '$0';
+  if(Math.abs(m)>=1000){ return '$'+(m/1000).toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'B'; }
+  return '$'+Math.round(m).toLocaleString('es-CO')+'M';
+}
+function fmtMd(m,dec){
+  if(m===null||m===undefined||isNaN(m)) return '$0M';
+  if(Math.abs(m)>=1000){ return '$'+(m/1000).toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'B'; }
+  return '$'+m.toLocaleString('es-CO',{minimumFractionDigits:dec||1,maximumFractionDigits:dec||1})+'M';
+}
+function fmtPct(p,dec){ if(p===null||p===undefined||isNaN(p)) return '—'; return p.toLocaleString('es-CO',{minimumFractionDigits:dec||1,maximumFractionDigits:dec||1})+'%'; }
+function fmtVar(p){
+  if(p===null||p===undefined||isNaN(p)||!isFinite(p)) return '<span>—</span>';
+  const cls=p>=0?'p':'n', arr=p>=0?'&#9650;':'&#9660;';
+  return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
+}
+function pctVar(cur,prev){ if(!prev||prev===0) return null; return (cur-prev)/Math.abs(prev)*100; }
+
+/* ── Chart.js base + mkChart ── */
+Chart.defaults.font.family = "'Inter',sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = C.txt;
+const _charts = {};
+const _chartSpecs = {}; // id -> {type, labels, datasets, opts} para re-render en modal
+function mkChart(id, type, labels, datasets, opts){
+  opts = opts || {};
+  const el = document.getElementById(id);
+  if(!el) return;
+  if(_charts[id]){ try{_charts[id].destroy();}catch(e){} }
+  datasets.forEach(function(ds){ if((!ds.type||ds.type==='bar') && ds.borderRadius===undefined) ds.borderRadius=4; });
+  _chartSpecs[id] = {type:type, labels:labels, datasets:datasets, opts:opts};
+  const o = buildChartOpts(datasets, opts, type);
+  _charts[id] = new Chart(el, {type:type, data:{labels:labels, datasets:datasets}, options:o});
+  return _charts[id];
+}
+/* charts circulares no tienen ejes cartesianos */
+function isRadialType(type){ return type==='doughnut'||type==='pie'||type==='polarArea'; }
+function buildChartOpts(datasets, opts, type){
+  opts = opts || {};
+  const base = {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:datasets.length>1, position:'top', labels:{boxWidth:12,padding:12,font:{size:11},usePointStyle:true}},
+      tooltip:{
+        backgroundColor:'rgba(14,34,64,.95)', padding:10, cornerRadius:8, titleFont:{size:12,weight:'700'}, bodyFont:{size:11.5},
+        callbacks:{}
+      }
+    },
+    scales:{
+      x:{ticks:{font:{size:10},maxRotation:50,color:C.txt},grid:{display:false}},
+      y:{ticks:{font:{size:10},color:C.txt},grid:{color:C.grid}}
+    }
+  };
+  const o = JSON.parse(JSON.stringify(base));
+  /* doughnut/pie/polar no usan ejes cartesianos: eliminar scales para que no se
+     dibujen gridlines ni ejes numéricos por error */
+  if(isRadialType(type)){ delete o.scales; }
+  if(o.scales && opts.scales){ for(const k in opts.scales){ o.scales[k]=Object.assign(o.scales[k]||{},opts.scales[k]); } }
+  if(opts.plugins){ for(const k in opts.plugins){ o.plugins[k]=Object.assign(o.plugins[k]||{},opts.plugins[k]); } }
+  for(const k in opts){ if(k!=='scales'&&k!=='plugins'&&k.charAt(0)!=='_') o[k]=opts[k]; }
+  if(opts._tooltipLabel) o.plugins.tooltip.callbacks.label = opts._tooltipLabel;
+  if(o.scales && opts._yMoney) o.scales.y.ticks.callback = function(v){ return fmtM(v); };
+  if(o.scales && opts._yPct) o.scales.y.ticks.callback = function(v){ return v+'%'; };
+  return o;
+}
+/* ── Modal de ampliación de gráfico ── */
+let _modalChart=null, _modalSrcId=null;
+function openChartModal(srcId, title){
+  const spec=_chartSpecs[srcId]; if(!spec) return;
+  _modalSrcId=srcId;
+  document.getElementById('cm-title').textContent = title || 'Gráfico';
+  const modal=document.getElementById('chart-modal');
+  modal.classList.add('open');
+  const cv=document.getElementById('cm-canvas');
+  if(_modalChart){ try{_modalChart.destroy();}catch(e){} _modalChart=null; }
+  /* clonar datasets para no compartir estado con el chart pequeño */
+  const ds=spec.datasets.map(function(d){ return Object.assign({}, d); });
+  const o=buildChartOpts(ds, spec.opts, spec.type);
+  o.plugins.legend.display=true;
+  _modalChart=new Chart(cv,{type:spec.type,data:{labels:spec.labels,datasets:ds},options:o});
+}
+function closeChartModal(){
+  const modal=document.getElementById('chart-modal');
+  modal.classList.remove('open');
+  if(_modalChart){ try{_modalChart.destroy();}catch(e){} _modalChart=null; }
+  _modalSrcId=null;
+}
+document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeChartModal(); });
+const tipMoney = function(c){ return ' '+c.dataset.label+': '+fmtMd(c.parsed.y!==undefined?c.parsed.y:c.parsed,1); };
+const tipNum   = function(c){ return ' '+c.dataset.label+': '+fmtNum(c.parsed.y!==undefined?c.parsed.y:c.parsed); };
+const tipPct   = function(c){ return ' '+c.dataset.label+': '+(c.parsed.y).toFixed(1)+'%'; };
+
+/* ════════════════════════════════════════
+   DATA LOAD
+   ════════════════════════════════════════ */
+let FIN=null, COM=null, FLU=null;
+const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10};
+
+async function loadData(){
+  try{
+    const res = await Promise.all([
+      fetch('datos/financiero.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/comercial.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); })
+    ]);
+    FIN=res[0]; COM=res[1]; FLU=res[2];
+    const um=(FIN.ultimo_mes_cerrado||4)-1;
+    document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
+    document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
+    document.getElementById('loader').style.display='none';
+    boot();
+  }catch(e){
+    document.querySelector('#loader .sp').style.display='none';
+    document.querySelector('#loader .lt').style.display='none';
+    document.getElementById('err-box').style.display='block';
+  }
+}
+
+/* ════════════════════════════════════════
+   NAVIGATION
+   ════════════════════════════════════════ */
+let TAB='fin';
+const SUBSECS = {
+  fin:[['fin-inicio','📋','Inicio'],['fin-pnl','📑','P&G'],['fin-margen','📐','Márgenes'],
+       ['fin-costos','🧮','Costos'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
+  ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
+       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
+  rep:[], acc:[]
+};
+let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio'};
+
+function switchTab(t){
+  TAB=t;
+  const secs=document.querySelectorAll('.sec');
+  for(let i=0;i<secs.length;i++) secs[i].classList.toggle('active', secs[i].id==='sec-'+t);
+  const btns=document.querySelectorAll('.ttab,.bnav-btn');
+  for(let i=0;i<btns.length;i++) btns[i].classList.toggle('active', btns[i].dataset.tab===t);
+  buildSubNav(t);
+  buildPeriodBar(t);
+  if(t==='fin'||t==='ope'){ switchSub(SUBSEC[t]); }
+  else if(t==='rep'){ buildReportes(); }
+  else if(t==='acc'){ buildAcciones(); }
+  window.scrollTo(0,0);
+}
+
+function buildSubNav(t){
+  const snav=document.getElementById('snav');
+  const subs=SUBSECS[t]||[];
+  snav.innerHTML = subs.map(function(s){
+    return '<div class="snav-btn show '+(s[0]===SUBSEC[t]?'active':'')+'" onclick="switchSub(\''+s[0]+'\')"><span class="si">'+s[1]+'</span>'+s[2]+'</div>';
+  }).join('');
+  document.getElementById('sub-nav-wrap').style.display = subs.length? 'flex':'none';
+}
+
+function switchSub(id){
+  const pref=id.split('-')[0];
+  SUBSEC[pref]=id;
+  const subs=document.querySelectorAll('#sec-'+pref+' .subsec');
+  for(let i=0;i<subs.length;i++) subs[i].classList.toggle('active', subs[i].id===id);
+  const btns=document.querySelectorAll('#snav .snav-btn');
+  for(let i=0;i<btns.length;i++){
+    btns[i].classList.toggle('active', SUBSECS[pref][i] && SUBSECS[pref][i][0]===id);
+  }
+  buildSub(id);
+  window.scrollTo(0,0);
+}
+
+function buildSub(id){
+  const map={
+    'fin-inicio':buildFinInicio,'fin-pnl':buildFinPnl,'fin-margen':buildFinMargen,
+    'fin-costos':buildFinCostos,'fin-balance':buildFinBalance,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnual,
+    'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
+    'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps
+  };
+  if(map[id]) map[id]();
+}
+
+/* ════════════════════════════════════════
+   FINANCIERO — state + helpers
+   ════════════════════════════════════════ */
+/* Financiero: sede single, año MULTISELECT (Set). YTD = toggle acumulado. */
+const FF = { sede:'Consolidado', anios:new Set([2026]), ytd:false, meses:new Set() };
+/* año "principal" (el más reciente seleccionado) para vistas single-año */
+function finYear(){ const a=Array.from(FF.anios); return a.length? Math.max.apply(null,a) : 2026; }
+function finYearsSorted(){ const a=Array.from(FF.anios).sort(); return a.length? a : [2026]; }
+/* Último mes cerrado financieramente (1-based) — dinámico desde el JSON */
+function ultMes(){ return (FIN&&FIN.ultimo_mes_cerrado)?FIN.ultimo_mes_cerrado:4; }
+/* índices YTD (0-based) hasta el último mes cerrado: [0..ultMes-1] */
+function ytdIdx(){ const n=ultMes(); const a=[]; for(let i=0;i<n;i++)a.push(i); return a; }
+/* suma de una serie pyg en el rango YTD */
+function sumYTD(arr){ return ytdIdx().reduce(function(s,i){ return s+(arr[i]||0); },0); }
+function pygArr(sede,anio,cod){ const k=sede+'_'+anio; return (FIN.pyg[k]&&FIN.pyg[k][cod])?FIN.pyg[k][cod]:new Array(12).fill(0); }
+function monthsActive(sede,anio){ return pygArr(sede,anio,'4').map(function(v,i){ return v>0?i:-1; }).filter(function(i){ return i>=0; }); }
+/* ── Filtro de MESES (multiselect). FF.meses = Set de meses 1-based. Vacío = todos.
+   Prioridad: meses explícitos > YTD > todos los meses con datos. La selección
+   explícita de un mes MANDA sobre el corte YTD (igual que en el Administrativo). */
+function finMesesBase(){ /* índices 0-11 pedidos por el filtro, sin restringir a datos */
+  if(FF.meses.size>0){ return Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return m-1;}); }
+  if(FF.ytd){ return ytdIdx(); }
+  return null; /* null = "todos los meses con datos" (depende de la sede/año) */
+}
+/* índices efectivos (0-11) a incluir para una sede/año concretos, intersectados con
+   los meses que realmente tienen datos de ingresos. */
+function finMesesIdx(sede,anio){
+  const base=finMesesBase();
+  const act=monthsActive(sede,anio);
+  if(base===null) return act;
+  return base.filter(function(i){ return act.indexOf(i)>=0; });
+}
+/* ¿hay selección explícita de meses? */
+function finMesesExpl(){ return FF.meses.size>0; }
+/* etiqueta legible del rango de meses para subtítulos/badges */
+function finMesesLbl(){
+  if(FF.meses.size>0){ return Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return MESES[m-1];}).join(', '); }
+  if(FF.ytd){ return 'YTD Ene-'+MESES[ultMes()-1]; }
+  return 'todos los meses';
+}
+function ebitArr(sede,anio){
+  const ing=pygArr(sede,anio,'4'),cd=pygArr(sede,anio,'6'),nom=pygArr(sede,anio,'7'),adm=pygArr(sede,anio,'5');
+  return ing.map(function(v,i){ return v>0? (v-cd[i]-nom[i]-adm[i]) : 0; });
+}
+function ubArr(sede,anio){
+  const ing=pygArr(sede,anio,'4'),cd=pygArr(sede,anio,'6');
+  return ing.map(function(v,i){ return v>0? (v-cd[i]):0; });
+}
+/* D&A (5160 Depreciaciones + 5165 Amortizaciones) — ya incluidas dentro de Gastos Admin (5) */
+function daArr(sede,anio){
+  const dep=pygArr(sede,anio,'5160'),amo=pygArr(sede,anio,'5165'),ing=pygArr(sede,anio,'4');
+  return ing.map(function(v,i){ return v>0? (dep[i]+amo[i]):0; });
+}
+/* EBITDA = EBIT + D&A (se suman de vuelta, son no-caja) */
+function ebitdaArr(sede,anio){
+  const eb=ebitArr(sede,anio),da=daArr(sede,anio),ing=pygArr(sede,anio,'4');
+  return ing.map(function(v,i){ return v>0? (eb[i]+da[i]):0; });
+}
+/* Utilidad Antes de Impuestos = EBIT + Otros Ingresos (42) − Gastos No Operacionales (53) */
+function uaiArr(sede,anio){
+  const eb=ebitArr(sede,anio),oi=pygArr(sede,anio,'42'),gno=pygArr(sede,anio,'53'),ing=pygArr(sede,anio,'4');
+  return ing.map(function(v,i){ return v>0? (eb[i]+oi[i]-gno[i]):0; });
+}
+/* Utilidad Neta = UAI − Impuesto de Renta (54) */
+function netoArr(sede,anio){
+  const uai=uaiArr(sede,anio),imp=pygArr(sede,anio,'54'),ing=pygArr(sede,anio,'4');
+  return ing.map(function(v,i){ return v>0? (uai[i]-imp[i]):0; });
+}
+function sumActive(arr,active){ return active.reduce(function(s,i){ return s+arr[i]; },0); }
+
+function buildPeriodBar(t){
+  const pb=document.getElementById('period-bar');
+  const content=document.getElementById('content');
+  if(t==='fin'){
+    content.classList.add('has-period');
+    pb.style.display='flex';
+    pb.innerHTML =
+      '<button class="ytd-toggle'+(FF.ytd?' on':'')+'" onclick="toggleFinYTD()"><span class="yt-dot"></span>YTD '+(FF.ytd?'ON':'OFF')+'</button>'+
+      '<div class="pb-group"><span class="pb-lbl">Sede</span>'+
+        ['Consolidado','Tesoro','Oviedo'].map(function(s){ return '<button class="chip '+(FF.sede===s?'on':'')+'" onclick="setFin(\'sede\',\''+s+'\')">'+s+'</button>'; }).join('')+
+      '</div>'+
+      '<div class="pb-group"><span class="pb-lbl">Año (multi)</span>'+
+        [2024,2025,2026].map(function(y){ return '<button class="chip '+(FF.anios.has(y)?'on':'')+'" onclick="toggleFinYear('+y+')">'+y+'</button>'; }).join('')+
+      '</div>'+
+      finMesDropdown();
+  } else if(t==='ope'){
+    content.classList.add('has-period');
+    pb.style.display='flex';
+    renderOpeFilters();
+  } else {
+    content.classList.remove('has-period');
+    pb.style.display='none';
+  }
+}
+function setFin(k,v){ FF[k]=v; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+function toggleFinYear(y){ if(FF.anios.has(y)) FF.anios.delete(y); else FF.anios.add(y); if(FF.anios.size===0) FF.anios.add(2026); buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+function toggleFinYTD(){ FF.ytd=!FF.ytd; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+/* ── Dropdown multiselect de MESES para el Financiero (mismo patrón visual que el Administrativo) ── */
+let FIN_DD = null; /* dropdown de meses abierto? */
+function finMesDropdown(){
+  const sel=FF.meses;
+  const summary = sel.size===0 ? 'Todos' : (sel.size===1 ? MESES[Array.from(sel)[0]-1] : sel.size+' selecc.');
+  const open = FIN_DD==='meses';
+  const items = MESES.map(function(m,i){
+    const mn=i+1, on=sel.has(mn);
+    return '<label class="dd-item'+(on?' on':'')+'"><input type="checkbox" '+(on?'checked':'')+' onchange="toggleFinMes('+mn+')"><span>'+m+'</span></label>';
+  }).join('');
+  return '<div class="pb-group ms fin-ms'+(open?' open':'')+'" data-dim="meses">'+
+    '<span class="pb-lbl">Mes (multi)</span>'+
+    '<button class="ms-btn'+(sel.size?' has':'')+'" onclick="toggleFinDD(event)">'+summary+
+      ' <span class="ms-cnt">'+(sel.size?sel.size:'')+'</span><span class="ms-car">▾</span></button>'+
+    '<div class="ms-pop">'+
+      '<div class="ms-pop-hd"><button onclick="clearFinMeses()">Limpiar meses</button></div>'+
+      '<div class="ms-pop-bd">'+items+'</div>'+
+    '</div></div>';
+}
+function toggleFinDD(ev){ ev.stopPropagation(); FIN_DD = FIN_DD==='meses'?null:'meses'; buildPeriodBar('fin'); }
+function toggleFinMes(m){ if(FF.meses.has(m)) FF.meses.delete(m); else FF.meses.add(m); buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+function clearFinMeses(){ FF.meses.clear(); FIN_DD=null; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+document.addEventListener('click',function(e){ if(FIN_DD!==null && !e.target.closest('.pb-group.ms.fin-ms')){ FIN_DD=null; if(TAB==='fin') buildPeriodBar('fin'); } });
+
+/* ─────────── FIN: INICIO ─────────── */
+function buildFinInicio(){
+  const el=document.getElementById('fin-inicio');
+  const s=FF.sede, y=finYear(), yp=y-1;
+  const selYears=finYearsSorted();
+  const nM=ultMes(), idx=ytdIdx(), rng='Ene-'+MESES[nM-1];
+  const ytdOn=FF.ytd;
+  const mesExpl=finMesesExpl();          /* ¿hay meses seleccionados explícitamente? */
+  const mesLbl=finMesesLbl();            /* etiqueta legible del rango de meses */
+  const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;}); /* meses 1-based seleccionados */
+  /* agregador del período activo (meses explícitos > YTD > todos los meses con datos) */
+  function agg(yy){
+    const act = finMesesIdx(s,yy);
+    const sa=function(arr){ return act.reduce(function(t,i){return t+(arr[i]||0);},0); };
+    return {
+      ing:sa(pygArr(s,yy,'4')), cd:sa(pygArr(s,yy,'6')),
+      nom:sa(pygArr(s,yy,'7')), adm:sa(pygArr(s,yy,'5')),
+      ub:sa(ubArr(s,yy)), ebit:sa(ebitArr(s,yy)), ebitda:sa(ebitdaArr(s,yy)),
+      neto:sa(netoArr(s,yy)), imp:sa(pygArr(s,yy,'54'))
+    };
+  }
+  /* KPIs: respetan el filtro de meses (selección explícita manda); si no, comparan YTD */
+  const A=agg(y), B=agg(yp);
+  const mEbit=A.ing?A.ebit/A.ing*100:0, mNeto=A.ing?A.neto/A.ing*100:0, mCd=A.ing?A.cd/A.ing*100:0;
+  const vIng=pctVar(A.ing,B.ing), vEbit=pctVar(A.ebit,B.ebit), vNeto=pctVar(A.neto,B.neto), vEbitda=pctVar(A.ebitda,B.ebitda);
+
+  /* años a graficar: los seleccionados + el anterior al principal para contexto comparativo */
+  const chartYears = selYears.slice();
+  if(chartYears.indexOf(yp)<0) chartYears.unshift(yp);
+  chartYears.sort();
+  const badge = mesExpl ? (mesLbl+' · '+selYears.join(', ')) : (ytdOn ? ('YTD '+rng) : (selYears.length>1? selYears.join(' · ') : String(y)));
+  const periodTxt = mesExpl ? mesLbl : (ytdOn ? ('YTD '+rng) : 'todos los meses con datos');
+  /* lectura comparativa: contra el año anterior si hay 1 año; entre años si hay varios */
+  const cmpVsYp = (selYears.length<=1);
+  const subCmp = mesExpl
+    ? ('<strong>'+mesLbl+'</strong> · años: <strong>'+selYears.join(', ')+'</strong>'+(cmpVsYp?(' (vs '+yp+')'):''))
+    : ('Comparativo acumulado <strong>'+rng+' '+y+' vs '+yp+'</strong> ('+nM+' '+(nM===1?'mes':'meses')+' comparables)'+(selYears.length>1?' · años seleccionados: <strong>'+selYears.join(', ')+'</strong>':''));
+  el.innerHTML =
+    '<div class="sec-title">Resumen Financiero <span class="st-badge">'+s+' · '+badge+'</span></div>'+
+    '<div class="sec-sub">'+subCmp+' · millones COP</div>'+
+    '<div class="kpis k6">'+
+      kpi('gold','Ingresos '+y,fmtM(A.ing),fmtVar(vIng)+' vs '+yp+' ('+fmtM(B.ing)+')')+
+      kpi('','Utilidad Bruta',fmtM(A.ub),'margen '+fmtPct(A.ing?A.ub/A.ing*100:0))+
+      kpi('navy','EBIT',fmtM(A.ebit),fmtVar(vEbit)+' vs '+yp)+
+      kpi('','EBITDA',fmtM(A.ebitda),fmtVar(vEbitda)+' vs '+yp)+
+      kpi(A.neto>=0?'green':'red','Utilidad Neta',fmtM(A.neto),fmtVar(vNeto)+' vs '+yp+' ('+fmtM(B.neto)+')')+
+      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'EBIT '+fmtPct(mEbit))+
+    '</div>'+
+    '<div class="g6040">'+
+      card('Ingresos '+(mesExpl?'de '+mesLbl:'mensuales')+' — '+s+' · '+chartYears.join(' vs '),'millones COP · '+periodTxt,'fi-ing','')+
+      card('Composición '+periodTxt+(mesExpl?'':' '+y),'','fi-comp','')+
+    '</div>'+
+    '<div class="g2">'+
+      card('Comparativo '+(mesExpl?mesLbl:('YTD '+rng))+' · '+chartYears.join(' · '),'ingresos · EBIT · utilidad neta','fi-cmp','')+
+      card('Utilidad Neta mensual — '+y,'tras impuestos'+(mesExpl?' · '+mesLbl+' resaltado':''),'fi-neto','')+
+    '</div>'+
+    '<div class="insight"><strong>Lectura '+periodTxt+':</strong> '+s+' suma <strong>'+fmtM(A.ing)+'</strong> en ingresos ('+(vIng!==null?(vIng>=0?'+':'')+vIng.toFixed(1)+'%':'—')+' vs '+yp+'), un EBIT de <strong>'+fmtM(A.ebit)+'</strong> y una <strong>utilidad neta de '+fmtM(A.neto)+'</strong> (margen '+fmtPct(mNeto)+'). El costo directo absorbe el '+fmtPct(mCd)+' de la facturación — es la palanca número uno de rentabilidad.</div>';
+
+  /* ── Ingresos por año (agrupado lado a lado, NUNCA apilado) ──
+     Si hay meses explícitos: mostrar SOLO esos meses, un grupo por mes, una barra por año.
+     Si no: serie mensual completa (o hasta ultMes en YTD). */
+  if(mesExpl){
+    const labels=mesSel.map(function(m){return MESES[m-1];});
+    const dsIngM=chartYears.map(function(yy){
+      const a=pygArr(s,yy,'4');
+      return {label:String(yy),data:mesSel.map(function(m){ const v=a[m-1]; return v>0?v:null; }),backgroundColor:YR_CLR[yy]||C.tesoro};
+    });
+    mkChart('fi-ing','bar',labels,dsIngM,{_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    const upTo = ytdOn ? nM : 12;
+    const dsIng=[];
+    chartYears.forEach(function(yy){
+      const a=pygArr(s,yy,'4');
+      if(a.some(function(v){return v>0;})) dsIng.push({label:String(yy),data:a.map(function(v,i){return (i<upTo&&v>0)?v:null;}),backgroundColor:YR_CLR[yy]||C.tesoro});
+    });
+    mkChart('fi-ing','bar',ytdOn?MESES.slice(0,nM):MESES,dsIng,{_tooltipLabel:tipMoney,_yMoney:true});
+  }
+  /* composición del período activo */
+  mkChart('fi-comp','doughnut',['Costo Directo','Nómina','Gastos Admin','Utilidad Neta'],
+    [{data:[A.cd,A.nom,A.adm,Math.max(A.neto,0)],
+      backgroundColor:[C.tesoro,C.oviedo,C.consol,C.acento],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+  /* comparativo agrupado: un dataset por año (segmento de color por período) — respeta meses */
+  const cmpDs=chartYears.map(function(yy){ const Y=agg(yy); return {label:String(yy),data:[Y.ing,Y.ebit,Y.neto],backgroundColor:YR_CLR[yy]||C.consol}; });
+  mkChart('fi-cmp','bar',['Ingresos','EBIT','Utilidad Neta'],cmpDs,{_tooltipLabel:tipMoney,_yMoney:true});
+  /* utilidad neta mensual del año en curso (meses seleccionados resaltados) */
+  const neto=netoArr(s,y), actY=monthsActive(s,y);
+  mkChart('fi-neto','bar',MESES,[{label:'Utilidad Neta',data:neto.map(function(v,i){return actY.indexOf(i)>=0?v:null;}),
+    backgroundColor:neto.map(function(v,i){ const inSel=!mesExpl||FF.meses.has(i+1); return v>=0?(inSel?C.oviedo:'#cfd8e3'):(inSel?C.neg:'#e6b9b9'); })}],{_tooltipLabel:tipMoney,_yMoney:true});
+}
+function kpi(cls,lbl,val,sub){
+  return '<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+(sub||'')+'</div></div>';
+}
+function card(title,badge,cid,wrapCls){
+  const t=String(title).replace(/'/g,"\\'").replace(/&amp;/g,'&');
+  return '<div class="card"><div class="card-hdr"><h3>'+title+'</h3><div class="card-acts">'+(badge?'<span class="badge gold">'+badge+'</span>':'')+
+    '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button></div></div>'+
+    '<div class="card-body"><div class="chart-wrap '+(wrapCls||'')+'"><canvas id="'+cid+'"></canvas></div></div></div>';
+}
+/* botón de ampliar para cards con markup manual (canvas embebido) */
+function expandBtn(cid,title){
+  const t=String(title).replace(/'/g,"\\'").replace(/&amp;/g,'&');
+  return '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button>';
+}
+
+/* ─────────── FIN: P&G ─────────── */
+function buildFinPnl(){
+  const el=document.getElementById('fin-pnl');
+  const s=FF.sede, y=finYear();
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const act=finMesesIdx(s,y);
+  const ing=pygArr(s,y,'4'),cd=pygArr(s,y,'6'),nom=pygArr(s,y,'7'),adm=pygArr(s,y,'5');
+  const oi=pygArr(s,y,'42'),gno=pygArr(s,y,'53'),imp=pygArr(s,y,'54');
+  const ub=ubArr(s,y), ebit=ebitArr(s,y), da=daArr(s,y), ebitda=ebitdaArr(s,y), uai=uaiArr(s,y), neto=netoArr(s,y);
+  const T={ing:sumActive(ing,act),cd:sumActive(cd,act),nom:sumActive(nom,act),adm:sumActive(adm,act),
+           ub:sumActive(ub,act),ebit:sumActive(ebit,act),da:sumActive(da,act),ebitda:sumActive(ebitda,act),
+           oi:sumActive(oi,act),gno:sumActive(gno,act),uai:sumActive(uai,act),imp:sumActive(imp,act),neto:sumActive(neto,act)};
+  const mNeto = T.ing? T.neto/T.ing*100:0;
+  const mEbit = T.ing? T.ebit/T.ing*100:0;
+  /* ── Comparativo rubro a rubro contra año anterior (mismo período: meses sel. > YTD) ── */
+  const yPrevP=y-1, nMc=ultMes(), rngCmp=mesExpl? mesLbl : ('Ene-'+MESES[nMc-1]);
+  const RUB=[
+    ['Ingresos','4',1],['Costo Dir.','6',0],['Nómina','7',0],['G. Admin','5',0]
+  ];
+  /* índices del período comparable: meses explícitos (sin filtrar por datos, para comparar
+     el MISMO mes calendario en ambos años) o YTD Ene..ultMes */
+  const cmpIdx = mesExpl ? Array.from(FF.meses).map(function(m){return m-1;}) : ytdIdx();
+  function sumCmp(arr){ return cmpIdx.reduce(function(t,i){return t+(arr[i]||0);},0); }
+  const cur={}, prv={};
+  RUB.forEach(function(r){ cur[r[0]]=sumCmp(pygArr(s,y,r[1])); prv[r[0]]=sumCmp(pygArr(s,yPrevP,r[1])); });
+  const ingGrow = prv['Ingresos']? (cur['Ingresos']-prv['Ingresos'])/prv['Ingresos']*100 : null;
+  const cmpTag = mesExpl ? mesLbl : ('YTD '+rngCmp);
+  /* rubros de costo que crecen MÁS que el ingreso = fuga de margen */
+  const leaks=[];
+  ['Costo Dir.','Nómina','G. Admin'].forEach(function(k){
+    if(prv[k]>0){ const g=(cur[k]-prv[k])/prv[k]*100; if(ingGrow!==null && g>ingGrow) leaks.push({k:k,g:g}); }
+  });
+  let cmpInsight='';
+  if(prv['Ingresos']>0){
+    if(leaks.length){
+      cmpInsight='<div class="insight neg"><strong>Alerta de fuga de margen:</strong> los ingresos crecen '+(ingGrow>=0?'+':'')+ingGrow.toFixed(1)+'% ('+cmpTag+') vs '+yPrevP+', pero '+
+        leaks.map(function(l){return '<strong>'+l.k+'</strong> ('+(l.g>=0?'+':'')+l.g.toFixed(1)+'%)';}).join(' y ')+
+        ' '+(leaks.length>1?'crecen':'crece')+' más rápido — comprime el margen. Es la prioridad de control de costos.</div>';
+    } else {
+      cmpInsight='<div class="insight green">Los ingresos crecen '+(ingGrow>=0?'+':'')+ingGrow.toFixed(1)+'% ('+cmpTag+') vs '+yPrevP+' y ningún rubro de costo crece por encima — el margen se mantiene o mejora.</div>';
+    }
+  }
+  function row(lbl,arr,cls){
+    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
+    const tot=sumActive(arr,act);
+    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td></tr>';
+  }
+  function rowPct(lbl,arr,baseArr){
+    const tds=act.map(function(i){ return '<td>'+fmtPct(baseArr[i]?arr[i]/baseArr[i]*100:0)+'</td>'; }).join('');
+    const totA=sumActive(arr,act), totB=sumActive(baseArr,act);
+    return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(totB?totA/totB*100:0)+'</strong></td></tr>';
+  }
+  const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
+  el.innerHTML =
+    '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','EBIT',fmtM(T.ebit),'margen '+fmtPct(mEbit))+
+      kpi('','EBITDA',fmtM(T.ebitda),'+ D&amp;A '+fmtM(T.da))+
+      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
+      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
+      '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
+        '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th></tr></thead><tbody>'+
+          row('Ingresos',ing)+
+          row('(−) Costo Directo',cd)+
+          row('= Utilidad Bruta',ub,'sub')+
+          row('(−) Nómina Directa',nom)+
+          row('(−) Gastos Admin',adm)+
+          row('= EBIT (Util. Operativa)',ebit,'tot')+
+          row('(+) Depreciac. y Amortiz.',da)+
+          row('= EBITDA',ebitda,'sub')+
+          row('(+) Otros Ingresos',oi)+
+          row('(−) Gastos No Operac.',gno)+
+          row('= Utilidad Antes de Imp.',uai,'sub')+
+          row('(−) Impuesto de Renta',imp)+
+          row('= UTILIDAD NETA',neto,'tot')+
+          rowPct('Margen Neto %',neto,ing)+
+        '</tbody></table></div></div></div>'+
+    '<div class="g2" style="margin-top:16px">'+
+      card('Ingresos vs EBIT vs Utilidad Neta','millones COP','fp-bars','')+
+      card('Cascada del P&amp;G (acumulado)','de ingresos a utilidad neta','fp-stack','')+
+    '</div>'+
+    '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+(y-1)+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
+    cmpInsight+
+    '<div class="insight">De <strong>'+fmtM(T.ing)+'</strong> en ingresos, el EBIT es <strong>'+fmtM(T.ebit)+'</strong> ('+fmtPct(mEbit)+') y el EBITDA <strong>'+fmtM(T.ebitda)+'</strong>. Tras otros ingresos, gastos no operacionales e impuesto de renta ('+fmtM(T.imp)+'), la <strong>utilidad neta cierra en '+fmtM(T.neto)+'</strong> — margen neto de '+fmtPct(mNeto)+'.</div>';
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fp-bars','bar',lbls,[
+    {label:'Ingresos',data:act.map(function(i){return ing[i];}),backgroundColor:C.tesoro},
+    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento},
+    {label:'Utilidad Neta',data:act.map(function(i){return neto[i];}),backgroundColor:C.oviedo}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
+  /* Cascada (waterfall) acumulada: ingresos → restas → utilidad neta */
+  const wf=[
+    ['Ingresos',T.ing,C.tesoro,0],
+    ['Costo Dir.',-T.cd,C.neg,0],
+    ['Nómina',-T.nom,C.neg,0],
+    ['G. Admin',-T.adm,C.neg,0],
+    ['Otros Ing.',T.oi,C.oviedo,0],
+    ['G. No Op.',-T.gno,C.neg,0],
+    ['Impuesto',-T.imp,C.neg,0],
+    ['Util. Neta',T.neto,C.acento,1]
+  ];
+  let run=0; const segBase=[], segVal=[], segClr=[], wfLbls=[];
+  wf.forEach(function(w){
+    wfLbls.push(w[0]);
+    if(w[3]===1){ segBase.push(0); segVal.push(Math.max(w[1],0)); }
+    else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
+    else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
+    segClr.push(w[2]);
+  });
+  mkChart('fp-stack','bar',wfLbls,[
+    {label:'base',data:segBase,backgroundColor:'transparent',stack:'w',grouped:false},
+    {label:'P&G',data:segVal,backgroundColor:segClr,stack:'w'}
+  ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
+     scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  /* Cascada comparable rubro a rubro: año actual vs anterior (YTD), rubros-fuga en rojo */
+  const cmpLbls=['Ingresos','Costo Dir.','Nómina','G. Admin','EBIT'];
+  const curEbit=cur['Ingresos']-cur['Costo Dir.']-cur['Nómina']-cur['G. Admin'];
+  const prvEbit=prv['Ingresos']-prv['Costo Dir.']-prv['Nómina']-prv['G. Admin'];
+  const curVals=[cur['Ingresos'],cur['Costo Dir.'],cur['Nómina'],cur['G. Admin'],curEbit];
+  const prvVals=[prv['Ingresos'],prv['Costo Dir.'],prv['Nómina'],prv['G. Admin'],prvEbit];
+  const leakSet={}; leaks.forEach(function(l){leakSet[l.k]=1;});
+  const curClr=cmpLbls.map(function(l){ return leakSet[l]?C.neg:(YR_CLR[y]||C.acento); });
+  mkChart('fp-cmpwf','bar',cmpLbls,[
+    {label:String(yPrevP),data:prvVals,backgroundColor:YR_CLR[yPrevP]||C.consol},
+    {label:String(y),data:curVals,backgroundColor:curClr}
+  ],{_tooltipLabel:tipMoney,_yMoney:true,plugins:{tooltip:{callbacks:{afterLabel:function(c){ if(c.datasetIndex!==1)return ''; const p=prvVals[c.dataIndex]; if(!p)return ''; const g=(curVals[c.dataIndex]-p)/Math.abs(p)*100; return (leakSet[cmpLbls[c.dataIndex]]?'⚠ ':'')+'var. '+(g>=0?'+':'')+g.toFixed(1)+'% vs '+yPrevP; }}}}});
+}
+
+/* ─────────── FIN: MÁRGENES ─────────── */
+function buildFinMargen(){
+  const el=document.getElementById('fin-margen');
+  const s=FF.sede, y=finYear();
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const act=finMesesIdx(s,y);
+  const ing=pygArr(s,y,'4'), ub=ubArr(s,y), ebit=ebitArr(s,y);
+  const mb=ing.map(function(v,i){return v?ub[i]/v*100:null;});
+  const me=ing.map(function(v,i){return v?ebit[i]/v*100:null;});
+  const tIng=sumActive(ing,act), tUb=sumActive(ub,act), tEbit=sumActive(ebit,act);
+  let bi=-1,bv=-1e9; act.forEach(function(i){ if(me[i]>bv){bv=me[i];bi=i;} });
+  el.innerHTML=
+    '<div class="sec-title">Márgenes <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-sub">Evolución de márgenes bruto y EBIT mes a mes · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
+    '<div class="kpis k3">'+
+      kpi('','Margen Bruto prom.',fmtPct(tIng?tUb/tIng*100:0),'')+
+      kpi('navy','Margen EBIT prom.',fmtPct(tIng?tEbit/tIng*100:0),'')+
+      kpi('gold','Mejor mes (EBIT%)',(bi>=0?MESES[bi]:'—'),(bi>=0?fmtPct(bv):''))+
+    '</div>'+
+    '<div class="gfull">'+card('Margen Bruto vs Margen EBIT — '+y,'% sobre ingresos','fm-chart','')+'</div>'+
+    '<div class="gfull">'+card('Utilidad Bruta vs EBIT mensual (millones)','','fm-abs','short')+'</div>'+
+    '<div class="insight">El margen EBIT promedio del periodo es <strong>'+fmtPct(tIng?tEbit/tIng*100:0)+'</strong>. La brecha contra el margen bruto ('+fmtPct(tIng?tUb/tIng*100:0)+') muestra el peso de nómina y administración sobre la operación.</div>';
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fm-chart','line',lbls,[
+    {label:'Margen Bruto %',data:act.map(function(i){return mb[i];}),borderColor:C.tesoro,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.3,pointRadius:3},
+    {label:'Margen EBIT %',data:act.map(function(i){return me[i];}),borderColor:C.acento,backgroundColor:'rgba(212,168,67,.10)',fill:true,tension:.3,pointRadius:3}
+  ],{_tooltipLabel:tipPct,_yPct:true});
+  mkChart('fm-abs','bar',lbls,[
+    {label:'Utilidad Bruta',data:act.map(function(i){return ub[i];}),backgroundColor:C.tesoro},
+    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
+}
+
+/* ─────────── FIN: COSTOS ─────────── */
+function buildFinCostos(){
+  const el=document.getElementById('fin-costos');
+  const s=FF.sede, y=finYear();
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const act=finMesesIdx(s,y);
+  const cd=pygArr(s,y,'6'),nom=pygArr(s,y,'7'),adm=pygArr(s,y,'5');
+  const tCd=sumActive(cd,act),tNom=sumActive(nom,act),tAdm=sumActive(adm,act);
+  const tTot=tCd+tNom+tAdm;
+  el.innerHTML=
+    '<div class="sec-title">Estructura de Costos <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-sub">Composición y evolución de costos directos, nómina y administración · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
+    '<div class="kpis k3">'+
+      kpi('','Costo Directo',fmtM(tCd),fmtPct(tTot?tCd/tTot*100:0)+' del costo')+
+      kpi('green','Nómina',fmtM(tNom),fmtPct(tTot?tNom/tTot*100:0)+' del costo')+
+      kpi('navy','Gastos Admin',fmtM(tAdm),fmtPct(tTot?tAdm/tTot*100:0)+' del costo')+
+    '</div>'+
+    '<div class="g4060">'+
+      card('Mix de costos','','fc-dona','')+
+      card('Costos por mes (apilado)','millones COP','fc-stack','')+
+    '</div>'+
+    '<div class="insight">El <strong>costo directo</strong> (insumos, derechos de sala, honorarios) es '+fmtPct(tTot?tCd/tTot*100:0)+' de la estructura. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
+  mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
+    [{data:[tCd,tNom,tAdm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fc-stack','bar',lbls,[
+    {label:'Costo Directo',data:act.map(function(i){return cd[i];}),backgroundColor:C.tesoro},
+    {label:'Nómina',data:act.map(function(i){return nom[i];}),backgroundColor:C.oviedo},
+    {label:'Gastos Admin',data:act.map(function(i){return adm[i];}),backgroundColor:C.consol}
+  ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+}
+
+/* ─────────── FIN: BALANCE (escala de operación) ─────────── */
+function buildFinBalance(){
+  const el=document.getElementById('fin-balance');
+  const ytdOn=FF.ytd, nM=ultMes(), rng='Ene-'+MESES[nM-1];
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const data={};
+  /* meses sel. > YTD (acumulado Ene..ultMes) > año completo. Compara la misma ventana entre años. */
+  ['Tesoro','Oviedo'].forEach(function(s){
+    data[s]=[2024,2025,2026].map(function(y){
+      const a=finMesesIdx(s,y); return sumActive(pygArr(s,y,'4'),a);
+    });
+  });
+  const pesoOvi = (data.Tesoro[1]+data.Oviedo[1])? data.Oviedo[1]/(data.Tesoro[1]+data.Oviedo[1])*100 : 0;
+  const lbls = (ytdOn||mesExpl) ? ['2024','2025','2026'] : ['2024','2025','2026 (Ene-Abr)'];
+  const subt = mesExpl ? ('Ingresos de <strong>'+mesLbl+'</strong> por sede — escala comparable del mismo mes entre años') : (ytdOn ? ('Acumulado YTD <strong>'+rng+'</strong> de cada año — escala comparable en lo corrido del año') : 'Evolución del volumen operativo (ingresos anuales) como proxy del tamaño del negocio por sede');
+  el.innerHTML=
+    '<div class="sec-title">Escala de Operación por Sede <span class="st-badge">'+(mesExpl?(mesLbl+' · 2024→2026'):(ytdOn?'YTD '+rng+' · 2024→2026':'2024 → 2026'))+'</span></div>'+
+    '<div class="sec-sub">'+subt+'</div>'+
+    '<div class="kpis k3">'+
+      kpi('','Tesoro '+(ytdOn?'2026 '+rng:'2025'),fmtM(ytdOn?data.Tesoro[2]:data.Tesoro[1]),ytdOn?'acumulado':'año completo')+
+      kpi('green','Oviedo '+(ytdOn?'2026 '+rng:'2025'),fmtM(ytdOn?data.Oviedo[2]:data.Oviedo[1]),ytdOn?'acumulado':'año completo')+
+      kpi('gold','Peso Oviedo '+(ytdOn?'2025':'2025'),fmtPct(pesoOvi),'del consolidado')+
+    '</div>'+
+    '<div class="gfull">'+card('Ingresos por sede'+(ytdOn?' — YTD '+rng:' anuales'),'millones COP'+(ytdOn?'':' · 2026 parcial (Ene-Abr)'),'fb-chart','')+'</div>'+
+    '<div class="insight green">Oviedo arrancó en marzo-2024 y ya pesa <strong>'+fmtPct(pesoOvi)+'</strong> del consolidado 2025. Es la sede de mayor crecimiento relativo del grupo.'+(ytdOn?' Con YTD activo comparas la escala de cada sede en los mismos '+nM+' meses de cada año.':'')+'</div>'+
+    '<div class="footnote"><b>Nota:</b> los datos disponibles son de P&amp;G (resultados). No se cuenta con balance general detallado; se usa el volumen de ingresos como indicador de escala de cada sede.'+(ytdOn?' Activa/desactiva <b>YTD</b> en la barra superior para alternar entre acumulado comparable y año completo.':' Activa <b>YTD</b> para comparar la escala acumulada hasta '+rng+' de cada año.')+'</div>';
+  mkChart('fb-chart','bar',lbls,[
+    {label:'Tesoro',data:data.Tesoro,backgroundColor:C.tesoro},
+    {label:'Oviedo',data:data.Oviedo,backgroundColor:C.oviedo}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
+}
+
+/* ════════════════════════════════════════
+   FIN: FLUJO DE CAJA (método indirecto, nivel CFO)
+   ════════════════════════════════════════ */
+/* arreglo de 12 meses para una métrica de flujo de caja */
+function fluArr(sede,anio,key){
+  const k=String(anio);
+  return (FLU&&FLU[sede]&&FLU[sede][k]&&FLU[sede][k][key])?FLU[sede][k][key]:new Array(12).fill(0);
+}
+/* meses con actividad de caja (cualquier componente ≠ 0) — replica la lógica
+   del resto del panel: un mes sin datos simplemente no se grafica/totaliza */
+function fluMonthsActive(sede,anio){
+  const eb=fluArr(sede,anio,'ebitda'),fc=fluArr(sede,anio,'fco'),
+        ci=fluArr(sede,anio,'fci'),ff=fluArr(sede,anio,'fcf'),
+        cf=fluArr(sede,anio,'caja_fin'),vc=fluArr(sede,anio,'varcaja');
+  const act=[];
+  for(let i=0;i<12;i++){
+    if(eb[i]||fc[i]||ci[i]||ff[i]||cf[i]||vc[i]) act.push(i);
+  }
+  return act;
+}
+function sumIdx(arr,idx){ return idx.reduce(function(s,i){ return s+(arr[i]||0); },0); }
+/* índices YTD del flujo (Ene..ultMes), restringidos a meses con dato */
+function fluYtdIdx(sede,anio){
+  const n=ultMes(), act=fluMonthsActive(sede,anio), out=[];
+  for(let i=0;i<n;i++){ if(act.indexOf(i)>=0) out.push(i); }
+  return out;
+}
+
+function buildFinFlujo(){
+  const el=document.getElementById('fin-flujo');
+  const s=FF.sede, y=finYear(), yp=y-1, ytdOn=FF.ytd;
+  const selYears=finYearsSorted();
+  const nM=ultMes(), rng='Ene-'+MESES[nM-1];
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+
+  /* índices del período: meses explícitos (∩ meses con dato de caja) > YTD > todos con dato.
+     La selección explícita de mes MANDA sobre el corte YTD. */
+  function idxOf(sede,yy){
+    const fact=fluMonthsActive(sede,yy);
+    if(mesExpl){ return Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return m-1;}).filter(function(i){return fact.indexOf(i)>=0;}); }
+    return ytdOn ? fluYtdIdx(sede,yy) : fact;
+  }
+  /* agregador del estado de flujo de caja para una sede/año en su período */
+  function agg(sede,yy){
+    const idx=idxOf(sede,yy);
+    const ci=fluArr(sede,yy,'caja_ini'), cf=fluArr(sede,yy,'caja_fin');
+    const firstI=idx.length?idx[0]:0, lastI=idx.length?idx[idx.length-1]:0;
+    return {
+      ebitda:sumIdx(fluArr(sede,yy,'ebitda'),idx),
+      fco:sumIdx(fluArr(sede,yy,'fco'),idx),
+      fci:sumIdx(fluArr(sede,yy,'fci'),idx),
+      fcf:sumIdx(fluArr(sede,yy,'fcf'),idx),
+      varcaja:sumIdx(fluArr(sede,yy,'varcaja'),idx),
+      caja_ini:idx.length?ci[firstI]:0,   /* caja inicial del período = la del primer mes */
+      caja_fin:idx.length?cf[lastI]:0,    /* caja final del período = la del último mes */
+      nMeses:idx.length
+    };
+  }
+
+  const A=agg(s,y), B=agg(s,yp);
+  const vFco=pctVar(A.fco,B.fco), vFci=pctVar(A.fci,B.fci), vFcf=pctVar(A.fcf,B.fcf),
+        vVar=pctVar(A.varcaja,B.varcaja), vCaja=pctVar(A.caja_fin,B.caja_fin);
+
+  /* años a graficar: seleccionados + anterior al principal para contexto */
+  const chartYears=selYears.slice();
+  if(chartYears.indexOf(yp)<0 && (FLU[s]&&FLU[s][String(yp)])) chartYears.unshift(yp);
+  chartYears.sort();
+  const badge = mesExpl ? (mesLbl+(selYears.length>1?' · '+selYears.join(', '):' · '+y)) : (ytdOn ? ('YTD '+rng) : (selYears.length>1? selYears.join(' · ') : String(y)));
+
+  /* ── nota de centralización de caja (Oviedo cuenta puente) ── */
+  const oviCajaFin = agg('Oviedo',y).caja_fin;
+  const oviFco = agg('Oviedo',y).fco, oviFcf = agg('Oviedo',y).fcf;
+  const centralNote =
+    '<div class="insight"><strong>Lectura CFO — caja centralizada:</strong> el efectivo del grupo está '+
+    '<strong>centralizado en Tesoro</strong>. Oviedo opera vía <strong>cuenta puente</strong>: su caja final cierra cerca de $0'+
+    (s==='Oviedo'?(' (en este período '+fmtMd(oviCajaFin,0)+')'):'')+' porque su generación operativa '+
+    '(<strong>FCO '+fmtMd(oviFco,0)+'</strong>) se transfiere a Tesoro, lo que se ve en su <strong>FCF '+fmtMd(oviFcf,0)+'</strong>. '+
+    'Por eso el <strong>FCO por sede mide la generación operativa</strong>, pero la <strong>posición de caja real del grupo está en el Consolidado</strong>.</div>';
+
+  el.innerHTML=
+    '<div class="sec-title">Flujo de Caja <span class="st-badge">'+s+' · '+badge+'</span></div>'+
+    '<div class="sec-sub">Estado de flujo de caja por método indirecto · '+(mesExpl?('meses: '+mesLbl):(ytdOn?('acumulado YTD '+rng):('período con datos')))+' · millones COP · '+A.nMeses+' '+(A.nMeses===1?'mes':'meses')+' con movimiento'+(selYears.length>1?' · años: <strong>'+selYears.join(', ')+'</strong>':'')+'</div>'+
+    '<div class="kpis k6">'+
+      kpi('navy','FCO Operativo',fmtM(A.fco),fmtVar(vFco)+' vs '+yp)+
+      kpi(A.fci>=0?'green':'red','CapEx / FCI',fmtM(A.fci),'inversión neta')+
+      kpi('','Financiación FCF',fmtM(A.fcf),fmtVar(vFcf)+' vs '+yp)+
+      kpi(A.varcaja>=0?'green':'red','Variación de Caja',fmtM(A.varcaja),fmtVar(vVar)+' vs '+yp)+
+      kpi(A.caja_fin>=0?'gold':'red','Caja Final',fmtM(A.caja_fin),'inicial '+fmtM(A.caja_ini))+
+      kpi('green','EBITDA del período',fmtM(A.ebitda),'origen de la caja')+
+    '</div>'+
+    '<div class="g6040">'+
+      card('Cascada de caja — '+s+' '+badge,'EBITDA → FCO → CapEx → Financiación → Caja Final','ff-wf','tall')+
+      card('Estado resumido '+(ytdOn?'YTD '+rng+' ':'')+y,'composición del flujo','ff-comp','tall')+
+    '</div>'+
+    '<div class="g2">'+
+      card('FCO mensual — '+s+' · '+chartYears.join(' vs '),'flujo de caja operativo · millones COP','ff-fco','')+
+      card('Posición de caja (acumulada) — '+chartYears.join(' · '),'caja final mes a mes','ff-pos','')+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Estado de Flujo de Caja — '+s+' '+y+'</h3><span class="badge gold">Método indirecto</span></div>'+
+      '<div class="card-body"><div class="tbl-wrap" id="ff-tbl-wrap"></div></div></div>'+
+    centralNote+
+    '<div class="insight warn"><strong>Hallazgo a vigilar — días de cartera:</strong> en <strong>Consolidado 2025</strong> el EBITDA fue <strong>$3.122M</strong> pero el FCO cerró en <strong>$2.033M</strong>: el capital de trabajo (cartera con EPS) consumió cerca de <strong>$1.100M</strong> de la generación. Aun así, la caja pasó de <strong>−$1.984M a +$820M</strong> en el año. El negocio genera caja, pero la <strong>cartera creciente la drena</strong> — vigilar de cerca los días de cartera.</div>';
+
+  /* ── 1) Cascada (waterfall) de caja ── */
+  const wf=[
+    ['EBITDA',A.ebitda,C.oviedo,0],
+    ['Δ Cap.Trab.+Imp.',A.fco-A.ebitda,(A.fco-A.ebitda)>=0?C.oviedo:C.neg,0],
+    ['= FCO',A.fco,C.tesoro,2],
+    ['(−) CapEx',A.fci,A.fci>=0?C.oviedo:C.neg,0],
+    ['(+/−) Financ.',A.fcf,A.fcf>=0?C.oviedo:C.neg,0],
+    ['= Var. Caja',A.varcaja,C.acento,2],
+    ['Caja Inicial',A.caja_ini,C.consol,3],
+    ['= Caja Final',A.caja_fin,C.dark,1]
+  ];
+  let run=0; const segBase=[],segVal=[],segClr=[],wfLbls=[];
+  wf.forEach(function(w){
+    wfLbls.push(w[0]);
+    if(w[3]===1){ /* total absoluto desde 0 (caja final) */
+      segBase.push(Math.min(w[1],0)); segVal.push(Math.abs(w[1])); run=w[1];
+    } else if(w[3]===2){ /* subtotal (FCO / Var Caja): barra desde 0 hasta el acumulado */
+      segBase.push(Math.min(run,0)); segVal.push(Math.abs(run));
+    } else if(w[3]===3){ /* caja inicial: punto de partida absoluto */
+      segBase.push(Math.min(w[1],0)); segVal.push(Math.abs(w[1])); run=w[1];
+    } else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
+    else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
+    segClr.push(w[2]);
+  });
+  mkChart('ff-wf','bar',wfLbls,[
+    {label:'base',data:segBase,backgroundColor:'transparent',stack:'cf',grouped:false},
+    {label:'Caja',data:segVal,backgroundColor:segClr,stack:'cf'}
+  ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
+     scales:{x:{stacked:true,ticks:{font:{size:9},maxRotation:55}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+
+  /* ── 2) Estado resumido (doughnut de orígenes/usos del FCO) ── */
+  const dCT = A.fco - A.ebitda; /* variación capital de trabajo + impuestos */
+  mkChart('ff-comp','doughnut',['EBITDA','Δ Cap.Trab.+Imp.','CapEx','Financiación'],
+    [{data:[Math.abs(A.ebitda),Math.abs(dCT),Math.abs(A.fci),Math.abs(A.fcf)],
+      backgroundColor:[C.oviedo,C.acento,C.tesoro,C.consol],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+
+  /* ── 3) FCO mensual, multi-año lado a lado (si hay meses sel.: solo esos meses) ── */
+  if(mesExpl){
+    const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;});
+    const labels=mesSel.map(function(m){return MESES[m-1];});
+    const dsFcoM=chartYears.map(function(yy){
+      const fc=fluArr(s,yy,'fco'), fact=fluMonthsActive(s,yy);
+      return {label:String(yy),data:mesSel.map(function(m){ return fact.indexOf(m-1)>=0?fc[m-1]:null; }),backgroundColor:YR_CLR[yy]||C.tesoro};
+    });
+    mkChart('ff-fco','bar',labels,dsFcoM,{_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    const upTo = ytdOn ? nM : 12;
+    const dsFco=[];
+    chartYears.forEach(function(yy){
+      const act=fluMonthsActive(s,yy); const fc=fluArr(s,yy,'fco');
+      if(act.length) dsFco.push({label:String(yy),data:fc.map(function(v,i){return (act.indexOf(i)>=0&&i<upTo)?v:null;}),backgroundColor:YR_CLR[yy]||C.tesoro});
+    });
+    mkChart('ff-fco','bar',ytdOn?MESES.slice(0,nM):MESES,dsFco,{_tooltipLabel:tipMoney,_yMoney:true});
+  }
+
+  /* ── 4) Posición de caja (caja_fin mes a mes) por año ── */
+  const dsPos=[];
+  chartYears.forEach(function(yy){
+    const act=fluMonthsActive(s,yy); const cf=fluArr(s,yy,'caja_fin');
+    const last=act.length?act[act.length-1]:-1;
+    if(act.length) dsPos.push({label:String(yy),data:cf.map(function(v,i){return (i<=last&&(ytdOn?i<nM:true))?v:null;}),borderColor:YR_CLR[yy]||C.tesoro,backgroundColor:'transparent',tension:.25,pointRadius:2,fill:false});
+  });
+  mkChart('ff-pos','line',MESES,dsPos,{_tooltipLabel:tipMoney,_yMoney:true});
+
+  /* ── 5) Tabla del estado de flujo de caja (filas × meses del período + Total) ── */
+  const act=idxOf(s,y);
+  const ebA=fluArr(s,y,'ebitda'),fcA=fluArr(s,y,'fco'),ciA=fluArr(s,y,'fci'),
+        ffA=fluArr(s,y,'fcf'),vcA=fluArr(s,y,'varcaja'),
+        cinA=fluArr(s,y,'caja_ini'),cfnA=fluArr(s,y,'caja_fin');
+  const dCtA=ebA.map(function(v,i){return fcA[i]-v;}); /* Δ cap.trab+imp implícito */
+  function rowF(lbl,arr,cls,balance){
+    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
+    let tot;
+    if(balance==='ini'){ tot = act.length? arr[act[0]] : 0; }            /* saldo de apertura: primer mes */
+    else if(balance==='fin'){ tot = act.length? arr[act[act.length-1]] : 0; } /* saldo de cierre: último mes */
+    else { tot=sumIdx(arr,act); }                                         /* flujo: suma del período */
+    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td></tr>';
+  }
+  const mHdr=act.map(function(i){return '<th>'+MESES[i]+'</th>';}).join('');
+  document.getElementById('ff-tbl-wrap').innerHTML=
+    '<table class="tbl"><thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th></tr></thead><tbody>'+
+      rowF('EBITDA del período',ebA)+
+      rowF('(−/+) Δ Cap. Trabajo + Imp.',dCtA)+
+      rowF('= FCO (Flujo Operativo)',fcA,'sub')+
+      rowF('(−) CapEx / Inversión (FCI)',ciA)+
+      rowF('(+/−) Financiación (FCF)',ffA)+
+      rowF('= Variación Neta de Caja',vcA,'tot')+
+      rowF('Caja Inicial',cinA,'','ini')+
+      rowF('= Caja Final',cfnA,'tot','fin')+
+    '</tbody></table>';
+}
+
+/* ─────────── FIN: ANUAL ─────────── */
+function buildFinAnual(){
+  const el=document.getElementById('fin-anual');
+  const yrs=[2024,2025,2026];
+  const ingY=yrs.map(function(y){ const a=monthsActive('Consolidado',y); return sumActive(pygArr('Consolidado',y,'4'),a); });
+  const ebitY=yrs.map(function(y){ const a=monthsActive('Consolidado',y); return sumActive(ebitArr('Consolidado',y),a); });
+  const netoY=yrs.map(function(y){ const a=monthsActive('Consolidado',y); return sumActive(netoArr('Consolidado',y),a); });
+  const mY=ingY.map(function(v,i){return v?ebitY[i]/v*100:0;});
+  const nM=ultMes(), rng='Ene-'+MESES[nM-1];
+  const ytdIng=yrs.map(function(y){ return sumYTD(pygArr('Consolidado',y,'4')); });
+  const ytdEbit=yrs.map(function(y){ return sumYTD(ebitArr('Consolidado',y)); });
+  const ytdNeto=yrs.map(function(y){ return sumYTD(netoArr('Consolidado',y)); });
+  el.innerHTML=
+    '<div class="sec-title">Comparativo Anual <span class="st-badge">Consolidado</span></div>'+
+    '<div class="sec-sub">2024 vs 2025 vs 2026 · ingresos, EBIT y utilidad neta · 2026 parcial ('+rng+')</div>'+
+    '<div class="kpis k4">'+
+      kpi('gold','Ingresos 2025',fmtM(ingY[1]),fmtVar(pctVar(ingY[1],ingY[0]))+' vs 2024')+
+      kpi('navy','EBIT 2025',fmtM(ebitY[1]),'margen '+fmtPct(mY[1]))+
+      kpi(netoY[1]>=0?'green':'red','Utilidad Neta 2025',fmtM(netoY[1]),'margen '+fmtPct(ingY[1]?netoY[1]/ingY[1]*100:0))+
+      kpi('','YTD '+rng+' 2026',fmtM(ytdIng[2]),fmtVar(pctVar(ytdIng[2],ytdIng[1]))+' vs 2025')+
+    '</div>'+
+    '<div class="g2">'+
+      card('Ingresos anuales (Consolidado)','millones COP','fa-ing','')+
+      card('EBIT y Utilidad Neta anual','','fa-ebit','')+
+    '</div>'+
+    '<div class="gfull">'+card('YTD comparable '+rng+' — los 3 años','ingresos · EBIT · utilidad neta','fa-ytd','short')+'</div>'+
+    '<div class="insight">Comparando solo '+rng+' (periodo comparable con 2026), los ingresos pasan de <strong>'+fmtM(ytdIng[0])+'</strong> (2024) a <strong>'+fmtM(ytdIng[2])+'</strong> (2026): el negocio '+(ytdIng[0]&&ytdIng[2]/ytdIng[0]>=2?'más que duplicó':'creció con fuerza')+' su escala en dos años. La utilidad neta YTD 2026 es <strong>'+fmtM(ytdNeto[2])+'</strong> vs '+fmtM(ytdNeto[1])+' en 2025.</div>';
+  mkChart('fa-ing','bar',['2024','2025','2026*'],[{label:'Ingresos',data:ingY,backgroundColor:[YR_CLR[2024],YR_CLR[2025],YR_CLR[2026]]}],{_tooltipLabel:tipMoney,_yMoney:true,plugins:{legend:{display:false}}});
+  mkChart('fa-ebit','bar',['2024','2025','2026*'],[
+    {type:'bar',label:'EBIT',data:ebitY,backgroundColor:C.tesoro,yAxisID:'y'},
+    {type:'bar',label:'Utilidad Neta',data:netoY,backgroundColor:C.oviedo,yAxisID:'y'},
+    {type:'line',label:'Margen EBIT %',data:mY,borderColor:C.neg,backgroundColor:C.neg,yAxisID:'y2',tension:.3,pointRadius:4}
+  ],{plugins:{legend:{display:true},tooltip:{callbacks:{label:function(c){return c.dataset.label.indexOf('%')>=0?' '+c.dataset.label+': '+c.parsed.y.toFixed(1)+'%':' '+c.dataset.label+': '+fmtMd(c.parsed.y,0);}}}},
+     scales:{y:{position:'left',ticks:{callback:function(v){return fmtM(v);}}},y2:{position:'right',grid:{display:false},ticks:{callback:function(v){return v+'%';}}}}});
+  mkChart('fa-ytd','bar',['2024','2025','2026'],[
+    {label:'Ingresos '+rng,data:ytdIng,backgroundColor:C.tesoro},
+    {label:'EBIT '+rng,data:ytdEbit,backgroundColor:C.acento},
+    {label:'Utilidad Neta '+rng,data:ytdNeto,backgroundColor:C.oviedo}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
+}
+
+/* ════════════════════════════════════════
+   OPERACIONAL — filtros + helpers
+   ════════════════════════════════════════ */
+/* Filtros MULTISELECT acumulables: cada dimensión es un Set de valores.
+   Vacío = "Todos". OR dentro de dimensión, AND entre dimensiones. */
+const OF = { anio:new Set(), mes:new Set(), sede:new Set(), esp:new Set(), cir:new Set(), qx:new Set(), eps:new Set(), dia:new Set() };
+const HORAS_SEMANA_QX = 62; // L-V 11h*5 + Sáb 7h
+let OPEN_DD = null; // id del dropdown abierto
+let OPE_YTD = false; // toggle YTD operacional
+let OPE_METRICA = 'cx'; // selector de métrica global del Administrativo
+/* último mes con datos operacionales (1-based) = mayo/5 en 2026 */
+function ultMesOpe(){ return 5; }
+
+/* ─────────── SELECTOR DE MÉTRICA — definiciones ───────────
+   Cada métrica define: icono, etiqueta corta, si usa filas facturables,
+   cómo extrae el valor de un agregado {cx,fac,min,facCx} y cómo lo formatea.
+   - cx     : número de cirugías (todas las filas)
+   - fac    : facturación en millones COP (solo factura completa, metrica==0)
+   - ticket : facturación / cirugías facturadas (solo metrica==0)
+   - hora   : facturación / (min/60) (solo metrica==0)
+   - horas  : suma de min/60 (todas las filas)                                   */
+const METRICAS = {
+  cx:    {ico:'🔢', lbl:'Cirugías',   facturable:false, noun:'N° de Cirugías',     val:function(a){return a.cx;},                 fmt:function(v){return fmtNum(v)+' cx';},        axis:function(v){return fmtNum(v);},
+          dnoun:'cirugías',    dval:function(a){return a.cx;},  dfmt:function(v){return fmtNum(v)+' cx';}},
+  fac:   {ico:'💰', lbl:'Facturación',facturable:true,  noun:'Facturación',        val:function(a){return a.fac;},                fmt:function(v){return fmtM(v);},               axis:function(v){return fmtM(v);},
+          dnoun:'facturación', dval:function(a){return a.fac;}, dfmt:function(v){return fmtMd(v,0);}},
+  ticket:{ico:'🎯', lbl:'Ticket',     facturable:true,  noun:'Ticket',             val:function(a){return a.facCx?a.fac/a.facCx:0;},fmt:function(v){return fmtMd(v,2);},          axis:function(v){return fmtMd(v,1);},
+          dnoun:'facturación', dval:function(a){return a.fac;}, dfmt:function(v){return fmtMd(v,0);}},
+  hora:  {ico:'⚡', lbl:'$/Hora QX',  facturable:true,  noun:'$/Hora',             val:function(a){return a.min?a.fac/(a.min/60):0;},fmt:function(v){return fmtMd(v,2)+'/h';},   axis:function(v){return fmtMd(v,1);},
+          dnoun:'facturación', dval:function(a){return a.fac;}, dfmt:function(v){return fmtMd(v,0);}},
+  horas: {ico:'🕐', lbl:'Horas-QX',   facturable:false, noun:'Horas-Quirófano',    val:function(a){return a.min/60;},             fmt:function(v){return fmtNum(v)+' h';},        axis:function(v){return fmtNum(v);},
+          dnoun:'horas-QX',    dval:function(a){return a.min/60;},dfmt:function(v){return fmtNum(v)+' h';}}
+};
+const MET_ORDER=['cx','fac','ticket','hora','horas'];
+function metDef(){ return METRICAS[OPE_METRICA]||METRICAS.cx; }
+/* agrega un set de filas a {cx,fac,min,facCx} respetando la regla de datos:
+   cx/min cuentan TODAS las filas; fac/facCx solo factura completa (metrica==0) */
+function aggRows(rows){
+  const a={cx:0,fac:0,min:0,facCx:0};
+  rows.forEach(function(r){
+    a.cx++;
+    if(r[COL.tmin]>0) a.min+=r[COL.tmin];
+    if(r[COL.met]===0){ a.fac+=r[COL.valM]; a.facCx++; }
+  });
+  return a;
+}
+/* valor de la métrica activa para un agregado */
+function metVal(a){ return metDef().val(a); }
+/* Para rankings por métricas de RATIO (ticket, $/hora) un ítem con 1-2 cirugías
+   facturables puede tener un ratio enorme y desplazar a los líderes reales del
+   negocio. Usamos un mínimo de cirugías facturables (MET_MIN_N) como umbral de
+   significancia: los ítems bajo el umbral se ordenan DESPUÉS de los significativos.
+   Las métricas aditivas (cx, fac, horas) no necesitan umbral. Las TABLAS no se
+   filtran: muestran todos los ítems. */
+const MET_MIN_N = 10;
+function metIsRatio(){ return OPE_METRICA==='ticket'||OPE_METRICA==='hora'; }
+/* clave de orden: para ratios, los significativos van primero (tier 1) y dentro
+   de cada tier por valor de la métrica descendente */
+function metSortKey(a){
+  const v=metVal(a);
+  if(metIsRatio() && a.facCx<MET_MIN_N) return -1e15+v; // tier bajo umbral, abajo
+  return v;
+}
+/* tooltip enriquecido: muestra TODAS las métricas del ítem.
+   `a` = agregado {cx,fac,min,facCx}; `name` opcional para el título. */
+function metTipLines(a){
+  const ticket=a.facCx?a.fac/a.facCx:0;
+  const hr=a.min/60;
+  const porH=hr?a.fac/hr:0;
+  const tprom=a.cx?a.min/a.cx:0;
+  return [
+    'N° cirugías: '+fmtNum(a.cx),
+    'Facturación: '+fmtM(a.fac),
+    'Ticket: '+(a.facCx?fmtMd(ticket,1):'—'),
+    '$/Hora: '+(hr?fmtMd(porH,1)+'/h':'—'),
+    'T. prom: '+(a.cx?fmtNum(tprom)+' min':'—')
+  ];
+}
+/* genera un callback de tooltip para Chart.js que pinta todas las métricas.
+   `aggByIndex` es un array de agregados alineado con las barras (labels). */
+function metTooltip(aggByIndex){
+  return {
+    title:function(items){ return items.length?items[0].label:''; },
+    label:function(c){
+      const a=aggByIndex[c.dataIndex];
+      if(!a) return ' '+fmtNum(c.parsed.y!==undefined?c.parsed.y:c.parsed);
+      return metTipLines(a);
+    }
+  };
+}
+function setOpeMetrica(m){
+  if(!METRICAS[m]||m===OPE_METRICA){ OPEN_DD=null; renderOpeFilters(); return; }
+  OPE_METRICA=m; OPEN_DD=null;
+  renderOpeFilters();
+  buildSub(SUBSEC.ope);
+}
+
+/* etiqueta legible de un valor de dimensión */
+function dimLabel(dim,val){
+  if(dim==='anio') return String(val);
+  if(dim==='mes') return MESES[val-1]||String(val);
+  if(dim==='sede') return val===0?'Tesoro':'Oviedo';
+  if(dim==='esp') return COM.esps[val];
+  if(dim==='cir') return shortName(COM.cirs[val]);
+  if(dim==='qx') return COM.qxs[val];
+  if(dim==='eps') return COM.epss[val];
+  if(dim==='dia') return COM.dias[val];
+  return String(val);
+}
+
+function renderOpeFilters(){
+  const pb=document.getElementById('period-bar');
+  const espOpts=COM.esps.map(function(e,i){return [i,e];}).sort(function(a,b){return a[1].localeCompare(b[1]);});
+  const cirOpts=COM.cirs.map(function(c,i){return [i,c];}).sort(function(a,b){return a[1].localeCompare(b[1]);});
+  const epsOpts=COM.epss.map(function(e,i){return [i,e];}).sort(function(a,b){return a[1].localeCompare(b[1]);});
+  const qxOpts=COM.qxs.map(function(q,i){return [i,q];});
+  const diaOpts=COM.dias.map(function(d,i){return [i,d];});
+  /* dropdown multiselect (checkboxes) */
+  function md(dim,label,opts){
+    const sel=OF[dim];
+    const summary = sel.size===0 ? 'Todos' : (sel.size===1 ? String(dimLabel(dim,Array.from(sel)[0])).slice(0,16) : sel.size+' selecc.');
+    const open = OPEN_DD===dim;
+    const items = opts.map(function(o){
+      const on=sel.has(o[0]);
+      return '<label class="dd-item'+(on?' on':'')+'"><input type="checkbox" '+(on?'checked':'')+' onchange="toggleOpe(\''+dim+'\','+o[0]+')"><span>'+o[1]+'</span></label>';
+    }).join('');
+    return '<div class="pb-group ms'+(open?' open':'')+'" data-dim="'+dim+'">'+
+      '<span class="pb-lbl">'+label+'</span>'+
+      '<button class="ms-btn'+(sel.size?' has':'')+'" onclick="toggleDD(event,\''+dim+'\')">'+summary+
+        ' <span class="ms-cnt">'+(sel.size?sel.size:'')+'</span><span class="ms-car">▾</span></button>'+
+      '<div class="ms-pop">'+
+        '<div class="ms-pop-hd"><button onclick="clearDim(\''+dim+'\')">Limpiar '+label.toLowerCase()+'</button></div>'+
+        '<div class="ms-pop-bd">'+items+'</div>'+
+      '</div></div>';
+  }
+  const mesOpts=MESES.map(function(m,i){return [i+1,m];});
+  const metSel='<div class="met-sel" id="ope-met-sel"><span class="pb-lbl">Métrica</span>'+
+    MET_ORDER.map(function(m){ const d=METRICAS[m];
+      return '<button class="met-chip'+(OPE_METRICA===m?' on':'')+'" data-met="'+m+'" onclick="setOpeMetrica(\''+m+'\')"><span class="mc-ico">'+d.ico+'</span>'+d.lbl+'</button>';
+    }).join('')+'</div>';
+  pb.innerHTML=
+    metSel+
+    '<button class="ytd-toggle'+(OPE_YTD?' on':'')+'" onclick="toggleOpeYTD()"><span class="yt-dot"></span>YTD '+(OPE_YTD?'ON':'OFF')+'</button>'+
+    md('anio','Año',[2024,2025,2026].map(function(y){return [y,String(y)];}))+
+    md('mes','Mes',mesOpts)+
+    md('sede','Sede',[[0,'Tesoro'],[1,'Oviedo']])+
+    md('esp','Especialidad',espOpts)+
+    md('cir','Cirujano',cirOpts)+
+    md('qx','Quirófano',qxOpts)+
+    md('eps','EPS',epsOpts)+
+    md('dia','Día',diaOpts)+
+    '<button class="chip chip-clear" onclick="clearOpe()">✕ Limpiar filtros</button>'+
+    activeChipsHtml();
+}
+function toggleOpeYTD(){ OPE_YTD=!OPE_YTD; OPEN_DD=null; renderOpeFilters(); buildSub(SUBSEC.ope); }
+/* chips de lo que está seleccionado (color de marca), con ✕ para quitar */
+function activeChipsHtml(){
+  const chips=[];
+  ['anio','mes','sede','esp','cir','qx','eps','dia'].forEach(function(dim){
+    OF[dim].forEach(function(v){
+      chips.push('<button class="active-chip" onclick="toggleOpe(\''+dim+'\','+(typeof v==='number'?v:'\''+v+'\'')+')">'+String(dimLabel(dim,v)).slice(0,22)+' <span>✕</span></button>');
+    });
+  });
+  return chips.length? '<div class="pb-active">'+chips.join('')+'</div>' : '';
+}
+function toggleDD(ev,dim){ ev.stopPropagation(); OPEN_DD = OPEN_DD===dim?null:dim; renderOpeFilters(); }
+function toggleOpe(dim,val){ if(OF[dim].has(val)) OF[dim].delete(val); else OF[dim].add(val); renderOpeFilters(); buildSub(SUBSEC.ope); }
+function clearDim(dim){ OF[dim].clear(); renderOpeFilters(); buildSub(SUBSEC.ope); }
+function clearOpe(){ OPEN_DD=null; Object.keys(OF).forEach(function(k){ OF[k].clear(); }); renderOpeFilters(); buildSub(SUBSEC.ope); }
+/* cerrar dropdown al hacer clic fuera */
+document.addEventListener('click',function(e){ if(OPEN_DD!==null && !e.target.closest('.pb-group.ms')){ OPEN_DD=null; if(TAB==='ope') renderOpeFilters(); } });
+
+/* OR dentro de cada dimensión (Set vacío = todos), AND entre dimensiones.
+   YTD: si OPE_YTD, restringe a meses 1..ultMesOpe (acumulado comparable entre años).
+   IMPORTANTE: una selección EXPLÍCITA de mes manda sobre el tope YTD. Si el usuario
+   elige un mes (ej. Julio) que aún no existe en el año en curso, NO se debe bloquear la
+   vista: simplemente se muestra ese mes en los años anteriores donde sí existe. Por eso
+   el tope YTD solo aplica cuando NO hay meses explícitos seleccionados. */
+function opeRows(facturable){
+  const ym=(OPE_YTD && OF.mes.size===0)?ultMesOpe():0;
+  return COM.rows.filter(function(r){
+    if(ym && r[COL.mes]>ym) return false;
+    if(OF.anio.size && !OF.anio.has(r[COL.anio])) return false;
+    if(OF.mes.size  && !OF.mes.has(r[COL.mes]))  return false;
+    if(OF.sede.size && !OF.sede.has(r[COL.sede])) return false;
+    if(OF.esp.size  && !OF.esp.has(r[COL.esp]))  return false;
+    if(OF.cir.size  && !OF.cir.has(r[COL.cir]))  return false;
+    if(OF.qx.size   && !OF.qx.has(r[COL.qx]))    return false;
+    if(OF.eps.size  && !OF.eps.has(r[COL.eps]))  return false;
+    if(OF.dia.size  && !OF.dia.has(r[COL.dia]))  return false;
+    if(facturable && r[COL.met]!==0) return false;
+    return true;
+  });
+}
+function setSummary(dim,max){
+  const s=OF[dim]; if(!s.size) return null;
+  const vals=Array.from(s).map(function(v){return dimLabel(dim,v);});
+  if(vals.length<=(max||2)) return vals.join(' + ');
+  return vals.length+' selecc.';
+}
+function filterLabel(){
+  const p=[];
+  if(OPE_YTD) p.push('YTD Ene-'+MESES[ultMesOpe()-1]);
+  ['anio','mes','sede','esp','cir','qx','eps','dia'].forEach(function(dim){
+    const sm=setSummary(dim,2); if(sm) p.push(String(sm).slice(0,40));
+  });
+  return p.length?p.join(' · '):'Todos los datos';
+}
+function footnoteMetrica(){
+  return '<div class="footnote"><b>Metodología:</b> volumen, tiempos y ocupación usan <b>todos los registros</b>. Facturación, ticket y $/hora usan solo registros con <b>factura completa</b> (excluye campos de valor parcial sin honorarios).</div>';
+}
+function estOcupacion(rows){
+  if(!rows.length) return 0;
+  const totMin=rows.reduce(function(s,r){ return s+(r[COL.tmin]>0?r[COL.tmin]:0); },0);
+  const months=new Set(rows.map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size;
+  const qxActivos=new Set(rows.filter(function(r){return r[COL.qx]>=0;}).map(function(r){return r[COL.qx];}));
+  let nQx=qxActivos.size;
+  if(OF.qx.size) nQx=OF.qx.size;
+  if(nQx===0){
+    const sedes=new Set(rows.map(function(r){return r[COL.sede];}));
+    nQx = (sedes.has(0)&&sedes.has(1))?8:(sedes.has(1)?6:4);
+  }
+  const semanas=months*4.33;
+  const capMin=nQx*HORAS_SEMANA_QX*60*semanas;
+  return capMin? Math.min(totMin/capMin*100,100):0;
+}
+function shortName(n){ const p=n.split(' '); return p.length>2?(p[0]+' '+p[1]+' '+(p[2]?p[2].charAt(0)+'.':'')):n; }
+
+/* ─────────── OPE: INICIO ─────────── */
+function buildOpeInicio(){
+  const el=document.getElementById('ope-inicio');
+  const MD=metDef();
+  const all=opeRows(false);
+  const fac=all.filter(function(r){return r[COL.met]===0;});
+  const nCx=all.length;
+  const totMin=all.reduce(function(s,r){ return s+(r[COL.tmin]>0?r[COL.tmin]:0); },0);
+  const horas=totMin/60;
+  const totFac=fac.reduce(function(s,r){ return s+r[COL.valM]; },0);
+  const ticket=fac.length?totFac/fac.length:0;
+  const porHora=horas?totFac/horas:0;
+  const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
+  /* agregados por año/mes para poder derivar cualquier métrica */
+  const aggByYrMonth={}; yrSet.forEach(function(y){ aggByYrMonth[y]=[]; for(var i=0;i<12;i++) aggByYrMonth[y].push({cx:0,fac:0,min:0,facCx:0}); });
+  all.forEach(function(r){ const a=aggByYrMonth[r[COL.anio]][r[COL.mes]-1]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.met]===0){a.fac+=r[COL.valM];a.facCx++;} });
+  const cxByYrMonth={}; yrSet.forEach(function(y){cxByYrMonth[y]=new Array(12).fill(0);});
+  all.forEach(function(r){ cxByYrMonth[r[COL.anio]][r[COL.mes]-1]++; });
+  const nMesesActivos=new Set(all.map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size||1;
+  const cxMes=nCx/nMesesActivos;
+  const ocup=estOcupacion(all);
+
+  /* Comparativo YTD: año en curso vs anterior, hasta el último mes cerrado (respeta filtros activos salvo año) */
+  const nM=ultMes(), yCur=2026, yPrev=2025, rng='Ene-'+MESES[nM-1];
+  function ytdOpe(yy){
+    const rs=all.filter(function(r){ return r[COL.anio]===yy && r[COL.mes]<=nM; });
+    const rf=rs.filter(function(r){ return r[COL.met]===0; });
+    return { cx:rs.length, fac:rf.reduce(function(s,r){return s+r[COL.valM];},0) };
+  }
+  const A=ytdOpe(yCur), B=ytdOpe(yPrev);
+  const vCx=pctVar(A.cx,B.cx), vFac=pctVar(A.fac,B.fac);
+  const cmpBlock =
+    '<div class="card" style="margin:16px 0"><div class="card-hdr"><h3>📌 Resumen: cómo va el año en curso (YTD '+rng+') '+yCur+' vs '+yPrev+'</h3><div class="card-acts"><span class="badge gold">mismos '+nM+' meses</span>'+expandBtn('oi-ytd','Comparativo YTD '+rng+' — '+yCur+' vs '+yPrev)+'</div></div>'+
+      '<div class="card-body"><div class="kpis k4" style="margin:0 0 14px">'+
+        kpi(vCx>=0?'green':'red','Cirugías '+yCur,fmtNum(A.cx),fmtVar(vCx)+' vs '+yPrev+' ('+fmtNum(B.cx)+')')+
+        kpi(vFac>=0?'gold':'red','Facturación '+yCur,fmtM(A.fac),fmtVar(vFac)+' vs '+yPrev+' ('+fmtM(B.fac)+')')+
+        kpi('navy','Ticket '+yCur,fmtMd(A.cx?A.fac/A.cx:0,2),'por cirugía')+
+        kpi('','Ticket '+yPrev,fmtMd(B.cx?B.fac/B.cx:0,2),'por cirugía')+
+      '</div><div class="chart-wrap short"><canvas id="oi-ytd"></canvas></div></div></div>';
+
+  el.innerHTML=
+    '<div class="sec-title">Operación Quirúrgica <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">Mostrando <strong>'+(OF.anio.size?Array.from(OF.anio).sort().join(", "):"todos los años (2024-2026)")+'</strong>, '+(OF.mes.size?OF.mes.size+" meses":"todos los meses")+' · '+nCx.toLocaleString('es-CO')+' cirugías con los filtros activos · usa los filtros para acotar libremente</div>'+
+    '<div class="kpis k6">'+
+      kpi('','Total Cirugías',fmtNum(nCx),nMesesActivos+' meses op.')+
+      kpi('navy','Horas-Quirófano',fmtNum(horas),fmtNum(totMin)+' min')+
+      kpi(ocup>=70?'green':'gold','Ocupación est.',fmtPct(ocup),'sobre capacidad')+
+      kpi('gold','Ticket promedio',fmtMd(ticket,2),'por cirugía facturada')+
+      kpi('','Cirugías / mes',fmtNum(cxMes),'promedio')+
+      kpi('green','Facturación / Hora',fmtMd(porHora,2),'rendimiento sala')+
+    '</div>'+
+    '<div class="gfull">'+card(MD.noun+' por mes — año vs año','métrica: '+MD.lbl+' · todos los años','oi-mes','')+'</div>'+
+    cmpBlock+
+    '<div class="g2">'+
+      card('Ritmo acumulado del año (Ene → mes actual)','· '+MD.noun+' acumulado','oi-acum','')+
+      card('Facturación mensual','solo factura completa','oi-fac','')+
+    '</div>'+
+    '<div class="insight">Con los filtros actuales, el negocio realiza <strong>'+fmtNum(cxMes)+' cirugías/mes</strong> a un ticket de <strong>'+fmtMd(ticket,2)+'</strong> y rinde <strong>'+fmtMd(porHora,2)+' por hora</strong> de quirófano. La ocupación estimada es '+fmtPct(ocup)+' — hay sala disponible para crecer volumen sin CapEx.</div>'+
+    footnoteMetrica();
+  /* ── gráfico mensual: valor de la métrica activa por mes/año, tooltip con todas las métricas ── */
+  const dsMes=yrSet.map(function(y){ return {label:String(y),data:aggByYrMonth[y].map(function(a){ const v=metVal(a); return (a.cx>0)?v:null; }),backgroundColor:YR_CLR[y]||C.tesoro}; });
+  /* tooltip: para 'index' mode mostramos por dataset (año) las métricas de ese mes/año */
+  mkChart('oi-mes','bar',MESES,dsMes,{
+    plugins:{tooltip:{callbacks:{
+      label:function(c){ const a=aggByYrMonth[c.dataset.label]?aggByYrMonth[c.dataset.label][c.dataIndex]:null;
+        if(!a||a.cx===0) return null;
+        return [c.dataset.label+' — '+MESES[c.dataIndex]].concat(metTipLines(a)); }
+    }}},
+    scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  /* ── ritmo acumulado: acumula el AGREGADO y deriva la métrica activa en cada punto ── */
+  const acumAggByYr={};
+  const dsAcum=yrSet.map(function(y){
+    let last=11; for(let i=11;i>=0;i--){ if(aggByYrMonth[y][i].cx>0){last=i;break;} }
+    const run={cx:0,fac:0,min:0,facCx:0}; const cum=[];
+    const vals=aggByYrMonth[y].map(function(a,i){
+      run.cx+=a.cx; run.fac+=a.fac; run.min+=a.min; run.facCx+=a.facCx;
+      cum.push({cx:run.cx,fac:run.fac,min:run.min,facCx:run.facCx});
+      return i<=last? metVal(cum[i]) : null;
+    });
+    acumAggByYr[y]=cum;
+    return {label:String(y),data:vals,borderColor:YR_CLR[y]||C.tesoro,backgroundColor:'transparent',tension:.25,pointRadius:2,fill:false};
+  });
+  mkChart('oi-acum','line',MESES,dsAcum,{
+    plugins:{tooltip:{callbacks:{
+      label:function(c){ const cum=acumAggByYr[c.dataset.label]?acumAggByYr[c.dataset.label][c.dataIndex]:null;
+        if(!cum||cum.cx===0) return null;
+        return [c.dataset.label+' acum. → '+MESES[c.dataIndex]].concat(metTipLines(cum)); }
+    }}},
+    scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
+  mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
+  /* barras comparativas YTD por mes (cirugías) */
+  const ytdCx={}; [yCur,yPrev].forEach(function(yy){ ytdCx[yy]=new Array(nM).fill(0); });
+  all.forEach(function(r){ if((r[COL.anio]===yCur||r[COL.anio]===yPrev)&&r[COL.mes]<=nM){ ytdCx[r[COL.anio]][r[COL.mes]-1]++; } });
+  mkChart('oi-ytd','bar',MESES.slice(0,nM),[
+    {label:String(yPrev),data:ytdCx[yPrev],backgroundColor:YR_CLR[yPrev]||C.tesoro},
+    {label:String(yCur),data:ytdCx[yCur],backgroundColor:YR_CLR[yCur]||C.acento}
+  ],{_tooltipLabel:tipNum});
+}
+
+/* ─────────── OPE: ESPECIALIDADES ─────────── */
+function buildOpeEsp(){
+  const el=document.getElementById('ope-esp');
+  const MD=metDef();
+  const all=opeRows(false), fac=opeRows(true);
+  const agg={};
+  all.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
+  fac.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.esps[i]},agg[i]); });
+  arr.sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const top=arr.slice(0,12);
+  const withHr=arr.filter(function(a){return a.min>0;}).map(function(a){return Object.assign({},a,{perHr:a.fac/(a.min/60)});}).sort(function(a,b){return b.perHr-a.perHr;});
+  const bestHr=withHr[0];
+  el.innerHTML=
+    '<div class="sec-title">Especialidades <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">Ranking por <strong>'+MD.noun+'</strong> · pasa el mouse para ver todas las métricas de cada especialidad</div>'+
+    '<div class="kpis k3">'+
+      '<div class="kpi gold"><div class="kpi-lbl">Especialidad líder ('+MD.lbl+')</div><div class="kpi-val" style="font-size:16px">'+(top[0]?top[0].name:'—')+'</div><div class="kpi-sub">'+(top[0]?MD.fmt(metVal(top[0])):'')+'</div></div>'+
+      '<div class="kpi green"><div class="kpi-lbl">Más rentable / hora</div><div class="kpi-val" style="font-size:16px">'+(bestHr?bestHr.name:'—')+'</div><div class="kpi-sub">'+(bestHr?fmtMd(bestHr.perHr,2)+' / hora':'')+'</div></div>'+
+      kpi('navy','Especialidades activas',String(arr.length),'con cirugías')+
+    '</div>'+
+    '<div class="g6040">'+
+      card('Top 12 especialidades · por '+MD.noun,'métrica: '+MD.lbl,'oe-bar','tall')+
+      card('Mix de '+MD.dnoun,'composición','oe-dona','tall')+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por especialidad</h3></div>'+
+      '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
+        '<thead><tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr></thead><tbody>'+
+        arr.map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>'; }).join('')+
+        '</tbody></table></div></div></div>'+
+    '<div class="insight green"><strong>'+(bestHr?bestHr.name:'Cirugía Endocrina')+'</strong> es la especialidad más rentable por hora de quirófano ('+(bestHr?fmtMd(bestHr.perHr,2):'')+'/h) — muy por encima del promedio. Priorizar su agenda maximiza el retorno de cada hora de sala.</div>'+
+    footnoteMetrica();
+  mkChart('oe-bar','bar',top.map(function(a){return a.name;}),[{label:MD.lbl,data:top.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
+  const top7=arr.slice(0,7), otros7=arr.slice(7);
+  const donaTop=top7.map(function(a){return MD.dval(a);}).concat([otros7.reduce(function(s,a){return s+MD.dval(a);},0)]);
+  mkChart('oe-dona','doughnut',top7.map(function(a){return a.name;}).concat(['Otras']),
+    [{data:donaTop,backgroundColor:[C.tesoro,C.oviedo,C.acento,C.consol,'#6E8AB5','#8AAE7A','#C7A23E','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+    {cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9.5},padding:7}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+}
+
+/* ─────────── OPE: CIRUJANOS ─────────── */
+function buildOpeCir(){
+  const el=document.getElementById('ope-cir');
+  const MD=metDef();
+  const all=opeRows(false), fac=opeRows(true);
+  const agg={};
+  all.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; e.sedes.add(r[COL.sede]); });
+  fac.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.fac+=r[COL.valM]; e.facCx++; });
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.cirs[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
+  const top15=arr.slice(0,15);
+  const lider=arr[0];
+  const conc=(lider&&totFac)?lider.fac/totFac*100:0;
+  const top5=totFac?arr.slice(0,5).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
+  el.innerHTML=
+    '<div class="sec-title">Cirujanos <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">'+arr.length+' cirujanos con actividad · ranking por <strong>'+MD.noun+'</strong> · hover para ver todas las métricas</div>'+
+    '<div class="kpis k3">'+
+      '<div class="kpi gold"><div class="kpi-lbl">Cirujano líder ('+MD.lbl+')</div><div class="kpi-val" style="font-size:15px">'+(lider?shortName(lider.name):'—')+'</div><div class="kpi-sub">'+(lider?MD.fmt(metVal(lider)):'')+'</div></div>'+
+      kpi('navy','Cirujanos activos',String(arr.length),'con facturación')+
+      kpi(conc>15?'red':'green','Top 5 concentración',fmtPct(top5),'de la facturación')+
+    '</div>'+
+    '<div class="gfull">'+card('Top 15 cirujanos · por '+MD.noun,'métrica: '+MD.lbl,'oc-bar','tall')+'</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle Top 25 cirujanos</h3></div>'+
+      '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
+        '<thead><tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr></thead><tbody>'+
+        arr.slice(0,25).map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ')+'</td></tr>'; }).join('')+
+        '</tbody></table></div></div></div>'+
+    '<div class="insight '+(conc>15?'warn':'')+'"><strong>'+(lider?shortName(lider.name):'')+'</strong> concentra el <strong>'+fmtPct(conc)+'</strong> de la facturación. '+(conc>12?'Es una concentración relevante: la salida de un cirujano top impacta directo el P&amp;G. Conviene fortalecer la cantera de cirujanos medios.':'La facturación está razonablemente diversificada entre cirujanos.')+'</div>'+
+    footnoteMetrica();
+  mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top15)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+}
+
+/* ─────────── OPE: QUIRÓFANOS ─────────── */
+function buildOpeQx(){
+  const el=document.getElementById('ope-qx');
+  const MD=metDef();
+  const all=opeRows(false);
+  const agg={};
+  all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;} });
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.qxs[i]},agg[i]); }).filter(function(a){return a.cx>0;}).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const months=new Set(all.filter(function(r){return r[COL.qx]>=0;}).map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size||1;
+  const semanas=months*4.33;
+  const arrOc=arr.map(function(a){ const capMin=HORAS_SEMANA_QX*60*semanas; return Object.assign({},a,{oc:capMin?Math.min(a.min/capMin*100,100):0}); });
+  const ocAvg=arrOc.length?arrOc.reduce(function(s,a){return s+a.oc;},0)/arrOc.length:0;
+  const clr=function(a){return a.sede===0?C.tesoro:C.oviedo;};
+  el.innerHTML=
+    '<div class="sec-title">Quirófanos <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">'+MD.noun+' y ocupación por sala · color por sede (azul Tesoro · verde Oviedo) · hover para todas las métricas</div>'+
+    '<div class="kpis k3">'+
+      kpi('','Quirófanos en uso',String(arr.length),'con cirugías')+
+      '<div class="kpi gold"><div class="kpi-lbl">Sala líder ('+MD.lbl+')</div><div class="kpi-val" style="font-size:16px">'+(arr[0]?arr[0].name.replace('QUIROFANO','Q'):'—')+'</div><div class="kpi-sub">'+(arr[0]?MD.fmt(metVal(arr[0])):'')+'</div></div>'+
+      kpi('green','Ocupación promedio',fmtPct(ocAvg),'capacidad L-S')+
+    '</div>'+
+    '<div class="g2">'+
+      card(MD.noun+' por quirófano','métrica: '+MD.lbl,'oq-vol','')+
+      card('Ocupación estimada por quirófano','% de capacidad','oq-oc','')+
+    '</div>'+
+    '<div class="insight">La capacidad se mide sobre horario L-V 7-18h (11h) + Sáb 7-14h (7h) = 62h/semana por sala. '+(arrOc.some(function(a){return a.oc<60;})?'Hay salas por debajo del 60% de ocupación: redistribuir agenda o concentrar días libera capacidad para nuevas especialidades.':'Las salas operan con buena ocupación.')+'</div>'+
+    footnoteMetrica();
+  mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
+    [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
+    {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(arr)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  mkChart('oq-oc','bar',arrOc.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
+    [{label:'Ocupación %',data:arrOc.map(function(a){return +a.oc.toFixed(1);}),backgroundColor:arrOc.map(clr)}],
+    {_tooltipLabel:tipPct,_yPct:true,plugins:{legend:{display:false}}});
+}
+
+/* ─────────── OPE: SEDES ─────────── */
+function buildOpeSedes(){
+  const el=document.getElementById('ope-sedes');
+  const MD=metDef();
+  function sedeData(s){
+    const all=COM.rows.filter(function(r){return r[COL.sede]===s && (!OF.anio.size||OF.anio.has(r[COL.anio]));});
+    const fac=all.filter(function(r){return r[COL.met]===0;});
+    const min=all.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
+    const f=fac.reduce(function(a,r){return a+r[COL.valM];},0);
+    return {cx:all.length,fac:f,min:min,facCx:fac.length,ticket:fac.length?f/fac.length:0,perHr:min?f/(min/60):0,esps:new Set(all.filter(function(r){return r[COL.esp]>=0;}).map(function(r){return r[COL.esp];})).size};
+  }
+  const T=sedeData(0), O=sedeData(1);
+  el.innerHTML=
+    '<div class="sec-title">Comparativo de Sedes <span class="st-badge">Tesoro vs Oviedo</span></div>'+
+    '<div class="sec-sub">'+(OF.anio.size?Array.from(OF.anio).sort().join(', '):'Todos los años')+' · perfil operativo y de facturación lado a lado</div>'+
+    '<div class="g2">'+
+      '<div class="card"><div class="card-hdr" style="background:var(--qlub-tesoro)"><h3>📍 Sede Tesoro</h3><span class="badge">'+fmtNum(T.cx)+' cx</span></div>'+
+        '<div class="card-body"><div class="kpis k2" style="margin:0">'+
+          kpi('','Facturación',fmtM(T.fac),'')+kpi('gold','Ticket',fmtMd(T.ticket,2),'')+
+          kpi('green','$ / Hora',fmtMd(T.perHr,2),'')+kpi('navy','Especialidades',String(T.esps),'')+
+        '</div></div></div>'+
+      '<div class="card"><div class="card-hdr" style="background:var(--qlub-oviedo)"><h3>📍 Sede Oviedo</h3><span class="badge">'+fmtNum(O.cx)+' cx</span></div>'+
+        '<div class="card-body"><div class="kpis k2" style="margin:0">'+
+          kpi('green','Facturación',fmtM(O.fac),'')+kpi('gold','Ticket',fmtMd(O.ticket,2),'')+
+          kpi('','$ / Hora',fmtMd(O.perHr,2),'')+kpi('navy','Especialidades',String(O.esps),'')+
+        '</div></div></div>'+
+    '</div>'+
+    '<div class="g2">'+
+      card(MD.noun+' por sede','métrica: '+MD.lbl,'os-comp','')+
+      card('Participación en '+MD.dnoun,'composición','os-dona','')+
+    '</div>'+
+    '<div class="insight">Tesoro aporta el volumen base; Oviedo es el motor de crecimiento. '+(T.perHr>O.perHr?'Tesoro rinde más por hora de sala — útil para priorizar inversión de capacidad.':'Oviedo rinde más por hora de sala — confirma el acierto de su expansión.')+'</div>'+
+    footnoteMetrica();
+  mkChart('os-comp','bar',['Tesoro','Oviedo'],[
+    {label:MD.lbl,data:[metVal(T),metVal(O)],backgroundColor:[C.tesoro,C.oviedo]}
+  ],{plugins:{legend:{display:false},tooltip:{callbacks:metTooltip([T,O])}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  mkChart('os-dona','doughnut',['Tesoro','Oviedo'],[{data:[MD.dval(T),MD.dval(O)],backgroundColor:[C.tesoro,C.oviedo],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+}
+
+/* ─────────── OPE: OCUPACIÓN ─────────── */
+function buildOpeOcup(){
+  const el=document.getElementById('ope-ocup');
+  const MD=metDef();
+  const all=opeRows(false);
+  const diaCx=new Array(6).fill(0), diaMin=new Array(6).fill(0);
+  const diaAgg=[]; for(var d=0;d<6;d++) diaAgg.push({cx:0,fac:0,min:0,facCx:0});
+  all.forEach(function(r){ if(r[COL.dia]>=0&&r[COL.dia]<6){ diaCx[r[COL.dia]]++; if(r[COL.tmin]>0)diaMin[r[COL.dia]]+=r[COL.tmin];
+    const a=diaAgg[r[COL.dia]]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.met]===0){a.fac+=r[COL.valM];a.facCx++;} } });
+  const diasLbl=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const ocup=estOcupacion(all);
+  const conDia=all.filter(function(r){return r[COL.dia]>=0;}).length;
+  const durs=all.filter(function(r){return r[COL.tmin]>0;}).map(function(r){return r[COL.tmin];});
+  const buckets=[0,0,0,0,0];
+  durs.forEach(function(m){ buckets[m<30?0:m<60?1:m<120?2:m<240?3:4]++; });
+  let bi=0; diaCx.forEach(function(v,i){if(v>diaCx[bi])bi=i;});
+  const durProm=durs.length?durs.reduce(function(a,b){return a+b;},0)/durs.length:0;
+  el.innerHTML=
+    '<div class="sec-title">Ocupación de Salas <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">Distribución por día y duración · capacidad L-V 7-18h (11h) + Sáb 7-14h (7h)</div>'+
+    '<div class="kpis k4">'+
+      kpi(ocup>=70?'green':'gold','Ocupación estimada',fmtPct(ocup),'sobre capacidad')+
+      '<div class="kpi"><div class="kpi-lbl">Día más activo</div><div class="kpi-val" style="font-size:17px">'+diasLbl[bi]+'</div><div class="kpi-sub">'+fmtNum(Math.max.apply(null,diaCx))+' cx</div></div>'+
+      kpi('navy','Duración promedio',fmtNum(durProm)+' min','por cirugía')+
+      kpi('gold','Cirugías con día',fmtNum(conDia),'registran día')+
+    '</div>'+
+    '<div class="g2">'+
+      card(MD.noun+' por día de semana','métrica: '+MD.lbl,'oo-dia','')+
+      card('Horas-quirófano por día','horas','oo-hrs','')+
+    '</div>'+
+    '<div class="gfull">'+card('Distribución por duración de cirugía','','oo-dur','short')+'</div>'+
+    '<div class="insight">La carga se concentra entre semana; el sábado opera a media máquina (7h vs 11h diarias). '+(diaCx[5]<diaCx[2]*0.5?'Abrir agenda comercial el sábado en la tarde es capacidad lista para vender sin nuevo CapEx.':'')+'</div>'+
+    footnoteMetrica();
+  mkChart('oo-dia','bar',diasLbl,[{label:MD.lbl,data:diaAgg.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(diaAgg)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  mkChart('oo-hrs','bar',diasLbl,[{label:'Horas',data:diaMin.map(function(m){return +(m/60).toFixed(0);}),backgroundColor:C.acento}],
+    {plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmtNum(c.parsed.y)+' horas';}}}}});
+  mkChart('oo-dur','bar',['< 30 min','30-60 min','1-2 h','2-4 h','> 4 h'],
+    [{label:'Cirugías',data:buckets,backgroundColor:[C.consol,C.tesoro,C.oviedo,C.acento,C.neg]}],{_tooltipLabel:tipNum,plugins:{legend:{display:false}}});
+}
+
+/* ─────────── OPE: EPS ─────────── */
+function buildOpeEps(){
+  const el=document.getElementById('ope-eps');
+  const MD=metDef();
+  const all=opeRows(false), fac=opeRows(true);
+  const agg={};
+  all.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
+  fac.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.epss[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
+  const sura=arr.filter(function(a){return /SURAMERICANA|SURA/i.test(a.name);})[0];
+  const suraPct=(sura&&totFac)?sura.fac/totFac*100:0;
+  const top3=totFac?arr.slice(0,3).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
+  const top8=arr.slice(0,8);
+  el.innerHTML=
+    '<div class="sec-title">EPS / Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">'+arr.length+' entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
+    '<div class="kpis k3">'+
+      kpi(suraPct>40?'red':'gold','Concentración SURA',fmtPct(suraPct),'de la facturación')+
+      kpi('navy','Entidades activas',String(arr.length),'pagadoras')+
+      kpi('','Top 3 concentración',fmtPct(top3),'de la facturación')+
+    '</div>'+
+    '<div class="g6040">'+
+      card('Top 8 entidades · por '+MD.noun,'métrica: '+MD.lbl,'op-bar','')+
+      card('Mix de pagadores ('+MD.dnoun+')','composición','op-dona','')+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por entidad (Top 15)</h3></div>'+
+      '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
+        '<thead><tr><th>Entidad</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr></thead><tbody>'+
+        arr.slice(0,15).map(function(a){ return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>'; }).join('')+
+        '</tbody></table></div></div></div>'+
+    '<div class="insight '+(suraPct>40?'neg':'warn')+'"><strong>SURA representa el '+fmtPct(suraPct)+'</strong> de la facturación. Es una dependencia crítica: cualquier cambio de tarifa o contrato con SURA mueve el negocio entero. Diversificar pagadores (particular, otras prepagadas) es prioridad estratégica de riesgo.</div>'+
+    footnoteMetrica();
+  mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
+    [{label:MD.lbl,data:top8.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top8)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+  const top5=arr.slice(0,5), otros5=arr.slice(5).reduce(function(s,a){return s+MD.dval(a);},0);
+  mkChart('op-dona','doughnut',top5.map(function(a){return a.name.split(' ')[0];}).concat(['Otras']),
+    [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+}
+
+/* ════════════════════════════════════════
+   REPORTES / HALLAZGOS — Sala de Estrategia
+   ════════════════════════════════════════ */
+function buildReportes(){
+  const hallazgos=[
+    {sev:'alta',ico:'⚖️',title:'Tesoro pierde plata; Oviedo la genera',
+      metric:'+$1.370M <small>Oviedo</small> &nbsp; −$550M <small>Tesoro</small>',
+      body:'Oviedo gana <strong>$1.370M netos (margen 11.3%)</strong>, mientras Tesoro <strong>pierde −$550M netos</strong> tras la carga del impuesto consolidado. La sede madre subsidia fiscalmente a la nueva.',
+      action:'<b>Decisión:</b> evaluar una <b>fusión / consolidación fiscal</b> que reparta mejor la carga tributaria y no castigue a Tesoro por el resultado del grupo.'},
+    {sev:'alta',ico:'💊',title:'El CMV de Farmacia se come el margen',
+      metric:'+58% <small>CMV Farmacia</small> vs +40% <small>ingresos</small>',
+      body:'El <strong>costo de farmacia crece +58%</strong> mientras los ingresos crecen +40%. Cada peso de venta nuevo trae más costo de medicamentos que antes: el margen bruto se erosiona.',
+      action:'<b>Palanca #1 de margen:</b> renegociar compras de farmacia de alto volumen y auditar mermas. Es la acción de mayor retorno del año.'},
+    {sev:'alta',ico:'🏦',title:'Dependencia crítica de un solo pagador',
+      metric:'~55% <small>facturación vía SURA</small>',
+      body:'<strong>SURA concentra cerca del 55%</strong> de la facturación. Un cambio de tarifa o de contrato con SURA mueve el negocio entero — es el mayor riesgo estructural del P&amp;G.',
+      action:'<b>Mitigación:</b> abrir canal particular y nuevas prepagadas (Colsanitas, Coomeva). Meta: bajar SURA por debajo del 45% en 12 meses.'},
+    {sev:'op',ico:'🩺',title:'Endocrina: la hora de quirófano más rentable',
+      metric:'Cirugía Endocrina <small>· líder $/hora (Oviedo)</small>',
+      body:'<strong>Cirugía Endocrina</strong> es la especialidad más rentable por hora de sala, concentrada en Oviedo. Es un mix de alto ticket que hoy no se aprovecha en Tesoro.',
+      action:'<b>Oportunidad:</b> replicar la agenda de Endocrina en Tesoro y darle bloques fijos de sala. Sube el $/hora del grupo sin CapEx.'},
+    {sev:'media',ico:'🕐',title:'Hay capacidad ociosa para crecer sin invertir',
+      metric:'~58% <small>ocupación promedio</small>',
+      body:'La ocupación promedio ronda el <strong>58%</strong>. Hay sala disponible para crecer volumen <strong>sin CapEx</strong>. Lunes y martes son los días más flojos.',
+      action:'<b>Acción comercial:</b> concentrar agenda electiva en lunes-martes y empujar campañas para llenar esos huecos. Capacidad ya pagada.'},
+    {sev:'op',ico:'📅',title:'Sábado Oviedo, casi saturado',
+      metric:'91% <small>ocupación sábado · Oviedo</small>',
+      body:'El <strong>sábado de Oviedo opera al 91%</strong> — casi al tope. Es la señal de que la demanda existe y que ampliar franja sabatina (o en Tesoro) tiene mercado.',
+      action:'<b>Lectura:</b> el sábado vende. Replicar el modelo de agenda sabatina de Oviedo en Tesoro antes de pensar en nueva sala.'}
+  ];
+  const sevCls={alta:'sev-alta',media:'sev-media',op:'sev-op'};
+  const sevTag={alta:['alta','Severidad alta'],media:['media','Atención media'],op:['op','Oportunidad']};
+  document.getElementById('sec-rep').innerHTML=
+    '<div class="sec-title">Reportes &amp; Hallazgos <span class="st-badge">Sala de Estrategia</span></div>'+
+    '<div class="sec-sub">Lectura estratégica de la asesoría — conclusiones del negocio y alertas de gestión derivadas del análisis financiero y operativo</div>'+
+    '<div class="find-hero">'+
+      '<h2>El grupo crece, pero el margen y el riesgo piden decisiones</h2>'+
+      '<p>El negocio más que duplicó su escala en dos años de la mano de Oviedo. La rentabilidad, sin embargo, depende de tres frentes: la carga fiscal que castiga a Tesoro, un costo de farmacia que crece más rápido que las ventas, y una concentración peligrosa en SURA. Hay, en paralelo, capacidad ociosa lista para vender.</p>'+
+      '<div class="fh-tags">'+
+        '<span class="fh-tag"><b>3</b> alertas de severidad alta</span>'+
+        '<span class="fh-tag"><b>2</b> oportunidades de upside</span>'+
+        '<span class="fh-tag"><b>1</b> foco de capacidad</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="find-grid">'+
+      hallazgos.map(function(h){
+        return '<div class="find-card '+sevCls[h.sev]+'">'+
+          '<div class="fc-top"><div class="fc-ico">'+h.ico+'</div><div class="fc-sev '+sevTag[h.sev][0]+'">'+sevTag[h.sev][1]+'</div></div>'+
+          '<div class="fc-title">'+h.title+'</div>'+
+          '<div class="fc-metric">'+h.metric+'</div>'+
+          '<div class="fc-body">'+h.body+'</div>'+
+          '<div class="fc-action">'+h.action+'</div>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+    '<div class="insight"><strong>Síntesis para junta:</strong> las dos decisiones de mayor impacto inmediato son (1) resolver la carga fiscal entre sedes y (2) atacar el CMV de farmacia. El upside estructural está en replicar el mix de alto ticket de Oviedo —Endocrina, agenda sabatina— en Tesoro. La capacidad existe; el cuello es comercial y de costos, no de infraestructura.</div>';
+}
+
+/* ════════════════════════════════════════
+   PLAN DE ACCIÓN
+   ════════════════════════════════════════ */
+function buildAcciones(){
+  const acciones=[
+    ['p1','alta','Diversificar dependencia de SURA','SURA concentra ~55% de la facturación. Negociar nuevos contratos con prepagadas (Coomeva, Colsanitas) y ampliar el canal particular para reducir el riesgo de un solo pagador.','Meta: bajar SURA a menos de 45% en 12 meses'],
+    ['p1','alta','Maximizar agenda de Cirugía Endocrina','Es la especialidad más rentable por hora de quirófano (más de $7M/h, cerca de 6x el promedio). Asignarle bloques fijos de sala y priorizar su agenda eleva el rendimiento de cada hora operada.','Impacto directo en $/hora de sala'],
+    ['p2','media','Llenar ocupación del sábado','El sábado opera a media máquina frente a entre semana. Abrir agenda comercial y campañas de cirugía electiva el sábado tarde es capacidad lista para vender sin nuevo CapEx.','Capacidad existente sin inversión'],
+    ['p2','media','Atacar el costo directo','El costo directo absorbe la mayor parte de la estructura. Renegociar tarifas de insumos de alto volumen mueve el margen EBIT más que cualquier ajuste de nómina.','Palanca #1 de rentabilidad'],
+    ['p3','ok','Consolidar el crecimiento de Oviedo','Oviedo pasó de cero (mar-2024) a cerca del 40% del consolidado. Replicar su mix de especialidades de alto ticket y monitorear su margen por separado.','Motor de crecimiento del grupo'],
+    ['p3','ok','Reducir concentración de cirujanos top','El cirujano líder concentra cerca del 9% y el top 5 una porción relevante. Fortalecer la cantera de cirujanos medios protege el P&G ante la salida de un referente.','Continuidad del negocio']
+  ];
+  document.getElementById('sec-acc').innerHTML=
+    '<div class="sec-title">Plan de Acción <span class="st-badge">Prioridades estratégicas</span></div>'+
+    '<div class="sec-sub">Iniciativas derivadas del análisis financiero y operativo del panel</div>'+
+    '<div class="action-grid">'+
+      acciones.map(function(a){
+        return '<div class="action-card '+a[0]+'"><div class="ac-head"><div class="ac-title">'+a[2]+'</div><div class="ac-tag '+a[1]+'">'+(a[1]==='alta'?'Prioridad alta':a[1]==='media'?'Prioridad media':'En marcha')+'</div></div><p>'+a[3]+'</p><div class="ac-meta">🎯 '+a[4]+'</div></div>';
+      }).join('')+
+    '</div>'+
+    '<div class="insight">Estas prioridades se actualizan con cada cierre. Las dos primeras (dependencia de SURA y agenda de endocrina) son las de mayor impacto inmediato en rentabilidad y riesgo.</div>';
+}
+
+/* ════════════════════════════════════════
+   BOOT
+   ════════════════════════════════════════ */
+function boot(){
+  buildSubNav('fin');
+  buildPeriodBar('fin');
+  buildFinInicio();
+}
+loadData();
+</script>
+</body>
+</html>
