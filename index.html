@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Panel 360° — Qlub Quirófanos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -217,6 +220,9 @@ a{text-decoration:none;color:inherit;}
 .tbl .sub td{background:#eef3fa;font-weight:700;border-top:1px solid #cdddf0;}
 .tbl .tot td{background:var(--qlub-dark);color:#fff;font-weight:700;}
 .tbl .tot td:first-child{color:#fff;}
+.tbl .pct-col{color:#6b7a99;font-style:italic;font-size:11px;border-left:1px solid #d0daea;}
+.tbl th.pct-col{font-style:italic;font-size:10px;opacity:.85;border-left:1px solid rgba(255,255,255,.2);}
+.tbl .tot .pct-col{color:#aec6e8;}
 .pos{color:var(--pos);font-weight:700;}
 .neg{color:var(--neg);font-weight:700;}
 
@@ -932,6 +938,7 @@ const HELP={
   'fp-bars':'Compara mes a mes los ingresos, el EBIT y la utilidad neta. La distancia entre las barras muestra cuánta utilidad sobrevive tras costos, gastos e impuestos.',
   'fp-stack':'Cascada del P&G: parte de los ingresos y va restando costos, gastos e impuestos hasta llegar a la utilidad neta. Cada barra muestra cuánto resta cada concepto.',
   'fp-cmpwf':'Compara rubro por rubro este año contra el anterior en el mismo período. Detecta dónde un costo crece más rápido que el ingreso, es decir, dónde se está perdiendo margen.',
+  'fp-vertical':'Análisis vertical por mes. Cada mes (banda de fondo) agrupa una barra por año; dentro de la banda, de izquierda a derecha van del año más antiguo (tono claro) al más reciente (tono intenso), con la etiqueta \'24 \'25 \'26 bajo cada barra. El color indica el rubro: rojo = Costo Directo, azul = Nómina, dorado = Gastos Admin, verde = EBIT. Mira la misma franja a lo largo de la banda: si el rojo se intensifica y crece del año claro al oscuro, el costo directo gana peso sobre el ingreso — señal de alerta.',
   'fm-chart':'Margen bruto = lo que queda tras los costos directos; margen EBIT = lo que queda tras todos los gastos operativos. Mientras más altos y estables, más rentable la operación.',
   'fm-abs':'Utilidad bruta y EBIT en pesos (millones) mes a mes. Complementa los porcentajes mostrando el tamaño real de la utilidad generada.',
   'fc-dona':'Participación de cada tipo de costo en el total. Una porción muy grande indica dónde se concentra el gasto y dónde hay más palanca para mejorar el margen.',
@@ -948,7 +955,7 @@ const HELP={
   'oi-mes':'Compara la métrica de cada mes entre años. Cada color es un año. Sirve para ver en qué meses la actividad creció o cayó frente al año anterior.',
   'oi-ytd':'Compara el mismo período (Ene hasta el mes actual) entre años. Indica si vamos por encima o por debajo del ritmo del año pasado a esta misma fecha.',
   'oi-acum':'Muestra cómo se va sumando la métrica mes a mes dentro del año (Ene, Ene+Feb...). Comparar las líneas dice si vamos adelante o atrás del año anterior.',
-  'oi-fac':'Facturación mensual considerando solo las cirugías con factura completa. Da una lectura más limpia del ingreso efectivamente facturado.',
+  'oi-fac':'Facturación mensual con el valor facturado disponible de cada cirugía (factura completa donde existe, valor operacional en los meses más recientes como abril). Lectura del ingreso efectivamente registrado.',
   'oe-bar':'Ranking de las especialidades según la métrica elegida (cirugías, facturación, ticket o $/hora). Cambia el lente con el selector de métrica de arriba.',
   'oe-dona':'Participación de cada especialidad en el total. Identifica de qué especialidades depende más el negocio.',
   'oc-bar':'Ranking de cirujanos según la métrica elegida. Sirve para identificar a los más productivos y a quiénes apoyar para crecer.',
@@ -982,11 +989,60 @@ function expandBtn(cid,title){
   return helpBtn(cid)+'<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button>';
 }
 
+/* Plugin Análisis Vertical: (1) banda de fondo por mes para agrupar los años de un
+   mismo mes (estilo Tableau), (2) eje de 2 niveles — mes centrado + año bajo cada barra.
+   Color = rubro; el tono (claro→oscuro) = año (antiguo→reciente). */
+let _vtAxis=null;
+function _vtBarXs(chart,m){
+  const ax=_vtAxis, xs=[]; for(var yi=0;yi<ax.years.length;yi++){ var meta=chart.getDatasetMeta(yi*ax.rubCount); xs.push(meta&&meta.data[m]?meta.data[m]:null); } return xs;
+}
+Chart.register({
+  id:'vtYearAxis',
+  beforeDatasetsDraw:function(chart){
+    if(chart.canvas.id!=='fp-vertical' || !_vtAxis || _vtAxis.years.length<2) return;
+    const ax=_vtAxis, ctx=chart.ctx, area=chart.chartArea;
+    ctx.save();
+    for(var m=0;m<ax.months.length;m++){
+      var els=_vtBarXs(chart,m).filter(function(e){return e;});
+      if(!els.length) continue;
+      var l=els[0].x-els[0].width/2-3, r=els[els.length-1].x+els[els.length-1].width/2+3;
+      ctx.fillStyle=(m%2===0)?'rgba(27,58,107,.05)':'rgba(27,58,107,.025)';
+      ctx.fillRect(l, area.top, r-l, area.bottom-area.top);
+    }
+    ctx.restore();
+  },
+  afterDraw:function(chart){
+    if(chart.canvas.id!=='fp-vertical' || !_vtAxis) return;
+    const ax=_vtAxis, ctx=chart.ctx, area=chart.chartArea;
+    const yrs=ax.years, nM=ax.months.length, multi=yrs.length>1;
+    ctx.save(); ctx.textAlign='center'; ctx.textBaseline='top';
+    for(var m=0;m<nM;m++){
+      var els=_vtBarXs(chart,m), xs=els.map(function(e){return e?e.x:null;});
+      var valid=xs.filter(function(v){return v!==null;});
+      if(!valid.length) continue;
+      var cx=valid.reduce(function(a,b){return a+b;},0)/valid.length;
+      if(multi){
+        for(var yi2=0;yi2<yrs.length;yi2++){
+          if(xs[yi2]===null) continue;
+          var newest=yi2===yrs.length-1;
+          ctx.font=(newest?'700 ':'400 ')+'9px Inter,sans-serif';
+          ctx.fillStyle=newest?'#0E2240':'#9aa6b6';
+          ctx.fillText("'"+String(yrs[yi2]).slice(2), xs[yi2], area.bottom+5);
+        }
+      }
+      ctx.font='600 11px Inter,sans-serif'; ctx.fillStyle='#16243a';
+      ctx.fillText(ax.months[m], cx, area.bottom+(multi?20:5));
+    }
+    ctx.restore();
+  }
+});
+
 /* ─────────── FIN: P&G ─────────── */
 function buildFinPnl(){
   const el=document.getElementById('fin-pnl');
   const s=FF.sede, y=finYear();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const vtYearsEarly=finYearsSorted();
   const act=finMesesIdx(s,y);
   const ing=pygArr(s,y,'4'),cd=pygArr(s,y,'6'),nom=pygArr(s,y,'7'),adm=pygArr(s,y,'5');
   const oi=pygArr(s,y,'42'),gno=pygArr(s,y,'53'),imp=pygArr(s,y,'54');
@@ -1024,15 +1080,16 @@ function buildFinPnl(){
       cmpInsight='<div class="insight green">Los ingresos crecen '+(ingGrow>=0?'+':'')+ingGrow.toFixed(1)+'% ('+cmpTag+') vs '+yPrevP+' y ningún rubro de costo crece por encima — el margen se mantiene o mejora.</div>';
     }
   }
-  function row(lbl,arr,cls){
+  function row(lbl,arr,cls,ingTot){
     const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
     const tot=sumActive(arr,act);
-    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td></tr>';
+    const pct=(ingTot&&ingTot!==0)?fmtPct(tot/ingTot*100):'—';
+    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td><td class="pct-col">'+pct+'</td></tr>';
   }
   function rowPct(lbl,arr,baseArr){
     const tds=act.map(function(i){ return '<td>'+fmtPct(baseArr[i]?arr[i]/baseArr[i]*100:0)+'</td>'; }).join('');
     const totA=sumActive(arr,act), totB=sumActive(baseArr,act);
-    return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(totB?totA/totB*100:0)+'</strong></td></tr>';
+    return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(totB?totA/totB*100:0)+'</strong></td><td class="pct-col"></td></tr>';
   }
   const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
   el.innerHTML =
@@ -1046,20 +1103,20 @@ function buildFinPnl(){
     '</div>'+
     '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th></tr></thead><tbody>'+
-          row('Ingresos',ing)+
-          row('(−) Costo Directo',cd)+
-          row('= Utilidad Bruta',ub,'sub')+
-          row('(−) Nómina Directa',nom)+
-          row('(−) Gastos Admin',adm)+
-          row('= EBIT (Util. Operativa)',ebit,'tot')+
-          row('(+) Depreciac. y Amortiz.',da)+
-          row('= EBITDA',ebitda,'sub')+
-          row('(+) Otros Ingresos',oi)+
-          row('(−) Gastos No Operac.',gno)+
-          row('= Utilidad Antes de Imp.',uai,'sub')+
-          row('(−) Impuesto de Renta',imp)+
-          row('= UTILIDAD NETA',neto,'tot')+
+        '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th><th class="pct-col">% Ing.</th></tr></thead><tbody>'+
+          row('Ingresos',ing,'',T.ing)+
+          row('(−) Costo Directo',cd,'',T.ing)+
+          row('= Utilidad Bruta',ub,'sub',T.ing)+
+          row('(−) Nómina Directa',nom,'',T.ing)+
+          row('(−) Gastos Admin',adm,'',T.ing)+
+          row('= EBIT (Util. Operativa)',ebit,'tot',T.ing)+
+          row('(+) Depreciac. y Amortiz.',da,'',T.ing)+
+          row('= EBITDA',ebitda,'sub',T.ing)+
+          row('(+) Otros Ingresos',oi,'',T.ing)+
+          row('(−) Gastos No Operac.',gno,'',T.ing)+
+          row('= Utilidad Antes de Imp.',uai,'sub',T.ing)+
+          row('(−) Impuesto de Renta',imp,'',T.ing)+
+          row('= UTILIDAD NETA',neto,'tot',T.ing)+
           rowPct('Margen Neto %',neto,ing)+
         '</tbody></table></div></div></div>'+
     '<div class="g2" style="margin-top:16px">'+
@@ -1067,6 +1124,7 @@ function buildFinPnl(){
       card('Cascada del P&amp;G (acumulado)','de ingresos a utilidad neta','fp-stack','')+
     '</div>'+
     '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+(y-1)+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
+    '<div class="gfull">'+card('Análisis Vertical — Estructura del ingreso por mes',(function(){var yy=vtYearsEarly; if(yy.length<2) return '% del ingreso por rubro · '+s+' '+yy[0]; return 'color = rubro · tono claro→oscuro = '+yy[0]+'→'+yy[yy.length-1]+' · '+s;})(),'fp-vertical','')+'</div>'+
     cmpInsight+
     '<div class="insight">De <strong>'+fmtM(T.ing)+'</strong> en ingresos, el EBIT es <strong>'+fmtM(T.ebit)+'</strong> ('+fmtPct(mEbit)+') y el EBITDA <strong>'+fmtM(T.ebitda)+'</strong>. Tras otros ingresos, gastos no operacionales e impuesto de renta ('+fmtM(T.imp)+'), la <strong>utilidad neta cierra en '+fmtM(T.neto)+'</strong> — margen neto de '+fmtPct(mNeto)+'.</div>';
   const lbls=act.map(function(i){return MESES[i];});
@@ -1111,6 +1169,74 @@ function buildFinPnl(){
     {label:String(yPrevP),data:prvVals,backgroundColor:YR_CLR[yPrevP]||C.consol},
     {label:String(y),data:curVals,backgroundColor:curClr}
   ],{_tooltipLabel:tipMoney,_yMoney:true,plugins:{tooltip:{callbacks:{afterLabel:function(c){ if(c.datasetIndex!==1)return ''; const p=prvVals[c.dataIndex]; if(!p)return ''; const g=(curVals[c.dataIndex]-p)/Math.abs(p)*100; return (leakSet[cmpLbls[c.dataIndex]]?'⚠ ':'')+'var. '+(g>=0?'+':'')+g.toFixed(1)+'% vs '+yPrevP; }}}}});
+  /* Análisis Vertical: color = RUBRO; el TONO del color (claro→oscuro) = año
+     (antiguo→reciente), estilo Tableau. Banda de fondo agrupa los años de cada mes. */
+  const vtYears=finYearsSorted();
+  const VT_BASE={'Costo Directo':'#C0392B','Nómina':'#1B3A6B','Gastos Admin':'#D4A843','EBIT':'#1A6B35'};
+  function vtLighten(hex,amt){
+    var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    r=Math.round(r+(255-r)*amt); g=Math.round(g+(255-g)*amt); b=Math.round(b+(255-b)*amt);
+    return 'rgb('+r+','+g+','+b+')';
+  }
+  /* tono por POSICIÓN del año: el más reciente full color, los anteriores aclarados */
+  function vtTone(base,pos,n){ return n<=1?base:vtLighten(base,(n-1-pos)*(0.52/(n-1))); }
+  const VT_RUB=[
+    {lbl:'Costo Directo', fn:function(ss,yy){return pygArr(ss,yy,'6');}},
+    {lbl:'Nómina',        fn:function(ss,yy){return pygArr(ss,yy,'7');}},
+    {lbl:'Gastos Admin',  fn:function(ss,yy){return pygArr(ss,yy,'5');}},
+    {lbl:'EBIT',          fn:function(ss,yy){return ebitArr(ss,yy);}}
+  ];
+  const vtMonths=[];
+  for(var mi=0;mi<12;mi++){if(vtYears.some(function(yy){return finMesesIdx(s,yy).indexOf(mi)>=0;})) vtMonths.push(mi);}
+  const vtLbls=vtMonths.map(function(i){return MESES[i];});
+  const vtMulti=vtYears.length>1, vtN=vtYears.length;
+  const vtDs=[];
+  vtYears.forEach(function(yy,yPos){
+    var actYY=finMesesIdx(s,yy), ingYY=pygArr(s,yy,'4');
+    VT_RUB.forEach(function(r){
+      vtDs.push({
+        label:r.lbl,
+        data:vtMonths.map(function(i){return actYY.indexOf(i)<0?null:(ingYY[i]?r.fn(s,yy)[i]/ingYY[i]*100:0);}),
+        backgroundColor:vtTone(VT_BASE[r.lbl],yPos,vtN),
+        borderWidth:0,
+        borderRadius:2,
+        stack:String(yy),
+        categoryPercentage:vtMulti?0.82:0.5,
+        barPercentage:0.92
+      });
+    });
+  });
+  _vtAxis={years:vtYears, months:vtLbls, rubCount:VT_RUB.length};
+  mkChart('fp-vertical','bar',vtLbls,vtDs,{
+    _yPct:true,
+    layout:{padding:{bottom:vtMulti?28:12}},
+    scales:{
+      x:{stacked:true,grid:{display:false},ticks:{display:false}},
+      y:{stacked:true,min:0}
+    },
+    plugins:{
+      legend:{
+        onClick:function(e,item,legend){
+          var lbl=item.text, chart=legend.chart;
+          var anyVis=chart.data.datasets.some(function(ds,i){return ds.label===lbl&&chart.isDatasetVisible(i);});
+          chart.data.datasets.forEach(function(ds,i){
+            if(ds.label===lbl) chart.getDatasetMeta(i).hidden=anyVis;
+          });
+          chart.update();
+        },
+        labels:{boxWidth:14,padding:16,font:{size:11},usePointStyle:true,
+          filter:function(item,data){
+            var last=-1; data.datasets.forEach(function(d,i){if(d.label===item.text)last=i;});
+            return item.datasetIndex===last;
+          }
+        }
+      },
+      tooltip:{callbacks:{
+        title:function(items){var yr=vtYears[Math.floor(items[0].datasetIndex/VT_RUB.length)];return (vtLbls[items[0].dataIndex]||'')+(yr?' · '+yr:'');},
+        label:function(c){return c.raw===null?'':' '+c.dataset.label+': '+fmtPct(c.raw);}
+      }}
+    }
+  });
 }
 
 /* ─────────── FIN: MÁRGENES ─────────── */
@@ -1526,15 +1652,15 @@ function metTipLines(a){
     'T. prom: '+(a.cx?fmtNum(tprom)+' min':'—')
   ];
 }
-/* genera un callback de tooltip para Chart.js que pinta todas las métricas.
+/* callback de tooltip para Chart.js que muestra SOLO la métrica activa (lectura limpia).
    `aggByIndex` es un array de agregados alineado con las barras (labels). */
 function metTooltip(aggByIndex){
   return {
     title:function(items){ return items.length?items[0].label:''; },
     label:function(c){
-      const a=aggByIndex[c.dataIndex];
-      if(!a) return ' '+fmtNum(c.parsed.y!==undefined?c.parsed.y:c.parsed);
-      return metTipLines(a);
+      const MD=metDef(), a=aggByIndex[c.dataIndex];
+      if(!a) return ' '+MD.axis(c.parsed.y!==undefined?c.parsed.y:c.parsed);
+      return ' '+MD.noun+': '+MD.fmt(MD.val(a));
     }
   };
 }
@@ -1681,7 +1807,9 @@ function buildOpeInicio(){
   const el=document.getElementById('ope-inicio');
   const MD=metDef();
   const all=opeRows(false);
-  const fac=all.filter(function(r){return r[COL.met]===0;});
+  /* Inicio (día a día): facturación = toda cx con valor registrado (factura completa O valor
+     operacional de abril); cada mes/año usa la misma base, así la comparación YoY es válida. */
+  const fac=all.filter(function(r){return r[COL.valM]>0;});
   const nCx=all.length;
   const totMin=all.reduce(function(s,r){ return s+(r[COL.tmin]>0?r[COL.tmin]:0); },0);
   const horas=totMin/60;
@@ -1691,7 +1819,7 @@ function buildOpeInicio(){
   const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
   /* agregados por año/mes para poder derivar cualquier métrica */
   const aggByYrMonth={}; yrSet.forEach(function(y){ aggByYrMonth[y]=[]; for(var i=0;i<12;i++) aggByYrMonth[y].push({cx:0,fac:0,min:0,facCx:0}); });
-  all.forEach(function(r){ const a=aggByYrMonth[r[COL.anio]][r[COL.mes]-1]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.met]===0){a.fac+=r[COL.valM];a.facCx++;} });
+  all.forEach(function(r){ const a=aggByYrMonth[r[COL.anio]][r[COL.mes]-1]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.valM]>0){a.fac+=r[COL.valM];a.facCx++;} });
   const cxByYrMonth={}; yrSet.forEach(function(y){cxByYrMonth[y]=new Array(12).fill(0);});
   all.forEach(function(r){ cxByYrMonth[r[COL.anio]][r[COL.mes]-1]++; });
   const nMesesActivos=new Set(all.map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size||1;
@@ -1702,7 +1830,7 @@ function buildOpeInicio(){
   const nM=ultMes(), yCur=2026, yPrev=2025, rng='Ene-'+MESES[nM-1];
   function ytdOpe(yy){
     const rs=all.filter(function(r){ return r[COL.anio]===yy && r[COL.mes]<=nM; });
-    const rf=rs.filter(function(r){ return r[COL.met]===0; });
+    const rf=rs.filter(function(r){ return r[COL.valM]>0; });
     return { cx:rs.length, fac:rf.reduce(function(s,r){return s+r[COL.valM];},0) };
   }
   const A=ytdOpe(yCur), B=ytdOpe(yPrev);
@@ -1731,7 +1859,7 @@ function buildOpeInicio(){
     cmpBlock+
     '<div class="g2">'+
       card('Ritmo acumulado del año (Ene → mes actual)','· '+MD.noun+' acumulado','oi-acum','')+
-      card('Facturación mensual','solo factura completa','oi-fac','')+
+      card('Facturación mensual','valor facturado disponible','oi-fac','')+
     '</div>'+
     '<div class="insight">Con los filtros actuales, el negocio realiza <strong>'+fmtNum(cxMes)+' cirugías/mes</strong> a un ticket de <strong>'+fmtMd(ticket,2)+'</strong> y rinde <strong>'+fmtMd(porHora,2)+' por hora</strong> de quirófano. La ocupación estimada es '+fmtPct(ocup)+' — hay sala disponible para crecer volumen sin CapEx.</div>'+
     footnoteMetrica();
@@ -1740,9 +1868,10 @@ function buildOpeInicio(){
   /* tooltip: para 'index' mode mostramos por dataset (año) las métricas de ese mes/año */
   mkChart('oi-mes','bar',MESES,dsMes,{
     plugins:{tooltip:{callbacks:{
+      title:function(items){ return MESES[items[0].dataIndex]; },
       label:function(c){ const a=aggByYrMonth[c.dataset.label]?aggByYrMonth[c.dataset.label][c.dataIndex]:null;
-        if(!a||a.cx===0) return null;
-        return [c.dataset.label+' — '+MESES[c.dataIndex]].concat(metTipLines(a)); }
+        if(!a||a.cx===0) return ' '+c.dataset.label+': sin datos';
+        return ' '+c.dataset.label+' · '+MD.noun+': '+MD.fmt(MD.val(a)); }
     }}},
     scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
   /* ── ritmo acumulado: acumula el AGREGADO y deriva la métrica activa en cada punto ── */
@@ -1760,20 +1889,30 @@ function buildOpeInicio(){
   });
   mkChart('oi-acum','line',MESES,dsAcum,{
     plugins:{tooltip:{callbacks:{
+      title:function(items){ return MESES[items[0].dataIndex]; },
       label:function(c){ const cum=acumAggByYr[c.dataset.label]?acumAggByYr[c.dataset.label][c.dataIndex]:null;
-        if(!cum||cum.cx===0) return null;
-        return [c.dataset.label+' acum. → '+MESES[c.dataIndex]].concat(metTipLines(cum)); }
+        if(!cum||cum.cx===0) return ' '+c.dataset.label+': sin datos';
+        return ' '+c.dataset.label+' · '+MD.noun+' acum.: '+MD.fmt(MD.val(cum)); }
     }}},
     scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
   const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
   mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
-  /* barras comparativas YTD por mes (cirugías) */
-  const ytdCx={}; [yCur,yPrev].forEach(function(yy){ ytdCx[yy]=new Array(nM).fill(0); });
-  all.forEach(function(r){ if((r[COL.anio]===yCur||r[COL.anio]===yPrev)&&r[COL.mes]<=nM){ ytdCx[r[COL.anio]][r[COL.mes]-1]++; } });
+  /* barras comparativas YTD por mes — usa la MÉTRICA ACTIVA (no solo cirugías) */
+  function ytdMetSeries(yy){
+    const a=aggByYrMonth[yy]; const out=[];
+    for(var i=0;i<nM;i++){ const m=a?a[i]:null; out.push((m&&m.cx>0)?metVal(m):null); }
+    return out;
+  }
   mkChart('oi-ytd','bar',MESES.slice(0,nM),[
-    {label:String(yPrev),data:ytdCx[yPrev],backgroundColor:YR_CLR[yPrev]||C.tesoro},
-    {label:String(yCur),data:ytdCx[yCur],backgroundColor:YR_CLR[yCur]||C.acento}
-  ],{_tooltipLabel:tipNum});
+    {label:String(yPrev),data:ytdMetSeries(yPrev),backgroundColor:YR_CLR[yPrev]||C.tesoro},
+    {label:String(yCur),data:ytdMetSeries(yCur),backgroundColor:YR_CLR[yCur]||C.acento}
+  ],{plugins:{tooltip:{callbacks:{
+      title:function(items){ return MESES[items[0].dataIndex]; },
+      label:function(c){ const a=aggByYrMonth[c.dataset.label]?aggByYrMonth[c.dataset.label][c.dataIndex]:null;
+        if(!a||a.cx===0) return ' '+c.dataset.label+': sin datos';
+        return ' '+c.dataset.label+' · '+MD.noun+': '+MD.fmt(MD.val(a)); }
+    }}},
+    scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
 }
 
 /* ─────────── OPE: ESPECIALIDADES ─────────── */
