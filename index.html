@@ -193,6 +193,17 @@ a{text-decoration:none;color:inherit;}
 .chart-wrap.tall{height:420px;}
 .chart-wrap.short{height:230px;}
 .card .chart-wrap canvas{max-width:100%;}
+/* ── Gráficos a todo el ancho: a viewport ancho una altura de 300/230px deja la
+   barra/línea aplastada (ratio > 4.5). En pantallas anchas se les da más alto
+   para mantener una proporción sana (~2.7–3.2). Las tortas/doughnut nunca van
+   a ancho completo, así que esto solo afecta barras y líneas. ── */
+@media(min-width:1024px){
+  .gfull > .card .chart-wrap{height:380px;}
+  .gfull > .card .chart-wrap.tall{height:440px;}
+  .gfull > .card .chart-wrap.short{height:330px;}
+  .card.fullw .chart-wrap{height:380px;}
+  .card.fullw .chart-wrap.short{height:330px;}
+}
 
 /* ═══ TABLES ═══ */
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:560px;}
@@ -306,6 +317,28 @@ a{text-decoration:none;color:inherit;}
   cursor:pointer;font-size:14px;line-height:1;transition:all .15s;padding:0;flex-shrink:0;
 }
 .expand-btn:hover{background:var(--qlub-acento);color:var(--qlub-dark);}
+/* ═══ HELP BUTTON "?" + POPUP ═══ */
+.help-btn{
+  position:relative;background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:50%;
+  width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;
+  cursor:help;font-size:14px;font-weight:700;line-height:1;transition:all .15s;padding:0;flex-shrink:0;
+  font-family:inherit;outline:none;
+}
+.help-btn:hover,.help-btn:focus,.help-btn:focus-within{background:var(--qlub-acento);color:var(--qlub-dark);}
+.help-popup{
+  display:none;position:absolute;top:34px;right:0;z-index:50;width:260px;max-width:78vw;
+  background:var(--white,#fff);color:#1d2b44;border-radius:10px;padding:12px 14px;
+  box-shadow:0 14px 40px rgba(8,18,38,.34);border:1px solid rgba(14,34,64,.12);
+  font-size:13px;line-height:1.5;font-weight:400;text-align:left;white-space:normal;cursor:default;
+}
+.help-popup::before{content:"";position:absolute;top:-7px;right:8px;width:13px;height:13px;
+  background:var(--white,#fff);border-left:1px solid rgba(14,34,64,.12);border-top:1px solid rgba(14,34,64,.12);
+  transform:rotate(45deg);}
+.help-btn:hover .help-popup,.help-btn:focus .help-popup,.help-btn:focus-within .help-popup{display:block;}
+@media(max-width:767px){.help-btn{width:30px;height:30px;font-size:15px;}.help-popup{width:230px;}}
+/* explicación dentro del modal de ampliar */
+.cm-help{padding:12px 20px 0;color:#41557a;font-size:13.5px;line-height:1.55;}
+.cm-help:empty{display:none;}
 #chart-modal{
   display:none;position:fixed;inset:0;z-index:600;background:rgba(8,18,38,.78);
   -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
@@ -459,6 +492,7 @@ a{text-decoration:none;color:inherit;}
 <div id="chart-modal" onclick="if(event.target===this)closeChartModal()">
   <div class="cm-box">
     <div class="cm-hdr"><h3 id="cm-title">Gráfico</h3><button class="cm-close" onclick="closeChartModal()" aria-label="Cerrar">✕</button></div>
+    <div class="cm-help" id="cm-help"></div>
     <div class="cm-body"><div class="cm-canvas-wrap"><canvas id="cm-canvas"></canvas></div></div>
   </div>
 </div>
@@ -566,6 +600,7 @@ function openChartModal(srcId, title){
   const spec=_chartSpecs[srcId]; if(!spec) return;
   _modalSrcId=srcId;
   document.getElementById('cm-title').textContent = title || 'Gráfico';
+  document.getElementById('cm-help').textContent = HELP[srcId] || '';
   const modal=document.getElementById('chart-modal');
   modal.classList.add('open');
   const cv=document.getElementById('cm-canvas');
@@ -886,16 +921,65 @@ function buildFinInicio(){
 function kpi(cls,lbl,val,sub){
   return '<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val">'+val+'</div><div class="kpi-sub">'+(sub||'')+'</div></div>';
 }
+/* ═══ DICCIONARIO DE AYUDA POR GRÁFICO (indexado por canvas id) ═══
+   Explicaciones nivel asesor: qué muestra, cómo leerlo, qué decisión apoya. */
+const HELP={
+  /* ── Financiero ── */
+  'fi-ing':'Compara los ingresos de cada mes entre años. Cada color es un año. Sirve para ver en qué meses el negocio creció o cayó frente al mismo mes del año anterior.',
+  'fi-comp':'Muestra cómo se reparten los ingresos del período entre costos directos, nómina, gastos administrativos y la utilidad que queda. Ayuda a ver a dónde se va cada peso facturado.',
+  'fi-cmp':'Pone lado a lado ingresos, EBIT (utilidad operativa) y utilidad neta del período, año contra año. Permite ver si el crecimiento en ventas se está traduciendo en más utilidad.',
+  'fi-neto':'Utilidad neta de cada mes del año, ya descontados los impuestos. Detecta los meses fuertes y los débiles del resultado final.',
+  'fp-bars':'Compara mes a mes los ingresos, el EBIT y la utilidad neta. La distancia entre las barras muestra cuánta utilidad sobrevive tras costos, gastos e impuestos.',
+  'fp-stack':'Cascada del P&G: parte de los ingresos y va restando costos, gastos e impuestos hasta llegar a la utilidad neta. Cada barra muestra cuánto resta cada concepto.',
+  'fp-cmpwf':'Compara rubro por rubro este año contra el anterior en el mismo período. Detecta dónde un costo crece más rápido que el ingreso, es decir, dónde se está perdiendo margen.',
+  'fm-chart':'Margen bruto = lo que queda tras los costos directos; margen EBIT = lo que queda tras todos los gastos operativos. Mientras más altos y estables, más rentable la operación.',
+  'fm-abs':'Utilidad bruta y EBIT en pesos (millones) mes a mes. Complementa los porcentajes mostrando el tamaño real de la utilidad generada.',
+  'fc-dona':'Participación de cada tipo de costo en el total. Una porción muy grande indica dónde se concentra el gasto y dónde hay más palanca para mejorar el margen.',
+  'fc-stack':'Costos de cada mes apilados por categoría. Sirve para ver la evolución del gasto y detectar meses con sobrecostos o categorías que se disparan.',
+  'fb-chart':'Compara los ingresos generados por cada sede. Identifica qué sedes aportan más al negocio y cuáles están por debajo de su potencial.',
+  'ff-wf':'Cascada de caja: muestra cómo el EBITDA se transforma en caja real tras restar CapEx (inversiones) y sumar/restar financiación. Revela si el negocio genera o consume efectivo.',
+  'ff-comp':'Resumen del flujo de caja del período: cuánto efectivo entró por la operación y en qué se usó. Ayuda a entender de dónde sale y a dónde va la liquidez.',
+  'ff-fco':'Flujo de Caja Operativo mensual: el efectivo que genera la operación cada mes, ya descontados impuestos y capital de trabajo. Año contra año.',
+  'ff-pos':'Posición de caja acumulada mes a mes. Una tendencia ascendente significa que el negocio está acumulando liquidez; descendente, que la está consumiendo.',
+  'fa-ing':'Ingresos totales consolidados de cada año. Da la foto grande del crecimiento del negocio en el tiempo.',
+  'fa-ebit':'EBIT (utilidad operativa) y utilidad neta de cada año. Muestra si la rentabilidad acompaña al crecimiento de los ingresos.',
+  'fa-ytd':'Compara el mismo período (Ene hasta el último mes cerrado) entre los tres años, en ingresos, EBIT y utilidad neta. Dice si vamos mejor o peor que años anteriores a esta misma fecha.',
+  /* ── Administrativo / Operación ── */
+  'oi-mes':'Compara la métrica de cada mes entre años. Cada color es un año. Sirve para ver en qué meses la actividad creció o cayó frente al año anterior.',
+  'oi-ytd':'Compara el mismo período (Ene hasta el mes actual) entre años. Indica si vamos por encima o por debajo del ritmo del año pasado a esta misma fecha.',
+  'oi-acum':'Muestra cómo se va sumando la métrica mes a mes dentro del año (Ene, Ene+Feb...). Comparar las líneas dice si vamos adelante o atrás del año anterior.',
+  'oi-fac':'Facturación mensual considerando solo las cirugías con factura completa. Da una lectura más limpia del ingreso efectivamente facturado.',
+  'oe-bar':'Ranking de las especialidades según la métrica elegida (cirugías, facturación, ticket o $/hora). Cambia el lente con el selector de métrica de arriba.',
+  'oe-dona':'Participación de cada especialidad en el total. Identifica de qué especialidades depende más el negocio.',
+  'oc-bar':'Ranking de cirujanos según la métrica elegida. Sirve para identificar a los más productivos y a quiénes apoyar para crecer.',
+  'oq-vol':'Actividad de cada quirófano según la métrica elegida. Muestra qué quirófanos están más y menos aprovechados.',
+  'oq-oc':'Ocupación estimada de cada quirófano como % de su capacidad. Por debajo de 60% hay agenda disponible para crecer sin nueva inversión.',
+  'os-comp':'Compara la métrica entre sedes. Identifica qué sedes lideran y cuáles tienen espacio para mejorar.',
+  'os-dona':'Participación de cada sede en el total. Muestra qué tan concentrado o repartido está el negocio entre ubicaciones.',
+  'oo-dia':'Actividad por día de la semana. Revela los días más cargados y los más flojos para reorganizar la agenda.',
+  'oo-hrs':'Horas de quirófano usadas por día de la semana. Complementa la ocupación mostrando dónde se concentra el uso real del recurso.',
+  'oo-dur':'Distribución de las cirugías según su duración. Ayuda a entender la mezcla entre procedimientos cortos y largos para planear la agenda.',
+  'op-bar':'Ranking de las EPS y aseguradoras según la métrica elegida. Muestra qué pagadores aportan más volumen o facturación.',
+  'op-dona':'Participación de cada EPS/aseguradora en el total. Una porción muy grande (p. ej. una sola EPS) indica dependencia y riesgo de un solo pagador.'
+};
 function card(title,badge,cid,wrapCls){
   const t=String(title).replace(/'/g,"\\'").replace(/&amp;/g,'&');
   return '<div class="card"><div class="card-hdr"><h3>'+title+'</h3><div class="card-acts">'+(badge?'<span class="badge gold">'+badge+'</span>':'')+
+    helpBtn(cid)+
     '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button></div></div>'+
     '<div class="card-body"><div class="chart-wrap '+(wrapCls||'')+'"><canvas id="'+cid+'"></canvas></div></div></div>';
+}
+/* botón "?" con popup explicativo; devuelve '' si el gráfico no tiene ayuda */
+function helpBtn(cid){
+  const txt=HELP[cid]; if(!txt) return '';
+  const safe=String(txt).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<span class="help-btn" tabindex="0" role="button" aria-label="Qué muestra este gráfico">?'+
+    '<span class="help-popup">'+safe+'</span></span>';
 }
 /* botón de ampliar para cards con markup manual (canvas embebido) */
 function expandBtn(cid,title){
   const t=String(title).replace(/'/g,"\\'").replace(/&amp;/g,'&');
-  return '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button>';
+  return helpBtn(cid)+'<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button>';
 }
 
 /* ─────────── FIN: P&G ─────────── */
@@ -1624,7 +1708,7 @@ function buildOpeInicio(){
   const A=ytdOpe(yCur), B=ytdOpe(yPrev);
   const vCx=pctVar(A.cx,B.cx), vFac=pctVar(A.fac,B.fac);
   const cmpBlock =
-    '<div class="card" style="margin:16px 0"><div class="card-hdr"><h3>📌 Resumen: cómo va el año en curso (YTD '+rng+') '+yCur+' vs '+yPrev+'</h3><div class="card-acts"><span class="badge gold">mismos '+nM+' meses</span>'+expandBtn('oi-ytd','Comparativo YTD '+rng+' — '+yCur+' vs '+yPrev)+'</div></div>'+
+    '<div class="card fullw" style="margin:16px 0"><div class="card-hdr"><h3>📌 Resumen: cómo va el año en curso (YTD '+rng+') '+yCur+' vs '+yPrev+'</h3><div class="card-acts"><span class="badge gold">mismos '+nM+' meses</span>'+expandBtn('oi-ytd','Comparativo YTD '+rng+' — '+yCur+' vs '+yPrev)+'</div></div>'+
       '<div class="card-body"><div class="kpis k4" style="margin:0 0 14px">'+
         kpi(vCx>=0?'green':'red','Cirugías '+yCur,fmtNum(A.cx),fmtVar(vCx)+' vs '+yPrev+' ('+fmtNum(B.cx)+')')+
         kpi(vFac>=0?'gold':'red','Facturación '+yCur,fmtM(A.fac),fmtVar(vFac)+' vs '+yPrev+' ('+fmtM(B.fac)+')')+
