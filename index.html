@@ -943,6 +943,7 @@ const HELP={
   'fm-abs':'Utilidad bruta y EBIT en pesos (millones) mes a mes. Complementa los porcentajes mostrando el tamaño real de la utilidad generada.',
   'fc-dona':'Participación de cada tipo de costo en el total. Una porción muy grande indica dónde se concentra el gasto y dónde hay más palanca para mejorar el margen.',
   'fc-stack':'Costos de cada mes apilados por categoría. Sirve para ver la evolución del gasto y detectar meses con sobrecostos o categorías que se disparan.',
+  'fc-sedes':'Compara, lado a lado, cuánto pesa cada rubro sobre el ingreso de cada sede (Tesoro vs Oviedo). Permite ver dónde una sede gasta proporcionalmente más que la otra. El EBIT alto significa más margen operativo.',
   'fb-chart':'Compara los ingresos generados por cada sede. Identifica qué sedes aportan más al negocio y cuáles están por debajo de su potencial.',
   'ff-wf':'Cascada de caja: muestra cómo el EBITDA se transforma en caja real tras restar CapEx (inversiones) y sumar/restar financiación. Revela si el negocio genera o consume efectivo.',
   'ff-comp':'Resumen del flujo de caja del período: cuánto efectivo entró por la operación y en qué se usó. Ayuda a entender de dónde sale y a dónde va la liquidez.',
@@ -1293,6 +1294,7 @@ function buildFinCostos(){
       card('Mix de costos','','fc-dona','')+
       card('Costos por mes (apilado)','millones COP','fc-stack','')+
     '</div>'+
+    '<div class="gfull" style="margin-top:16px">'+card('Costos y gastos por sede — % del ingreso de cada sede','compara qué pesa más cada rubro en Tesoro vs Oviedo · '+y,'fc-sedes','')+'</div>'+
     '<div class="insight">El <strong>costo directo</strong> (insumos, derechos de sala, honorarios) es '+fmtPct(tTot?tCd/tTot*100:0)+' de la estructura. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
   mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
     [{data:[tCd,tNom,tAdm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
@@ -1303,6 +1305,19 @@ function buildFinCostos(){
     {label:'Nómina',data:act.map(function(i){return nom[i];}),backgroundColor:C.oviedo},
     {label:'Gastos Admin',data:act.map(function(i){return adm[i];}),backgroundColor:C.consol}
   ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  /* ── Comparativo proporcional por sede: cada rubro como % del ingreso de SU sede ── */
+  function costPctSede(sede){
+    const a=finMesesIdx(sede,y), ing=sumActive(pygArr(sede,y,'4'),a)||1;
+    return {cd:sumActive(pygArr(sede,y,'6'),a)/ing*100, nom:sumActive(pygArr(sede,y,'7'),a)/ing*100,
+            adm:sumActive(pygArr(sede,y,'5'),a)/ing*100,
+            ebit:(ing-sumActive(pygArr(sede,y,'6'),a)-sumActive(pygArr(sede,y,'7'),a)-sumActive(pygArr(sede,y,'5'),a))/ing*100};
+  }
+  const pT=costPctSede('Tesoro'), pO=costPctSede('Oviedo');
+  mkChart('fc-sedes','bar',['Costo Directo','Nómina','Gastos Admin','EBIT (margen)'],[
+    {label:'Tesoro',data:[pT.cd,pT.nom,pT.adm,pT.ebit],backgroundColor:C.tesoro},
+    {label:'Oviedo',data:[pO.cd,pO.nom,pO.adm,pO.ebit],backgroundColor:C.oviedo}
+  ],{_yPct:true,plugins:{tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmtPct(c.raw);}}}},
+     scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
 }
 
 /* ─────────── FIN: BALANCE (escala de operación) ─────────── */
@@ -1496,12 +1511,18 @@ function buildFinFlujo(){
     mkChart('ff-fco','bar',ytdOn?MESES.slice(0,nM):MESES,dsFco,{_tooltipLabel:tipMoney,_yMoney:true});
   }
 
-  /* ── 4) Posición de caja (caja_fin mes a mes) por año ── */
+  /* ── 4) Posición de caja (caja_fin mes a mes) por año ──
+     Solo se grafican los meses con caja REAL (caja_fin ≠ 0). Si una sede/año no tiene
+     datos de caja, no se agrega la serie (evita la línea plana en 0 que distorsiona). */
   const dsPos=[];
   chartYears.forEach(function(yy){
-    const act=fluMonthsActive(s,yy); const cf=fluArr(s,yy,'caja_fin');
-    const last=act.length?act[act.length-1]:-1;
-    if(act.length) dsPos.push({label:String(yy),data:cf.map(function(v,i){return (i<=last&&(ytdOn?i<nM:true))?v:null;}),borderColor:YR_CLR[yy]||C.tesoro,backgroundColor:'transparent',tension:.25,pointRadius:2,fill:false});
+    const cf=fluArr(s,yy,'caja_fin');
+    const data=cf.map(function(v,i){
+      if(ytdOn && i>=nM) return null;          /* respeta el toggle YTD */
+      return Math.abs(v)>0.5 ? v : null;       /* 0 = sin dato → no se grafica */
+    });
+    if(data.some(function(v){return v!==null;}))
+      dsPos.push({label:String(yy),data:data,borderColor:YR_CLR[yy]||C.tesoro,backgroundColor:'transparent',tension:.25,pointRadius:2,fill:false,spanGaps:false});
   });
   mkChart('ff-pos','line',MESES,dsPos,{_tooltipLabel:tipMoney,_yMoney:true});
 
