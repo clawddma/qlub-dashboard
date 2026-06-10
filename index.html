@@ -445,6 +445,8 @@ a{text-decoration:none;color:inherit;}
   <nav class="top-tabs" id="top-tabs">
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
+    <div class="ttab" data-tab="rep" onclick="switchTab('rep')"><span class="ti">📑</span> Reportes</div>
+    <div class="ttab" data-tab="acc" onclick="switchTab('acc')"><span class="ti">✅</span> Plan de Acción</div>
   </nav>
   <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
 </header>
@@ -459,6 +461,8 @@ a{text-decoration:none;color:inherit;}
 <nav id="bottom-nav">
   <div class="bnav-btn active" data-tab="fin" onclick="switchTab('fin')"><div class="bnav-icon">💰</div><div class="bnav-lbl">Finan.</div></div>
   <div class="bnav-btn" data-tab="ope" onclick="switchTab('ope')"><div class="bnav-icon">📊</div><div class="bnav-lbl">Admin.</div></div>
+  <div class="bnav-btn" data-tab="rep" onclick="switchTab('rep')"><div class="bnav-icon">📑</div><div class="bnav-lbl">Report.</div></div>
+  <div class="bnav-btn" data-tab="acc" onclick="switchTab('acc')"><div class="bnav-icon">✅</div><div class="bnav-lbl">Plan</div></div>
 </nav>
 
 <!-- ═══ CONTENT ═══ -->
@@ -956,7 +960,7 @@ const HELP={
   'oi-mes':'Compara la métrica de cada mes entre años. Cada color es un año. Sirve para ver en qué meses la actividad creció o cayó frente al año anterior.',
   'oi-ytd':'Compara el mismo período (Ene hasta el mes actual) entre años. Indica si vamos por encima o por debajo del ritmo del año pasado a esta misma fecha.',
   'oi-acum':'Muestra cómo se va sumando la métrica mes a mes dentro del año (Ene, Ene+Feb...). Comparar las líneas dice si vamos adelante o atrás del año anterior.',
-  'oi-fac':'Facturación mensual con el valor facturado disponible de cada cirugía (factura completa donde existe, valor operacional en los meses más recientes como abril). Lectura del ingreso efectivamente registrado.',
+  'oi-fac':'Facturación mensual con el valor facturado disponible de cada cirugía (factura completa donde existe, valor operacional en los meses más recientes). Lectura del ingreso efectivamente registrado.',
   'oe-bar':'Ranking de las especialidades según la métrica elegida (cirugías, facturación, ticket o $/hora). Cambia el lente con el selector de métrica de arriba.',
   'oe-dona':'Participación de cada especialidad en el total. Identifica de qué especialidades depende más el negocio.',
   'oc-bar':'Ranking de cirujanos según la métrica elegida. Sirve para identificar a los más productivos y a quiénes apoyar para crecer.',
@@ -1333,7 +1337,7 @@ function buildFinBalance(){
     });
   });
   const pesoOvi = (data.Tesoro[1]+data.Oviedo[1])? data.Oviedo[1]/(data.Tesoro[1]+data.Oviedo[1])*100 : 0;
-  const lbls = (ytdOn||mesExpl) ? ['2024','2025','2026'] : ['2024','2025','2026 (Ene-Abr)'];
+  const lbls = (ytdOn||mesExpl) ? ['2024','2025','2026'] : ['2024','2025','2026 (Ene-'+MESES[ultMes()-1]+')'];
   const subt = mesExpl ? ('Ingresos de <strong>'+mesLbl+'</strong> por sede — escala comparable del mismo mes entre años') : (ytdOn ? ('Acumulado YTD <strong>'+rng+'</strong> de cada año — escala comparable en lo corrido del año') : 'Evolución del volumen operativo (ingresos anuales) como proxy del tamaño del negocio por sede');
   el.innerHTML=
     '<div class="sec-title">Escala de Operación por Sede <span class="st-badge">'+(mesExpl?(mesLbl+' · 2024→2026'):(ytdOn?'YTD '+rng+' · 2024→2026':'2024 → 2026'))+'</span></div>'+
@@ -1343,7 +1347,7 @@ function buildFinBalance(){
       kpi('green','Oviedo '+(ytdOn?'2026 '+rng:'2025'),fmtM(ytdOn?data.Oviedo[2]:data.Oviedo[1]),ytdOn?'acumulado':'año completo')+
       kpi('gold','Peso Oviedo '+(ytdOn?'2025':'2025'),fmtPct(pesoOvi),'del consolidado')+
     '</div>'+
-    '<div class="gfull">'+card('Ingresos por sede'+(ytdOn?' — YTD '+rng:' anuales'),'millones COP'+(ytdOn?'':' · 2026 parcial (Ene-Abr)'),'fb-chart','')+'</div>'+
+    '<div class="gfull">'+card('Ingresos por sede'+(ytdOn?' — YTD '+rng:' anuales'),'millones COP'+(ytdOn?'':' · 2026 parcial (Ene-'+MESES[ultMes()-1]+')'),'fb-chart','')+'</div>'+
     '<div class="insight green">Oviedo arrancó en marzo-2024 y ya pesa <strong>'+fmtPct(pesoOvi)+'</strong> del consolidado 2025. Es la sede de mayor crecimiento relativo del grupo.'+(ytdOn?' Con YTD activo comparas la escala de cada sede en los mismos '+nM+' meses de cada año.':'')+'</div>'+
     '<div class="footnote"><b>Nota:</b> los datos disponibles son de P&amp;G (resultados). No se cuenta con balance general detallado; se usa el volumen de ingresos como indicador de escala de cada sede.'+(ytdOn?' Activa/desactiva <b>YTD</b> en la barra superior para alternar entre acumulado comparable y año completo.':' Activa <b>YTD</b> para comparar la escala acumulada hasta '+rng+' de cada año.')+'</div>';
   mkChart('fb-chart','bar',lbls,[
@@ -1676,12 +1680,19 @@ function metTipLines(a){
 /* callback de tooltip para Chart.js que muestra SOLO la métrica activa (lectura limpia).
    `aggByIndex` es un array de agregados alineado con las barras (labels). */
 function metTooltip(aggByIndex){
+  /* tooltip enriquecido: muestra TODAS las métricas del agregado, con la activa primero */
   return {
     title:function(items){ return items.length?items[0].label:''; },
     label:function(c){
       const MD=metDef(), a=aggByIndex[c.dataIndex];
       if(!a) return ' '+MD.axis(c.parsed.y!==undefined?c.parsed.y:c.parsed);
-      return ' '+MD.noun+': '+MD.fmt(MD.val(a));
+      const lines=[' '+MD.noun+': '+MD.fmt(MD.val(a))];
+      if(OPE_METRICA!=='cx') lines.push(' N° de Cirugías: '+fmtNum(a.cx)+' cx');
+      if(OPE_METRICA!=='fac'&&a.fac) lines.push(' Facturación: '+fmtMd(a.fac,0));
+      if(OPE_METRICA!=='ticket'&&a.facCx) lines.push(' Ticket: '+fmtMd(a.fac/a.facCx,2));
+      if(OPE_METRICA!=='hora'&&a.min&&a.fac) lines.push(' $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
+      if(a.cx&&a.min) lines.push(' T. prom: '+fmtNum(Math.round(a.min/a.cx))+' min');
+      return lines;
     }
   };
 }
@@ -2173,7 +2184,32 @@ function buildOpeEps(){
    REPORTES / HALLAZGOS — Sala de Estrategia
    ════════════════════════════════════════ */
 function buildReportes(){
-  const hallazgos=[];
+  const hallazgos=[
+    {sev:'media',ico:'⚖️',title:'Las dos sedes son rentables — el reparto de costos lo distorsiona',
+      metric:'$948M Tesoro · $1.022M Oviedo <small>EBIT ajustado equitativo</small>',
+      body:'En los libros parece que Oviedo (EBIT $1.586M) rinde mucho más que Tesoro (EBIT $384M). Pero <strong>Tesoro carga el overhead corporativo de AMBAS sedes</strong>: software/HIS ($665M), depreciación de equipos ($355M) y junta directiva ($108M de más) = <strong>$1.128M de costos compartidos</strong> que hoy pesan solo sobre Tesoro. Reclasificando ese overhead <strong>50/50</strong> (las dos sedes tienen 4 quirófanos), el EBIT real queda en <strong>Tesoro $948M vs Oviedo $1.022M — prácticamente iguales</strong>. La diferencia es de asignación contable, no de eficiencia operativa.',
+      action:'<b>Acción contable:</b> registrar los costos compartidos de forma <b>equitativa en el EEFF de cada sede</b> para que reflejen su valor real. El <b>fee del 5%</b> que Oviedo paga a Tesoro es el mecanismo de compensación — mantenerlo y hacer la reclasificación transparente ante los socios de cada unidad.'},
+    {sev:'alta',ico:'💊',title:'El CMV de Farmacia se come el margen',
+      metric:'+58% <small>CMV Farmacia</small> vs +40% <small>ingresos</small>',
+      body:'El <strong>costo de farmacia crece +58%</strong> mientras los ingresos crecen +40%. Cada peso de venta nuevo trae más costo de medicamentos que antes: el margen bruto se erosiona.',
+      action:'<b>Palanca #1 de margen:</b> renegociar compras de farmacia de alto volumen y auditar mermas. Es la acción de mayor retorno del año.'},
+    {sev:'alta',ico:'🏦',title:'Dependencia crítica de un solo pagador',
+      metric:'~55% <small>facturación vía SURA</small>',
+      body:'<strong>SURA concentra cerca del 55%</strong> de la facturación. Un cambio de tarifa o de contrato con SURA mueve el negocio entero — es el mayor riesgo estructural del P&amp;G.',
+      action:'<b>Mitigación:</b> abrir canal particular y nuevas prepagadas (Colsanitas, Coomeva). Meta: bajar SURA por debajo del 45% en 12 meses.'},
+    {sev:'op',ico:'🩺',title:'Endocrina: la hora de quirófano más rentable',
+      metric:'Cirugía Endocrina <small>· líder $/hora (Oviedo)</small>',
+      body:'<strong>Cirugía Endocrina</strong> es la especialidad más rentable por hora de sala, concentrada en Oviedo. Es un mix de alto ticket que hoy no se aprovecha en Tesoro.',
+      action:'<b>Oportunidad:</b> replicar la agenda de Endocrina en Tesoro y darle bloques fijos de sala. Sube el $/hora del grupo sin CapEx.'},
+    {sev:'media',ico:'🕐',title:'Hay capacidad ociosa para crecer sin invertir',
+      metric:'~58% <small>ocupación promedio</small>',
+      body:'La ocupación promedio ronda el <strong>58%</strong>. Hay sala disponible para crecer volumen <strong>sin CapEx</strong>. Lunes y martes son los días más flojos.',
+      action:'<b>Acción comercial:</b> concentrar agenda electiva en lunes-martes y empujar campañas para llenar esos huecos. Capacidad ya pagada.'},
+    {sev:'op',ico:'📅',title:'Sábado Oviedo, casi saturado',
+      metric:'91% <small>ocupación sábado · Oviedo</small>',
+      body:'El <strong>sábado de Oviedo opera al 91%</strong> — casi al tope. Es la señal de que la demanda existe y que ampliar franja sabatina (o en Tesoro) tiene mercado.',
+      action:'<b>Lectura:</b> el sábado vende. Replicar el modelo de agenda sabatina de Oviedo en Tesoro antes de pensar en nueva sala.'}
+  ];
   const sevCls={alta:'sev-alta',media:'sev-media',op:'sev-op'};
   const sevTag={alta:['alta','Severidad alta'],media:['media','Atención media'],op:['op','Oportunidad']};
   document.getElementById('sec-rep').innerHTML=
