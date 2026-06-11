@@ -206,6 +206,11 @@ a{text-decoration:none;color:inherit;}
 .ga-nc{font-size:9px;color:#8a97a8;border:1px solid #e2e7ee;border-radius:6px;padding:0 4px;margin-left:4px;vertical-align:middle;}
 .ga-sel{background:#fff;border:1px solid #d6dce4;color:#22364f;border-radius:8px;padding:4px 8px;font-size:11.5px;font-family:inherit;cursor:pointer;max-width:230px;}
 .ga-sel:focus{outline:none;border-color:var(--qlub-acento);}
+.ga-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.ga-chip{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid #dfe4ea;color:#5a6b80;border-radius:999px;padding:4px 11px;font-size:11px;font-family:inherit;cursor:pointer;transition:all .12s;line-height:1.4;}
+.ga-chip:hover{border-color:#b9c2cf;}
+.ga-chip.on{background:#0E2240;border-color:#0E2240;color:#fff;font-weight:600;}
+.ga-chip-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
 /* ── Gráficos a todo el ancho: a viewport ancho una altura de 300/230px deja la
    barra/línea aplastada (ratio > 4.5). En pantallas anchas se les da más alto
    para mantener una proporción sana (~2.7–3.2). Las tortas/doughnut nunca van
@@ -538,6 +543,13 @@ const C = {
   acento:'#D4A843', pos:'#1A7A3C', neg:'#C0392B', grid:'#E9ECEF', txt:'#6b7f9c'
 };
 const YR_CLR = {2024:'#9AA8BD', 2025:'#1B3A6B', 2026:'#D4A843'};
+/* color estable por rubro contable (cuenta 5) — usado en barras apiladas y composición */
+const GA_RUBRO_CLR = {
+  '5105':'#1B3A6B','5120':'#D4A843','5135':'#1A6B35','5110':'#C0392B','5115':'#6b7f9c',
+  '5145':'#E0884B','5195':'#9AA8BD','5160':'#7E6BB0','5165':'#4DA89E','5130':'#A98B7D',
+  '5150':'#8BA3B8','5155':'#D77FA6','5140':'#C2CBD8','otros':'#cdd5e0'
+};
+function gaClr(code){ return GA_RUBRO_CLR[code] || '#b8c2d0'; }
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 /* ── Formato números (Colombia) ── */
@@ -1061,6 +1073,28 @@ Chart.register({
   }
 });
 
+/* etiquetas de valor sobre barras (verticales, rotadas) — activado por id de canvas */
+var GA_LABEL_IDS = {'ga-yoy':1};
+Chart.register({
+  id:'gaBarLabels',
+  afterDatasetsDraw:function(chart){
+    if(!GA_LABEL_IDS[chart.canvas.id]) return;
+    const ctx=chart.ctx;
+    ctx.save(); ctx.font='600 8px Inter,sans-serif'; ctx.fillStyle='#5a6b80';
+    chart.data.datasets.forEach(function(ds,di){
+      const meta=chart.getDatasetMeta(di); if(meta.hidden) return;
+      meta.data.forEach(function(bar,i){
+        const v=ds.data[i]; if(v==null||v<2) return;
+        ctx.save(); ctx.translate(bar.x, bar.y-3); ctx.rotate(-Math.PI/2);
+        ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText(fmtMd(v,0), 0, 0);
+        ctx.restore();
+      });
+    });
+    ctx.restore();
+  }
+});
+
 /* ─────────── FIN: P&G ─────────── */
 function buildFinPnl(){
   const el=document.getElementById('fin-pnl');
@@ -1388,14 +1422,28 @@ function buildFinGAdmin(){
   if(resid>1) rows.push({code:'otros',name:'Otros / ajustes',val:resid,noCaja:false});
   const mayor=rows.length? rows[0] : {name:'—',val:0};
 
-  /* tabla compacta de rubros */
-  const tabla='<table class="ga-tbl"><thead><tr><th>Concepto</th><th>Monto</th><th>% admin</th><th>% ingreso</th></tr></thead><tbody>'+
-    rows.map(function(r){
-      return '<tr><td>'+r.name+(r.noCaja?' <span class="ga-nc">no-caja</span>':'')+'</td>'+
-        '<td class="num">'+fmtM(r.val)+'</td>'+
-        '<td class="num">'+fmtPct(adm? r.val/adm*100:0)+'</td>'+
-        '<td class="num">'+fmtPct(ing? r.val/ing*100:0)+'</td></tr>';
-    }).join('')+'</tbody></table>';
+  /* tabla compacta de rubros — multi-año (columna por año: monto + % ingreso) o single-año (monto/% admin/% ingreso) */
+  function gaIngYear(yr){ var actY=monthsActive(s,yr); return winCmp.filter(function(i){return actY.indexOf(i)>=0;}).reduce(function(t,i){return t+(pygArr(s,yr,'4')[i]||0);},0); }
+  var tabla;
+  if(selYears.length>1){
+    var tblCodes={}; cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){tblCodes[c]=1;}); });
+    var tblList=Object.keys(tblCodes).map(function(c){ return {code:c, name:grupos[c]||('Grupo '+c), noCaja:gaEsNoCaja(c), ref:Math.max.apply(null,cmpYears.map(function(yr){return gaSum(s,yr,c);}))}; })
+      .filter(function(r){return r.ref>0.5;}).sort(function(a,b){return b.ref-a.ref;});
+    tabla='<table class="ga-tbl"><thead><tr><th>Concepto</th>'+cmpYears.map(function(yr){return '<th class="num">'+yr+'</th>';}).join('')+'</tr></thead><tbody>'+
+      tblList.map(function(r){
+        return '<tr><td>'+r.name+(r.noCaja?' <span class="ga-nc">no-caja</span>':'')+'</td>'+
+          cmpYears.map(function(yr){ var v=gaSum(s,yr,r.code), ig=gaIngYear(yr);
+            return '<td class="num">'+fmtM(v)+' <span class="ga-nc">'+fmtPct(ig?v/ig*100:0)+'</span></td>'; }).join('')+'</tr>';
+      }).join('')+'</tbody></table>';
+  } else {
+    tabla='<table class="ga-tbl"><thead><tr><th>Concepto</th><th>Monto</th><th>% admin</th><th>% ingreso</th></tr></thead><tbody>'+
+      rows.map(function(r){
+        return '<tr><td>'+r.name+(r.noCaja?' <span class="ga-nc">no-caja</span>':'')+'</td>'+
+          '<td class="num">'+fmtM(r.val)+'</td>'+
+          '<td class="num">'+fmtPct(adm? r.val/adm*100:0)+'</td>'+
+          '<td class="num">'+fmtPct(ing? r.val/ing*100:0)+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
 
   el.innerHTML=
     '<div class="sec-title">Gastos Administrativos <span class="st-badge">'+s+' · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y))+'</span></div>'+
@@ -1427,110 +1475,131 @@ function buildFinGAdmin(){
         var r=rows[c.dataIndex]; return ' '+fmtMd(c.parsed.x,1)+' · '+fmtPct(adm? r.val/adm*100:0)+' del admin'+(r.noCaja?' (no-caja)':''); }}}},
      scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
 
-  /* ── Comparativo por concepto entre años (barras horizontales agrupadas, 1 color/año) ── */
+  /* ── Comparativo por concepto entre años (barras VERTICALES agrupadas, 1 color/año, con valores) ── */
   var codeSet={};
   cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){ codeSet[c]=1; }); });
-  var yrLast=cmpYears[cmpYears.length-1];
   var codesYoY=Object.keys(codeSet).map(function(c){
       return {code:c, name:grupos[c]||('Grupo '+c), ref:Math.max.apply(null,cmpYears.map(function(yr){return gaSum(s,yr,c);}))};
-    }).filter(function(r){ return r.ref>0.5; }).sort(function(a,b){ return b.ref-a.ref; }).slice(0,12);
+    }).filter(function(r){ return r.ref>0.5; }).sort(function(a,b){ return b.ref-a.ref; }).slice(0,10);
   var dsYoY=cmpYears.map(function(yr){
     return {label:String(yr), data:codesYoY.map(function(r){ return gaSum(s,yr,r.code); }), backgroundColor:YR_CLR[yr]||C.consol};
   });
   mkChart('ga-yoy','bar',codesYoY.map(function(r){return r.name;}),dsYoY,
-    {indexAxis:'y',_tooltipLabel:tipMoney,
+    {_tooltipLabel:tipMoney,
      plugins:{legend:{display:true,position:'top'}},
-     scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
+     scales:{x:{ticks:{font:{size:9},maxRotation:55,minRotation:40}},y:{ticks:{callback:function(v){return fmtM(v);}},grace:'14%'}}});
 
-  /* ── Comportamiento mes a mes entre años (eje X = meses · una línea por año) ── */
-  /* si el concepto seleccionado ya no existe en la sede/años actuales, vuelve al total */
-  if(GA_MY_CODE!=='TOTAL' && !codeSet[GA_MY_CODE]) GA_MY_CODE='TOTAL';
+  /* ── Comportamiento mes a mes (barras apiladas por rubro); poda de rubros la hace gaMesYoYCard ── */
   renderGaMesYoY();
 
-  /* ── Gasto admin mensual ($ barras) + % del ingreso (línea, eje derecho) ── */
-  const lbls=act.map(function(i){return MESES[i];});
-  const admMes=pygArr(s,y,'5'), ingMes=pygArr(s,y,'4');
-  mkChart('ga-mes','bar',lbls,[
-    {label:'Gasto Admin',data:act.map(function(i){return admMes[i];}),backgroundColor:C.acento,order:2,yAxisID:'y'},
-    {label:'% del ingreso',type:'line',data:act.map(function(i){return ingMes[i]? admMes[i]/ingMes[i]*100:null;}),
-     borderColor:C.dark,backgroundColor:C.dark,borderWidth:2,tension:.3,pointRadius:3,order:1,yAxisID:'y1'}
-  ],{plugins:{tooltip:{callbacks:{label:function(c){ return c.dataset.label==='% del ingreso'? ' '+fmtPct(c.parsed.y):' '+fmtMd(c.parsed.y,1); }}}},
+  /* ── Gasto admin por mes y % del ingreso — barras por año + línea de % por año ── */
+  const yrsMes = selYears.length>1 ? selYears : [y];
+  var dsMes=[];
+  yrsMes.forEach(function(yr){
+    var actY=monthsActive(s,yr), admY=pygArr(s,yr,'5'), ingY=pygArr(s,yr,'4');
+    dsMes.push({label:'Gasto '+yr, data:MESES.map(function(_,i){return actY.indexOf(i)>=0?admY[i]:null;}),
+      backgroundColor:YR_CLR[yr]||C.acento, order:2, yAxisID:'y'});
+    dsMes.push({label:'% ing. '+yr, type:'line', data:MESES.map(function(_,i){return (actY.indexOf(i)>=0&&ingY[i])?admY[i]/ingY[i]*100:null;}),
+      borderColor:YR_CLR[yr]||C.dark, backgroundColor:YR_CLR[yr]||C.dark, borderWidth:2, borderDash:[4,3], tension:.3, pointRadius:2, order:1, yAxisID:'y1', spanGaps:false});
+  });
+  mkChart('ga-mes','bar',MESES,dsMes,
+    {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){ return c.dataset.label.indexOf('%')>=0? ' '+c.dataset.label+': '+fmtPct(c.parsed.y):' '+c.dataset.label+': '+fmtMd(c.parsed.y,1); }}}},
      scales:{y:{position:'left',ticks:{callback:function(v){return fmtM(v);}}},
              y1:{position:'right',grid:{display:false},ticks:{callback:function(v){return v+'%';}}}}});
 
-  /* ── Composición (doughnut): top 7 + Otros ── */
-  var top=rows.slice(0,7), otrosV=rows.slice(7).reduce(function(t,r){return t+r.val;},0);
-  var dLbls=top.map(function(r){return r.name;}), dVals=top.map(function(r){return r.val;});
-  if(otrosV>0){ dLbls.push('Otros'); dVals.push(otrosV); }
-  var palette=[C.acento,C.tesoro,C.oviedo,C.consol,'#9AA8BD','#C0392B','#6b7f9c','#cdd5e0'];
-  mkChart('ga-mix','doughnut',dLbls,[{data:dVals,backgroundColor:palette,borderWidth:2,borderColor:'#fff'}],
-    {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},
-     tooltip:{callbacks:{label:function(c){ return ' '+c.label+': '+fmtMd(c.parsed,0)+' ('+fmtPct(adm? c.parsed/adm*100:0)+')'; }}}}});
+  /* ── Composición del gasto admin — anillos concéntricos (1 anillo por año; interior=más antiguo) ── */
+  var mixCodes=codesYoY.slice(0,7).map(function(r){return r.code;});
+  var mixLbls=codesYoY.slice(0,7).map(function(r){return r.name;}).concat(['Otros']);
+  var mixClr=mixCodes.map(function(c){return gaClr(c);}).concat(['#cdd5e0']);
+  var dsMix=cmpYears.map(function(yr){
+    var vals=mixCodes.map(function(c){ return gaSum(s,yr,c); });
+    var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{};
+    var allSum=Object.keys(g).reduce(function(t,c){ return t+gaSum(s,yr,c); },0);
+    var otros=Math.max(0, allSum - vals.reduce(function(t,v){return t+v;},0));
+    return {label:String(yr), data:vals.concat([otros]), backgroundColor:mixClr, borderWidth:1.5, borderColor:'#fff'};
+  });
+  mkChart('ga-mix','doughnut',mixLbls,dsMix,
+    {cutout:'30%',plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:7,font:{size:9.5},
+       generateLabels:function(){ return mixLbls.map(function(l,i){ return {text:l, fillStyle:mixClr[i], strokeStyle:'#fff', index:i}; }); }}},
+     tooltip:{callbacks:{title:function(items){ return items.length?('Año '+dsMix[items[0].datasetIndex].label):''; },
+       label:function(c){ var ringTot=c.dataset.data.reduce(function(t,v){return t+(v||0);},0); return ' '+c.label+': '+fmtMd(c.parsed,0)+' ('+fmtPct(ringTot? c.parsed/ringTot*100:0)+')'; }}}}});
 
-  /* ── Intensidad por sede (% del ingreso de su sede) ── */
-  function admPctSede(sede){ const a=finMesesIdx(sede,y), i=sumActive(pygArr(sede,y,'4'),a)||1;
-    return sumActive(pygArr(sede,y,'5'),a)/i*100; }
-  mkChart('ga-sedes','bar',['Tesoro','Oviedo','Consolidado'],[
-    {label:'Gasto admin / ingreso',data:[admPctSede('Tesoro'),admPctSede('Oviedo'),admPctSede('Consolidado')],
-     backgroundColor:[C.tesoro,C.oviedo,C.consol]}
-  ],{plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmtPct(c.raw);}}}},
+  /* ── Intensidad por sede (% del ingreso de su sede) — barras agrupadas por año si hay varios ── */
+  function admPctSedeY(sede,yr){ var a=winCmp.filter(function(i){return monthsActive(sede,yr).indexOf(i)>=0;});
+    var i=a.reduce(function(t,j){return t+(pygArr(sede,yr,'4')[j]||0);},0)||1;
+    return a.reduce(function(t,j){return t+(pygArr(sede,yr,'5')[j]||0);},0)/i*100; }
+  var sedesLbl=['Tesoro','Oviedo','Consolidado'];
+  var dsSedes = (selYears.length>1)
+    ? cmpYears.map(function(yr){ return {label:String(yr), data:sedesLbl.map(function(sd){return admPctSedeY(sd,yr);}), backgroundColor:YR_CLR[yr]||C.consol}; })
+    : [{label:'Gasto admin / ingreso '+y, data:sedesLbl.map(function(sd){return admPctSedeY(sd,y);}), backgroundColor:[C.tesoro,C.oviedo,C.consol]}];
+  mkChart('ga-sedes','bar',sedesLbl,dsSedes,
+    {plugins:{legend:{display:selYears.length>1,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+(c.dataset.label||'')+': '+fmtPct(c.raw);}}}},
      scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
 }
 
-/* ── Comparativo MES A MES entre años (Ene'24 vs Ene'25 vs Ene'26 …) ── */
-/* concepto activo del gráfico mensual; 'TOTAL' = gasto admin completo */
-var GA_MY_CODE='TOTAL';
-/* serie de 12 meses para un concepto (o el total) en una sede/año; null donde el mes no tiene datos */
-function gaMonthlySerie(sede,yr,code){
-  const act=monthsActive(sede,yr);
-  if(code==='TOTAL'){
-    const g=(GAD&&GAD.data&&GAD.data[sede+'_'+yr])||{};
-    return MESES.map(function(_,i){
-      if(act.indexOf(i)<0) return null;
-      var t=0; Object.keys(g).forEach(function(c){ t+=(g[c][i]||0); });
-      return t;
-    });
-  }
-  const a=gaArr(sede,yr,code);
-  return MESES.map(function(_,i){ return act.indexOf(i)>=0 ? (a[i]||0) : null; });
-}
-/* tarjeta con selector de concepto + canvas del gráfico mensual */
-function gaMesYoYCard(cmpYears){
-  const grupos=(GAD&&GAD.grupos)||{};
-  const s=FF.sede;
-  /* conceptos disponibles en la sede/años comparados, ordenados por peso (mayor primero) */
+/* ── Comportamiento mes a mes — barras VERTICALES apiladas por rubro · multiselección acumulable ── */
+/* conjunto de rubros seleccionados; vacío = todos los rubros */
+var GA_MY_CODES = new Set();
+/* rubros disponibles en la sede para los años comparados, ordenados por peso (mayor primero) */
+function gaMyActiveCodes(s){
+  var selYears=finYearsSorted();
+  var cmpYears=selYears.length>1?selYears:[finYear()];
   var codeSet={};
-  cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){ codeSet[c]=1; }); });
-  var codes=Object.keys(codeSet).map(function(c){
+  cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){codeSet[c]=1;}); });
+  var grupos=(GAD&&GAD.grupos)||{};
+  return Object.keys(codeSet).map(function(c){
       return {code:c, name:grupos[c]||('Grupo '+c),
-        ref:Math.max.apply(null,cmpYears.map(function(yr){ var ser=gaMonthlySerie(s,yr,c); return Math.max.apply(null,ser.map(function(v){return v||0;})); }))};
-    }).filter(function(r){ return r.ref>0.5; }).sort(function(a,b){ return b.ref-a.ref; });
-  var opts='<option value="TOTAL"'+(GA_MY_CODE==='TOTAL'?' selected':'')+'>Total gasto admin</option>'+
-    codes.map(function(r){ return '<option value="'+r.code+'"'+(GA_MY_CODE===r.code?' selected':'')+'>'+r.name+'</option>'; }).join('');
+        ref:Math.max.apply(null,cmpYears.map(function(yr){ var a=gaArr(s,yr,c); return Math.max.apply(null,a.map(function(v){return v||0;})); }))};
+    }).filter(function(r){return r.ref>0.5;}).sort(function(a,b){return b.ref-a.ref;});
+}
+/* html de los chips de rubro (multiselección acumulable) */
+function gaMyChipsHtml(){
+  var s=FF.sede, codes=gaMyActiveCodes(s), allOn=GA_MY_CODES.size===0;
+  return '<button class="ga-chip'+(allOn?' on':'')+'" onclick="gaMyAll()">Todos</button>'+
+    codes.map(function(r){ var on=GA_MY_CODES.has(r.code);
+      return '<button class="ga-chip'+(on?' on':'')+'" onclick="gaMyToggle(\''+r.code+'\')">'+
+        '<span class="ga-chip-dot" style="background:'+gaClr(r.code)+'"></span>'+r.name+'</button>'; }).join('');
+}
+/* tarjeta con chips de rubro + canvas */
+function gaMesYoYCard(cmpYears){
+  const s=FF.sede;
+  /* poda rubros seleccionados que ya no existen en la sede/años actuales */
+  var avail={}; gaMyActiveCodes(s).forEach(function(r){avail[r.code]=1;});
+  Array.from(GA_MY_CODES).forEach(function(c){ if(!avail[c]) GA_MY_CODES.delete(c); });
   const cid='ga-mesyoy';
   const t='Comportamiento mes a mes — '+cmpYears.join(' / ');
   return '<div class="card"><div class="card-hdr"><h3>'+t+'</h3><div class="card-acts">'+
-    '<select class="ga-sel" onchange="gaSetMesYoY(this.value)" title="Elige el concepto a comparar">'+opts+'</select>'+
     helpBtn(cid)+
     '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button></div></div>'+
-    '<div class="card-body"><div class="chart-wrap ga-tall"><canvas id="'+cid+'"></canvas></div></div></div>';
+    '<div class="card-body"><div class="ga-chips" id="ga-my-chips">'+gaMyChipsHtml()+'</div>'+
+    '<div class="chart-wrap ga-tall"><canvas id="'+cid+'"></canvas></div></div></div>';
 }
-/* cambia el concepto y redibuja solo el gráfico mensual */
-function gaSetMesYoY(code){ GA_MY_CODE=code; renderGaMesYoY(); }
-/* dibuja el gráfico mensual: X = meses, una línea por año */
+function gaMyRefreshChips(){ var host=document.getElementById('ga-my-chips'); if(host) host.innerHTML=gaMyChipsHtml(); }
+/* alterna un rubro (acumula); sin selección = todos */
+function gaMyToggle(code){ if(GA_MY_CODES.has(code)) GA_MY_CODES.delete(code); else GA_MY_CODES.add(code); gaMyRefreshChips(); renderGaMesYoY(); }
+function gaMyAll(){ GA_MY_CODES.clear(); gaMyRefreshChips(); renderGaMesYoY(); }
+/* dibuja barras apiladas por rubro; X=meses; multi-año => stacks agrupados por año */
 function renderGaMesYoY(){
   const s=FF.sede;
   const selYears=finYearsSorted();
-  const cmpYears=selYears.length>1?selYears:[2024,2025,2026];
-  const ds=cmpYears.map(function(yr){
-    return {label:String(yr),data:gaMonthlySerie(s,yr,GA_MY_CODE),
-      borderColor:YR_CLR[yr]||C.consol,backgroundColor:YR_CLR[yr]||C.consol,
-      borderWidth:2.5,tension:.3,pointRadius:3,pointHoverRadius:5,fill:false,spanGaps:false};
+  const yrs = selYears.length>1 ? selYears : [finYear()];
+  var codes=gaMyActiveCodes(s);
+  if(GA_MY_CODES.size>0) codes=codes.filter(function(r){return GA_MY_CODES.has(r.code);});
+  var ds=[];
+  yrs.forEach(function(yr){
+    codes.forEach(function(r){
+      var a=gaArr(s,yr,r.code), actY=monthsActive(s,yr);
+      ds.push({label:r.name, data:MESES.map(function(_,i){return actY.indexOf(i)>=0?(a[i]||0):null;}),
+        backgroundColor:gaClr(r.code), stack:String(yr), borderWidth:0, _year:yr});
+    });
   });
-  mkChart('ga-mesyoy','line',MESES,ds,
-    {_tooltipLabel:tipMoney,
-     plugins:{legend:{display:true,position:'top'}},
-     scales:{y:{ticks:{callback:function(v){return fmtM(v);}}}}});
+  mkChart('ga-mesyoy','bar',MESES,ds,
+    {plugins:{legend:{display:false},
+      tooltip:{callbacks:{
+        title:function(items){ if(!items.length) return ''; var d=items[0].dataset; return MESES[items[0].dataIndex]+(yrs.length>1?(" '"+String(d._year).slice(2)):''); },
+        label:function(c){ return ' '+c.dataset.label+': '+fmtMd(c.parsed.y,1); },
+        footer:function(items){ var t=items.reduce(function(a,b){return a+(b.parsed.y||0);},0); return 'Total: '+fmtMd(t,1); } }}},
+     scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
 }
 
 /* ─────────── FIN: BALANCE (escala de operación) ─────────── */
