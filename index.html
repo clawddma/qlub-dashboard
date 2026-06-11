@@ -550,6 +550,8 @@ const GA_RUBRO_CLR = {
   '5150':'#8BA3B8','5155':'#D77FA6','5140':'#C2CBD8','otros':'#cdd5e0'
 };
 function gaClr(code){ return GA_RUBRO_CLR[code] || '#b8c2d0'; }
+/* hex -> rgba con alpha (para barras translúcidas y líneas con contraste) */
+function hexA(hex,a){ var h=String(hex||'#000').replace('#',''); var r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
 const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 /* ── Formato números (Colombia) ── */
@@ -1454,7 +1456,7 @@ function buildFinGAdmin(){
       kpi('','D&amp;A (no-caja)',fmtM(da),fmtPct(adm? da/adm*100:0)+' del gasto admin')+
       kpi('green','Mayor rubro',fmtM(mayor.val),mayor.name+' · '+fmtPct(adm? mayor.val/adm*100:0))+
     '</div>'+
-    '<div class="gfull">'+card('Desglose del gasto administrativo por concepto','millones COP · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y)),'ga-grupos','ga-tall')+'</div>'+
+    '<div class="gfull">'+card('Desglose del gasto administrativo por concepto','millones COP · '+(mesExpl?mesLbl:(selYears.length>1?cmpYears.join(' · '):(ytdOn?('YTD '+rng):y))),'ga-grupos','ga-tall')+'</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Comparativo por concepto — '+cmpYears.join(' vs ')+' ('+winLbl+')','un color por año · misma ventana de meses · detecta fugas y sobrecostos rubro a rubro','ga-yoy','ga-tall')+'</div>'+
     '<div class="gfull" style="margin-top:16px">'+gaMesYoYCard(cmpYears)+'</div>'+
     '<div class="g6040" style="margin-top:16px">'+
@@ -1467,13 +1469,35 @@ function buildFinGAdmin(){
     '</div>'+
     '<div class="insight'+(pAdm>=24?' warn':'')+'">La administración consume <strong>'+fmtPct(pAdm)+'</strong> del ingreso ('+fmtM(adm)+'). Quitando depreciación y amortización (no-caja), el gasto de caja es <strong>'+fmtPct(pCaja)+'</strong>. '+(s==='Consolidado'?'<strong>Tesoro</strong> concentra el overhead corporativo (gerencia, dirección médica, HIS) que sirve a ambas sedes, por eso su intensidad es mayor. ':'')+'Las palancas reales de caja están en los rubros de arriba: <strong>'+(rows[0]?rows[0].name:'—')+'</strong>, <strong>'+(rows[1]?rows[1].name:'—')+'</strong> y <strong>'+(rows[2]?rows[2].name:'—')+'</strong>.</div>';
 
-  /* ── Desglose por grupo (barras horizontales: dorado=caja, gris=no-caja) ── */
-  mkChart('ga-grupos','bar',rows.map(function(r){return r.name;}),[
-    {label:'Gasto',data:rows.map(function(r){return r.val;}),
-     backgroundColor:rows.map(function(r){return r.noCaja?C.consol:C.acento;})}
-  ],{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
-        var r=rows[c.dataIndex]; return ' '+fmtMd(c.parsed.x,1)+' · '+fmtPct(adm? r.val/adm*100:0)+' del admin'+(r.noCaja?' (no-caja)':''); }}}},
-     scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
+  /* ── Desglose por grupo (horizontal) — single-año: dorado=caja/gris=no-caja · multi-año: 1 color/año ── */
+  var ggMulti = selYears.length>1;
+  var ggCodes;
+  if(ggMulti){
+    var ggSet={}; cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){ggSet[c]=1;}); });
+    ggCodes=Object.keys(ggSet).map(function(c){ return {code:c,name:grupos[c]||('Grupo '+c),ref:Math.max.apply(null,cmpYears.map(function(yr){return gaSum(s,yr,c);}))}; })
+      .filter(function(r){return r.ref>0.5;}).sort(function(a,b){return b.ref-a.ref;});
+  } else {
+    ggCodes=rows.map(function(r){ return {code:r.code,name:r.name,noCaja:r.noCaja,val:r.val}; });
+  }
+  var ggLabels=ggCodes.map(function(r){return r.name;});
+  var ggAdmYr={}, ggIngYr={};
+  (ggMulti?cmpYears:[y]).forEach(function(yr){
+    var actY=monthsActive(s,yr);
+    ggAdmYr[yr]=winCmp.filter(function(i){return actY.indexOf(i)>=0;}).reduce(function(t,i){return t+(pygArr(s,yr,'5')[i]||0);},0);
+    ggIngYr[yr]=gaIngYear(yr);
+  });
+  var ggData = ggMulti
+    ? cmpYears.map(function(yr){ return {label:String(yr), data:ggCodes.map(function(r){return gaSum(s,yr,r.code);}), backgroundColor:YR_CLR[yr]||C.consol}; })
+    : [{label:'Gasto', data:ggCodes.map(function(r){return r.val;}), backgroundColor:ggCodes.map(function(r){return r.noCaja?C.consol:C.acento;})}];
+  mkChart('ga-grupos','bar',ggLabels,ggData,
+    {indexAxis:'y', interaction:{mode:'nearest',axis:'y',intersect:false},
+     plugins:{legend:{display:ggMulti,position:'top'},
+       tooltip:{callbacks:{label:function(c){
+         var val=c.parsed.x, yr=ggMulti?cmpYears[c.datasetIndex]:y;
+         var aY=ggAdmYr[yr]||adm, iY=ggIngYr[yr]||ing;
+         var note=(!ggMulti && ggCodes[c.dataIndex] && ggCodes[c.dataIndex].noCaja)?' · no-caja':'';
+         return ' '+(ggMulti?(yr+': '):'')+fmtMd(val,1)+'  ·  '+fmtPct(aY?val/aY*100:0)+' del admin  ·  '+fmtPct(iY?val/iY*100:0)+' del ingreso'+note; }}}},
+     scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false},ticks:{font:{size:9.5}}}}});
 
   /* ── Comparativo por concepto entre años (barras VERTICALES agrupadas, 1 color/año, con valores) ── */
   var codeSet={};
@@ -1496,11 +1520,14 @@ function buildFinGAdmin(){
   const yrsMes = selYears.length>1 ? selYears : [y];
   var dsMes=[];
   yrsMes.forEach(function(yr){
-    var actY=monthsActive(s,yr), admY=pygArr(s,yr,'5'), ingY=pygArr(s,yr,'4');
+    var actY=monthsActive(s,yr), admY=pygArr(s,yr,'5'), ingY=pygArr(s,yr,'4'), clr=YR_CLR[yr]||C.acento;
+    /* barra translúcida ($ admin) — deja respirar la línea encima */
     dsMes.push({label:'Gasto '+yr, data:MESES.map(function(_,i){return actY.indexOf(i)>=0?admY[i]:null;}),
-      backgroundColor:YR_CLR[yr]||C.acento, order:2, yAxisID:'y'});
+      backgroundColor:hexA(clr,0.42), borderColor:hexA(clr,0.42), order:3, yAxisID:'y'});
+    /* línea sólida (% ingreso) con puntos de anillo blanco — alto contraste sobre la barra */
     dsMes.push({label:'% ing. '+yr, type:'line', data:MESES.map(function(_,i){return (actY.indexOf(i)>=0&&ingY[i])?admY[i]/ingY[i]*100:null;}),
-      borderColor:YR_CLR[yr]||C.dark, backgroundColor:YR_CLR[yr]||C.dark, borderWidth:2, borderDash:[4,3], tension:.3, pointRadius:2, order:1, yAxisID:'y1', spanGaps:false});
+      borderColor:clr, backgroundColor:clr, borderWidth:2.8, tension:.35, pointRadius:3.5, pointHoverRadius:5,
+      pointBackgroundColor:'#fff', pointBorderColor:clr, pointBorderWidth:2, order:0, yAxisID:'y1', spanGaps:false});
   });
   mkChart('ga-mes','bar',MESES,dsMes,
     {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){ return c.dataset.label.indexOf('%')>=0? ' '+c.dataset.label+': '+fmtPct(c.parsed.y):' '+c.dataset.label+': '+fmtMd(c.parsed.y,1); }}}},
