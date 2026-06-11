@@ -960,6 +960,7 @@ const HELP={
   'fc-stack':'Costos de cada mes apilados por categoría. Sirve para ver la evolución del gasto y detectar meses con sobrecostos o categorías que se disparan.',
   'fc-sedes':'Compara, lado a lado, cuánto pesa cada rubro sobre el ingreso de cada sede (Tesoro vs Oviedo). Permite ver dónde una sede gasta proporcionalmente más que la otra. El EBIT alto significa más margen operativo.',
   'ga-grupos':'Desglose del gasto administrativo por concepto contable (personal, arriendos, servicios, honorarios, depreciaciones, etc.) en el período. Las barras doradas son gasto de caja; las grises son depreciación/amortización (no-caja). Mientras más arriba el concepto, más pesa: ahí están las palancas para bajar el gasto.',
+  'ga-yoy':'Compara cada concepto de gasto administrativo entre años (un color por año), sobre la misma ventana de meses seleccionada. Es la vista para cazar fugas: si un rubro crece año tras año más rápido que el negocio (p. ej. honorarios o servicios), ahí se está yendo el dinero. Selecciona los años y meses arriba para acotar la comparación.',
   'ga-mes':'Gasto administrativo de cada mes en pesos (barras) y su peso sobre el ingreso del mes (línea). Si la línea sube, la administración se está comiendo una porción creciente de la facturación — señal a vigilar.',
   'ga-mix':'Participación de cada concepto en el total del gasto administrativo. Identifica de qué pocos rubros depende la mayor parte del gasto.',
   'ga-sedes':'Cuánto pesa el gasto administrativo sobre el ingreso de cada sede. Tesoro carga el overhead corporativo (gerencia, dirección médica, HIS) que sirve a ambas sedes, por eso su intensidad es mayor.',
@@ -1350,9 +1351,17 @@ function gaEsNoCaja(code){ return GAD&&GAD.no_caja&&GAD.no_caja.indexOf(code)>=0
 function buildFinGAdmin(){
   const el=document.getElementById('fin-gadmin');
   const s=FF.sede, y=finYear(), yp=y-1;
+  const selYears=finYearsSorted();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
   const ytdOn=FF.ytd, nM=ultMes(), rng='Ene-'+MESES[nM-1];
   const act=finMesesIdx(s,y);                       /* ventana del año principal */
+  /* ── Comparativo entre años: ventana fija de meses (selección > YTD) aplicada a TODOS los años ── */
+  const winCmp = (FF.meses.size>0) ? Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return m-1;}) : ytdIdx();
+  const cmpYears = selYears.length>1 ? selYears : [2024,2025,2026];
+  const winLbl = (FF.meses.size>0) ? mesLbl : ('YTD '+rng);
+  /* suma de un concepto en un año sobre la ventana de comparación (sin inventar meses sin datos) */
+  function gaSum(sede,yr,code){ const a=gaArr(sede,yr,code), actY=monthsActive(sede,yr);
+    return winCmp.filter(function(i){ return actY.indexOf(i)>=0; }).reduce(function(t,i){ return t+(a[i]||0); },0); }
   /* totales del período (cuenta 5 = fuente autoritativa, consistente con el resto del tablero) */
   const ing=sumActive(pygArr(s,y,'4'),act);
   const adm=sumActive(pygArr(s,y,'5'),act);
@@ -1395,6 +1404,7 @@ function buildFinGAdmin(){
       kpi('green','Mayor rubro',fmtM(mayor.val),mayor.name+' · '+fmtPct(adm? mayor.val/adm*100:0))+
     '</div>'+
     '<div class="gfull">'+card('Desglose del gasto administrativo por concepto','millones COP · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y)),'ga-grupos','ga-tall')+'</div>'+
+    '<div class="gfull" style="margin-top:16px">'+card('Comparativo por concepto — '+cmpYears.join(' vs ')+' ('+winLbl+')','un color por año · misma ventana de meses · detecta fugas y sobrecostos rubro a rubro','ga-yoy','ga-tall')+'</div>'+
     '<div class="g6040" style="margin-top:16px">'+
       card('Gasto admin por mes y % del ingreso','barras = $ · línea = % ingreso','ga-mes','')+
       card('Composición del gasto admin','','ga-mix','')+
@@ -1411,6 +1421,21 @@ function buildFinGAdmin(){
      backgroundColor:rows.map(function(r){return r.noCaja?C.consol:C.acento;})}
   ],{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
         var r=rows[c.dataIndex]; return ' '+fmtMd(c.parsed.x,1)+' · '+fmtPct(adm? r.val/adm*100:0)+' del admin'+(r.noCaja?' (no-caja)':''); }}}},
+     scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
+
+  /* ── Comparativo por concepto entre años (barras horizontales agrupadas, 1 color/año) ── */
+  var codeSet={};
+  cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){ codeSet[c]=1; }); });
+  var yrLast=cmpYears[cmpYears.length-1];
+  var codesYoY=Object.keys(codeSet).map(function(c){
+      return {code:c, name:grupos[c]||('Grupo '+c), ref:Math.max.apply(null,cmpYears.map(function(yr){return gaSum(s,yr,c);}))};
+    }).filter(function(r){ return r.ref>0.5; }).sort(function(a,b){ return b.ref-a.ref; }).slice(0,12);
+  var dsYoY=cmpYears.map(function(yr){
+    return {label:String(yr), data:codesYoY.map(function(r){ return gaSum(s,yr,r.code); }), backgroundColor:YR_CLR[yr]||C.consol};
+  });
+  mkChart('ga-yoy','bar',codesYoY.map(function(r){return r.name;}),dsYoY,
+    {indexAxis:'y',_tooltipLabel:tipMoney,
+     plugins:{legend:{display:true,position:'top'}},
      scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
 
   /* ── Gasto admin mensual ($ barras) + % del ingreso (línea, eje derecho) ── */
