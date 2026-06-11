@@ -196,6 +196,14 @@ a{text-decoration:none;color:inherit;}
 .chart-wrap.tall{height:420px;}
 .chart-wrap.short{height:230px;}
 .card .chart-wrap canvas{max-width:100%;}
+.chart-wrap.ga-tall{height:460px;}
+.ga-tbl-wrap{overflow:auto;max-height:460px;}
+.ga-tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.ga-tbl th{text-align:left;color:#5d7290;font-weight:600;border-bottom:1px solid #E9ECEF;padding:6px 8px;position:sticky;top:0;background:#fff;}
+.ga-tbl td{padding:5px 8px;border-bottom:1px solid #f2f4f7;color:#22364f;}
+.ga-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.ga-tbl tr:hover td{background:#fafbfc;}
+.ga-nc{font-size:9px;color:#8a97a8;border:1px solid #e2e7ee;border-radius:6px;padding:0 4px;margin-left:4px;vertical-align:middle;}
 /* ── Gráficos a todo el ancho: a viewport ancho una altura de 300/230px deja la
    barra/línea aplastada (ratio > 4.5). En pantallas anchas se les da más alto
    para mantener una proporción sana (~2.7–3.2). Las tortas/doughnut nunca van
@@ -445,8 +453,6 @@ a{text-decoration:none;color:inherit;}
   <nav class="top-tabs" id="top-tabs">
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
-    <div class="ttab" data-tab="rep" onclick="switchTab('rep')"><span class="ti">📑</span> Reportes</div>
-    <div class="ttab" data-tab="acc" onclick="switchTab('acc')"><span class="ti">✅</span> Plan de Acción</div>
   </nav>
   <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
 </header>
@@ -461,8 +467,6 @@ a{text-decoration:none;color:inherit;}
 <nav id="bottom-nav">
   <div class="bnav-btn active" data-tab="fin" onclick="switchTab('fin')"><div class="bnav-icon">💰</div><div class="bnav-lbl">Finan.</div></div>
   <div class="bnav-btn" data-tab="ope" onclick="switchTab('ope')"><div class="bnav-icon">📊</div><div class="bnav-lbl">Admin.</div></div>
-  <div class="bnav-btn" data-tab="rep" onclick="switchTab('rep')"><div class="bnav-icon">📑</div><div class="bnav-lbl">Report.</div></div>
-  <div class="bnav-btn" data-tab="acc" onclick="switchTab('acc')"><div class="bnav-icon">✅</div><div class="bnav-lbl">Plan</div></div>
 </nav>
 
 <!-- ═══ CONTENT ═══ -->
@@ -474,6 +478,7 @@ a{text-decoration:none;color:inherit;}
   <div class="subsec" id="fin-pnl"></div>
   <div class="subsec" id="fin-margen"></div>
   <div class="subsec" id="fin-costos"></div>
+  <div class="subsec" id="fin-gadmin"></div>
   <div class="subsec" id="fin-balance"></div>
   <div class="subsec" id="fin-flujo"></div>
   <div class="subsec" id="fin-anual"></div>
@@ -635,7 +640,7 @@ const tipPct   = function(c){ return ' '+c.dataset.label+': '+(c.parsed.y).toFix
 /* ════════════════════════════════════════
    DATA LOAD
    ════════════════════════════════════════ */
-let FIN=null, COM=null, FLU=null;
+let FIN=null, COM=null, FLU=null, GAD=null;
 const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10};
 
 async function loadData(){
@@ -643,9 +648,10 @@ async function loadData(){
     const res = await Promise.all([
       fetch('datos/financiero.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
       fetch('datos/comercial.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); })
+      fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/gastos_admin.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
-    FIN=res[0]; COM=res[1]; FLU=res[2];
+    FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3];
     const um=(FIN.ultimo_mes_cerrado||4)-1;
     document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
@@ -664,7 +670,7 @@ async function loadData(){
 let TAB='fin';
 const SUBSECS = {
   fin:[['fin-inicio','📋','Inicio'],['fin-pnl','📑','P&G'],['fin-margen','📐','Márgenes'],
-       ['fin-costos','🧮','Costos'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
+       ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
        ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
   rep:[], acc:[]
@@ -710,7 +716,7 @@ function switchSub(id){
 function buildSub(id){
   const map={
     'fin-inicio':buildFinInicio,'fin-pnl':buildFinPnl,'fin-margen':buildFinMargen,
-    'fin-costos':buildFinCostos,'fin-balance':buildFinBalance,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnual,
+    'fin-costos':buildFinCostos,'fin-gadmin':buildFinGAdmin,'fin-balance':buildFinBalance,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnual,
     'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
     'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps
   };
@@ -848,9 +854,14 @@ function buildFinInicio(){
   const mesExpl=finMesesExpl();          /* ¿hay meses seleccionados explícitamente? */
   const mesLbl=finMesesLbl();            /* etiqueta legible del rango de meses */
   const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;}); /* meses 1-based seleccionados */
-  /* agregador del período activo (meses explícitos > YTD > todos los meses con datos) */
+  /* Ventana de referencia = la del año principal (Ene..último mes cerrado, o meses
+     seleccionados). TODOS los años se agregan sobre ESTA misma ventana → comparación
+     acumulada a la fecha (YTD) apples-to-apples. NUNCA 5 meses de 2026 contra el año
+     completo de 2025. Se intersecta con los meses con datos de cada año para no inventar. */
+  const winA = finMesesIdx(s,y);
   function agg(yy){
-    const act = finMesesIdx(s,yy);
+    const actY = monthsActive(s,yy);
+    const act = winA.filter(function(i){ return actY.indexOf(i)>=0; });
     const sa=function(arr){ return act.reduce(function(t,i){return t+(arr[i]||0);},0); };
     return {
       ing:sa(pygArr(s,yy,'4')), cd:sa(pygArr(s,yy,'6')),
@@ -859,7 +870,7 @@ function buildFinInicio(){
       neto:sa(netoArr(s,yy)), imp:sa(pygArr(s,yy,'54'))
     };
   }
-  /* KPIs: respetan el filtro de meses (selección explícita manda); si no, comparan YTD */
+  /* KPIs: siempre comparan la misma ventana acumulada a la fecha (YTD), año vs año */
   const A=agg(y), B=agg(yp);
   const mEbit=A.ing?A.ebit/A.ing*100:0, mNeto=A.ing?A.neto/A.ing*100:0, mCd=A.ing?A.cd/A.ing*100:0;
   const vIng=pctVar(A.ing,B.ing), vEbit=pctVar(A.ebit,B.ebit), vNeto=pctVar(A.neto,B.neto), vEbitda=pctVar(A.ebitda,B.ebitda);
@@ -948,6 +959,10 @@ const HELP={
   'fc-dona':'Participación de cada tipo de costo en el total. Una porción muy grande indica dónde se concentra el gasto y dónde hay más palanca para mejorar el margen.',
   'fc-stack':'Costos de cada mes apilados por categoría. Sirve para ver la evolución del gasto y detectar meses con sobrecostos o categorías que se disparan.',
   'fc-sedes':'Compara, lado a lado, cuánto pesa cada rubro sobre el ingreso de cada sede (Tesoro vs Oviedo). Permite ver dónde una sede gasta proporcionalmente más que la otra. El EBIT alto significa más margen operativo.',
+  'ga-grupos':'Desglose del gasto administrativo por concepto contable (personal, arriendos, servicios, honorarios, depreciaciones, etc.) en el período. Las barras doradas son gasto de caja; las grises son depreciación/amortización (no-caja). Mientras más arriba el concepto, más pesa: ahí están las palancas para bajar el gasto.',
+  'ga-mes':'Gasto administrativo de cada mes en pesos (barras) y su peso sobre el ingreso del mes (línea). Si la línea sube, la administración se está comiendo una porción creciente de la facturación — señal a vigilar.',
+  'ga-mix':'Participación de cada concepto en el total del gasto administrativo. Identifica de qué pocos rubros depende la mayor parte del gasto.',
+  'ga-sedes':'Cuánto pesa el gasto administrativo sobre el ingreso de cada sede. Tesoro carga el overhead corporativo (gerencia, dirección médica, HIS) que sirve a ambas sedes, por eso su intensidad es mayor.',
   'fb-chart':'Compara los ingresos generados por cada sede. Identifica qué sedes aportan más al negocio y cuáles están por debajo de su potencial.',
   'ff-wf':'Cascada de caja: muestra cómo el EBITDA se transforma en caja real tras restar CapEx (inversiones) y sumar/restar financiación. Revela si el negocio genera o consume efectivo.',
   'ff-comp':'Resumen del flujo de caja del período: cuánto efectivo entró por la operación y en qué se usó. Ayuda a entender de dónde sale y a dónde va la liquidez.',
@@ -1321,6 +1336,110 @@ function buildFinCostos(){
     {label:'Tesoro',data:[pT.cd,pT.nom,pT.adm,pT.ebit],backgroundColor:C.tesoro},
     {label:'Oviedo',data:[pO.cd,pO.nom,pO.adm,pO.ebit],backgroundColor:C.oviedo}
   ],{_yPct:true,plugins:{tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmtPct(c.raw);}}}},
+     scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
+}
+
+/* ─────────── FIN: GASTOS ADMINISTRATIVOS ─────────── */
+/* accesor de subcuentas de gasto admin (grupo PUC 4 díg) en millones */
+function gaArr(sede,anio,grupo){
+  if(!GAD||!GAD.data) return new Array(12).fill(0);
+  const k=sede+'_'+anio, d=GAD.data[k];
+  return (d&&d[grupo])? d[grupo] : new Array(12).fill(0);
+}
+function gaEsNoCaja(code){ return GAD&&GAD.no_caja&&GAD.no_caja.indexOf(code)>=0; }
+function buildFinGAdmin(){
+  const el=document.getElementById('fin-gadmin');
+  const s=FF.sede, y=finYear(), yp=y-1;
+  const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
+  const ytdOn=FF.ytd, nM=ultMes(), rng='Ene-'+MESES[nM-1];
+  const act=finMesesIdx(s,y);                       /* ventana del año principal */
+  /* totales del período (cuenta 5 = fuente autoritativa, consistente con el resto del tablero) */
+  const ing=sumActive(pygArr(s,y,'4'),act);
+  const adm=sumActive(pygArr(s,y,'5'),act);
+  const da =sumActive(daArr(s,y),act);
+  const caja=adm-da;
+  const pAdm=ing? adm/ing*100:0, pCaja=ing? caja/ing*100:0;
+  /* comparación vs año anterior en la MISMA ventana de meses (apples-to-apples; evita el bug YTD-OFF) */
+  const admP=sumActive(pygArr(s,yp,'5'),act);
+  const ingP=sumActive(pygArr(s,yp,'4'),act);
+  const vAdm=pctVar(adm,admP);
+  const pAdmP=ingP? admP/ingP*100:0;
+
+  /* desglose por grupo PUC desde gastos_admin.json */
+  const grupos=(GAD&&GAD.grupos)||{};
+  const gd=(GAD&&GAD.data&&GAD.data[s+'_'+y])||{};
+  let rows=Object.keys(gd).map(function(code){
+    return {code:code, name:grupos[code]||('Grupo '+code), val:sumActive(gd[code],act), noCaja:gaEsNoCaja(code)};
+  }).filter(function(r){ return r.val>0.5; }).sort(function(a,b){ return b.val-a.val; });
+  const sumG=rows.reduce(function(t,r){ return t+r.val; },0);
+  const resid=adm-sumG;                              /* ajuste para cuadrar con cuenta 5 */
+  if(resid>1) rows.push({code:'otros',name:'Otros / ajustes',val:resid,noCaja:false});
+  const mayor=rows.length? rows[0] : {name:'—',val:0};
+
+  /* tabla compacta de rubros */
+  const tabla='<table class="ga-tbl"><thead><tr><th>Concepto</th><th>Monto</th><th>% admin</th><th>% ingreso</th></tr></thead><tbody>'+
+    rows.map(function(r){
+      return '<tr><td>'+r.name+(r.noCaja?' <span class="ga-nc">no-caja</span>':'')+'</td>'+
+        '<td class="num">'+fmtM(r.val)+'</td>'+
+        '<td class="num">'+fmtPct(adm? r.val/adm*100:0)+'</td>'+
+        '<td class="num">'+fmtPct(ing? r.val/ing*100:0)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+
+  el.innerHTML=
+    '<div class="sec-title">Gastos Administrativos <span class="st-badge">'+s+' · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y))+'</span></div>'+
+    '<div class="sec-sub">En qué se va la administración del negocio · cuenta contable 5 · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(ytdOn?('acumulado YTD '+rng):'todos los meses con datos'))+' · millones COP · comparación vs '+yp+' en la misma ventana</div>'+
+    '<div class="kpis k4">'+
+      kpi(pAdm>=24?'red':'gold','Gasto Admin / Ingresos',fmtPct(pAdm),fmtM(adm)+' · '+fmtVar(vAdm)+' vs '+yp)+
+      kpi('navy','Gasto de caja',fmtM(caja),fmtPct(pCaja)+' del ingreso (excl. D&amp;A)')+
+      kpi('','D&amp;A (no-caja)',fmtM(da),fmtPct(adm? da/adm*100:0)+' del gasto admin')+
+      kpi('green','Mayor rubro',fmtM(mayor.val),mayor.name+' · '+fmtPct(adm? mayor.val/adm*100:0))+
+    '</div>'+
+    '<div class="gfull">'+card('Desglose del gasto administrativo por concepto','millones COP · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y)),'ga-grupos','ga-tall')+'</div>'+
+    '<div class="g6040" style="margin-top:16px">'+
+      card('Gasto admin por mes y % del ingreso','barras = $ · línea = % ingreso','ga-mes','')+
+      card('Composición del gasto admin','','ga-mix','')+
+    '</div>'+
+    '<div class="g6040" style="margin-top:16px">'+
+      card('Intensidad por sede — gasto admin como % del ingreso','Tesoro carga el overhead corporativo · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y)),'ga-sedes','')+
+      '<div class="card"><div class="card-hdr"><h3>Detalle por concepto</h3></div><div class="card-body ga-tbl-wrap">'+tabla+'</div></div>'+
+    '</div>'+
+    '<div class="insight'+(pAdm>=24?' warn':'')+'">La administración consume <strong>'+fmtPct(pAdm)+'</strong> del ingreso ('+fmtM(adm)+'). Quitando depreciación y amortización (no-caja), el gasto de caja es <strong>'+fmtPct(pCaja)+'</strong>. '+(s==='Consolidado'?'<strong>Tesoro</strong> concentra el overhead corporativo (gerencia, dirección médica, HIS) que sirve a ambas sedes, por eso su intensidad es mayor. ':'')+'Las palancas reales de caja están en los rubros de arriba: <strong>'+(rows[0]?rows[0].name:'—')+'</strong>, <strong>'+(rows[1]?rows[1].name:'—')+'</strong> y <strong>'+(rows[2]?rows[2].name:'—')+'</strong>.</div>';
+
+  /* ── Desglose por grupo (barras horizontales: dorado=caja, gris=no-caja) ── */
+  mkChart('ga-grupos','bar',rows.map(function(r){return r.name;}),[
+    {label:'Gasto',data:rows.map(function(r){return r.val;}),
+     backgroundColor:rows.map(function(r){return r.noCaja?C.consol:C.acento;})}
+  ],{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
+        var r=rows[c.dataIndex]; return ' '+fmtMd(c.parsed.x,1)+' · '+fmtPct(adm? r.val/adm*100:0)+' del admin'+(r.noCaja?' (no-caja)':''); }}}},
+     scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
+
+  /* ── Gasto admin mensual ($ barras) + % del ingreso (línea, eje derecho) ── */
+  const lbls=act.map(function(i){return MESES[i];});
+  const admMes=pygArr(s,y,'5'), ingMes=pygArr(s,y,'4');
+  mkChart('ga-mes','bar',lbls,[
+    {label:'Gasto Admin',data:act.map(function(i){return admMes[i];}),backgroundColor:C.acento,order:2,yAxisID:'y'},
+    {label:'% del ingreso',type:'line',data:act.map(function(i){return ingMes[i]? admMes[i]/ingMes[i]*100:null;}),
+     borderColor:C.dark,backgroundColor:C.dark,borderWidth:2,tension:.3,pointRadius:3,order:1,yAxisID:'y1'}
+  ],{plugins:{tooltip:{callbacks:{label:function(c){ return c.dataset.label==='% del ingreso'? ' '+fmtPct(c.parsed.y):' '+fmtMd(c.parsed.y,1); }}}},
+     scales:{y:{position:'left',ticks:{callback:function(v){return fmtM(v);}}},
+             y1:{position:'right',grid:{display:false},ticks:{callback:function(v){return v+'%';}}}}});
+
+  /* ── Composición (doughnut): top 7 + Otros ── */
+  var top=rows.slice(0,7), otrosV=rows.slice(7).reduce(function(t,r){return t+r.val;},0);
+  var dLbls=top.map(function(r){return r.name;}), dVals=top.map(function(r){return r.val;});
+  if(otrosV>0){ dLbls.push('Otros'); dVals.push(otrosV); }
+  var palette=[C.acento,C.tesoro,C.oviedo,C.consol,'#9AA8BD','#C0392B','#6b7f9c','#cdd5e0'];
+  mkChart('ga-mix','doughnut',dLbls,[{data:dVals,backgroundColor:palette,borderWidth:2,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},
+     tooltip:{callbacks:{label:function(c){ return ' '+c.label+': '+fmtMd(c.parsed,0)+' ('+fmtPct(adm? c.parsed/adm*100:0)+')'; }}}}});
+
+  /* ── Intensidad por sede (% del ingreso de su sede) ── */
+  function admPctSede(sede){ const a=finMesesIdx(sede,y), i=sumActive(pygArr(sede,y,'4'),a)||1;
+    return sumActive(pygArr(sede,y,'5'),a)/i*100; }
+  mkChart('ga-sedes','bar',['Tesoro','Oviedo','Consolidado'],[
+    {label:'Gasto admin / ingreso',data:[admPctSede('Tesoro'),admPctSede('Oviedo'),admPctSede('Consolidado')],
+     backgroundColor:[C.tesoro,C.oviedo,C.consol]}
+  ],{plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmtPct(c.raw);}}}},
      scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
 }
 
@@ -2184,32 +2303,7 @@ function buildOpeEps(){
    REPORTES / HALLAZGOS — Sala de Estrategia
    ════════════════════════════════════════ */
 function buildReportes(){
-  const hallazgos=[
-    {sev:'media',ico:'⚖️',title:'Las dos sedes son rentables — el reparto de costos lo distorsiona',
-      metric:'$948M Tesoro · $1.022M Oviedo <small>EBIT ajustado equitativo</small>',
-      body:'En los libros parece que Oviedo (EBIT $1.586M) rinde mucho más que Tesoro (EBIT $384M). Pero <strong>Tesoro carga el overhead corporativo de AMBAS sedes</strong>: software/HIS ($665M), depreciación de equipos ($355M) y junta directiva ($108M de más) = <strong>$1.128M de costos compartidos</strong> que hoy pesan solo sobre Tesoro. Reclasificando ese overhead <strong>50/50</strong> (las dos sedes tienen 4 quirófanos), el EBIT real queda en <strong>Tesoro $948M vs Oviedo $1.022M — prácticamente iguales</strong>. La diferencia es de asignación contable, no de eficiencia operativa.',
-      action:'<b>Acción contable:</b> registrar los costos compartidos de forma <b>equitativa en el EEFF de cada sede</b> para que reflejen su valor real. El <b>fee del 5%</b> que Oviedo paga a Tesoro es el mecanismo de compensación — mantenerlo y hacer la reclasificación transparente ante los socios de cada unidad.'},
-    {sev:'alta',ico:'💊',title:'El CMV de Farmacia se come el margen',
-      metric:'+58% <small>CMV Farmacia</small> vs +40% <small>ingresos</small>',
-      body:'El <strong>costo de farmacia crece +58%</strong> mientras los ingresos crecen +40%. Cada peso de venta nuevo trae más costo de medicamentos que antes: el margen bruto se erosiona.',
-      action:'<b>Palanca #1 de margen:</b> renegociar compras de farmacia de alto volumen y auditar mermas. Es la acción de mayor retorno del año.'},
-    {sev:'alta',ico:'🏦',title:'Dependencia crítica de un solo pagador',
-      metric:'~55% <small>facturación vía SURA</small>',
-      body:'<strong>SURA concentra cerca del 55%</strong> de la facturación. Un cambio de tarifa o de contrato con SURA mueve el negocio entero — es el mayor riesgo estructural del P&amp;G.',
-      action:'<b>Mitigación:</b> abrir canal particular y nuevas prepagadas (Colsanitas, Coomeva). Meta: bajar SURA por debajo del 45% en 12 meses.'},
-    {sev:'op',ico:'🩺',title:'Endocrina: la hora de quirófano más rentable',
-      metric:'Cirugía Endocrina <small>· líder $/hora (Oviedo)</small>',
-      body:'<strong>Cirugía Endocrina</strong> es la especialidad más rentable por hora de sala, concentrada en Oviedo. Es un mix de alto ticket que hoy no se aprovecha en Tesoro.',
-      action:'<b>Oportunidad:</b> replicar la agenda de Endocrina en Tesoro y darle bloques fijos de sala. Sube el $/hora del grupo sin CapEx.'},
-    {sev:'media',ico:'🕐',title:'Hay capacidad ociosa para crecer sin invertir',
-      metric:'~58% <small>ocupación promedio</small>',
-      body:'La ocupación promedio ronda el <strong>58%</strong>. Hay sala disponible para crecer volumen <strong>sin CapEx</strong>. Lunes y martes son los días más flojos.',
-      action:'<b>Acción comercial:</b> concentrar agenda electiva en lunes-martes y empujar campañas para llenar esos huecos. Capacidad ya pagada.'},
-    {sev:'op',ico:'📅',title:'Sábado Oviedo, casi saturado',
-      metric:'91% <small>ocupación sábado · Oviedo</small>',
-      body:'El <strong>sábado de Oviedo opera al 91%</strong> — casi al tope. Es la señal de que la demanda existe y que ampliar franja sabatina (o en Tesoro) tiene mercado.',
-      action:'<b>Lectura:</b> el sábado vende. Replicar el modelo de agenda sabatina de Oviedo en Tesoro antes de pensar en nueva sala.'}
-  ];
+  const hallazgos=[];
   const sevCls={alta:'sev-alta',media:'sev-media',op:'sev-op'};
   const sevTag={alta:['alta','Severidad alta'],media:['media','Atención media'],op:['op','Oportunidad']};
   document.getElementById('sec-rep').innerHTML=
