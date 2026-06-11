@@ -204,6 +204,8 @@ a{text-decoration:none;color:inherit;}
 .ga-tbl td.num{text-align:right;font-variant-numeric:tabular-nums;}
 .ga-tbl tr:hover td{background:#fafbfc;}
 .ga-nc{font-size:9px;color:#8a97a8;border:1px solid #e2e7ee;border-radius:6px;padding:0 4px;margin-left:4px;vertical-align:middle;}
+.ga-sel{background:#fff;border:1px solid #d6dce4;color:#22364f;border-radius:8px;padding:4px 8px;font-size:11.5px;font-family:inherit;cursor:pointer;max-width:230px;}
+.ga-sel:focus{outline:none;border-color:var(--qlub-acento);}
 /* ── Gráficos a todo el ancho: a viewport ancho una altura de 300/230px deja la
    barra/línea aplastada (ratio > 4.5). En pantallas anchas se les da más alto
    para mantener una proporción sana (~2.7–3.2). Las tortas/doughnut nunca van
@@ -961,6 +963,7 @@ const HELP={
   'fc-sedes':'Compara, lado a lado, cuánto pesa cada rubro sobre el ingreso de cada sede (Tesoro vs Oviedo). Permite ver dónde una sede gasta proporcionalmente más que la otra. El EBIT alto significa más margen operativo.',
   'ga-grupos':'Desglose del gasto administrativo por concepto contable (personal, arriendos, servicios, honorarios, depreciaciones, etc.) en el período. Las barras doradas son gasto de caja; las grises son depreciación/amortización (no-caja). Mientras más arriba el concepto, más pesa: ahí están las palancas para bajar el gasto.',
   'ga-yoy':'Compara cada concepto de gasto administrativo entre años (un color por año), sobre la misma ventana de meses seleccionada. Es la vista para cazar fugas: si un rubro crece año tras año más rápido que el negocio (p. ej. honorarios o servicios), ahí se está yendo el dinero. Selecciona los años y meses arriba para acotar la comparación.',
+  'ga-mesyoy':'Compara el mismo mes entre años: el eje X son los meses (Ene, Feb, Mar…) y cada línea es un año (2024, 2025, 2026). Así ves de un vistazo cómo cambió el gasto en enero de un año a otro, en febrero, etc. Usa el selector de arriba para mirar el total o un concepto específico (arriendos, honorarios, servicios…). Si la línea del año más reciente queda por encima en un mes, ese mes se encareció frente al mismo mes de años anteriores.',
   'ga-mes':'Gasto administrativo de cada mes en pesos (barras) y su peso sobre el ingreso del mes (línea). Si la línea sube, la administración se está comiendo una porción creciente de la facturación — señal a vigilar.',
   'ga-mix':'Participación de cada concepto en el total del gasto administrativo. Identifica de qué pocos rubros depende la mayor parte del gasto.',
   'ga-sedes':'Cuánto pesa el gasto administrativo sobre el ingreso de cada sede. Tesoro carga el overhead corporativo (gerencia, dirección médica, HIS) que sirve a ambas sedes, por eso su intensidad es mayor.',
@@ -1405,6 +1408,7 @@ function buildFinGAdmin(){
     '</div>'+
     '<div class="gfull">'+card('Desglose del gasto administrativo por concepto','millones COP · '+(mesExpl?mesLbl:(ytdOn?('YTD '+rng):y)),'ga-grupos','ga-tall')+'</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Comparativo por concepto — '+cmpYears.join(' vs ')+' ('+winLbl+')','un color por año · misma ventana de meses · detecta fugas y sobrecostos rubro a rubro','ga-yoy','ga-tall')+'</div>'+
+    '<div class="gfull" style="margin-top:16px">'+gaMesYoYCard(cmpYears)+'</div>'+
     '<div class="g6040" style="margin-top:16px">'+
       card('Gasto admin por mes y % del ingreso','barras = $ · línea = % ingreso','ga-mes','')+
       card('Composición del gasto admin','','ga-mix','')+
@@ -1438,6 +1442,11 @@ function buildFinGAdmin(){
      plugins:{legend:{display:true,position:'top'}},
      scales:{x:{ticks:{callback:function(v){return fmtM(v);}}},y:{grid:{display:false}}}});
 
+  /* ── Comportamiento mes a mes entre años (eje X = meses · una línea por año) ── */
+  /* si el concepto seleccionado ya no existe en la sede/años actuales, vuelve al total */
+  if(GA_MY_CODE!=='TOTAL' && !codeSet[GA_MY_CODE]) GA_MY_CODE='TOTAL';
+  renderGaMesYoY();
+
   /* ── Gasto admin mensual ($ barras) + % del ingreso (línea, eje derecho) ── */
   const lbls=act.map(function(i){return MESES[i];});
   const admMes=pygArr(s,y,'5'), ingMes=pygArr(s,y,'4');
@@ -1466,6 +1475,62 @@ function buildFinGAdmin(){
      backgroundColor:[C.tesoro,C.oviedo,C.consol]}
   ],{plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return ' '+fmtPct(c.raw);}}}},
      scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
+}
+
+/* ── Comparativo MES A MES entre años (Ene'24 vs Ene'25 vs Ene'26 …) ── */
+/* concepto activo del gráfico mensual; 'TOTAL' = gasto admin completo */
+var GA_MY_CODE='TOTAL';
+/* serie de 12 meses para un concepto (o el total) en una sede/año; null donde el mes no tiene datos */
+function gaMonthlySerie(sede,yr,code){
+  const act=monthsActive(sede,yr);
+  if(code==='TOTAL'){
+    const g=(GAD&&GAD.data&&GAD.data[sede+'_'+yr])||{};
+    return MESES.map(function(_,i){
+      if(act.indexOf(i)<0) return null;
+      var t=0; Object.keys(g).forEach(function(c){ t+=(g[c][i]||0); });
+      return t;
+    });
+  }
+  const a=gaArr(sede,yr,code);
+  return MESES.map(function(_,i){ return act.indexOf(i)>=0 ? (a[i]||0) : null; });
+}
+/* tarjeta con selector de concepto + canvas del gráfico mensual */
+function gaMesYoYCard(cmpYears){
+  const grupos=(GAD&&GAD.grupos)||{};
+  const s=FF.sede;
+  /* conceptos disponibles en la sede/años comparados, ordenados por peso (mayor primero) */
+  var codeSet={};
+  cmpYears.forEach(function(yr){ var g=(GAD&&GAD.data&&GAD.data[s+'_'+yr])||{}; Object.keys(g).forEach(function(c){ codeSet[c]=1; }); });
+  var codes=Object.keys(codeSet).map(function(c){
+      return {code:c, name:grupos[c]||('Grupo '+c),
+        ref:Math.max.apply(null,cmpYears.map(function(yr){ var ser=gaMonthlySerie(s,yr,c); return Math.max.apply(null,ser.map(function(v){return v||0;})); }))};
+    }).filter(function(r){ return r.ref>0.5; }).sort(function(a,b){ return b.ref-a.ref; });
+  var opts='<option value="TOTAL"'+(GA_MY_CODE==='TOTAL'?' selected':'')+'>Total gasto admin</option>'+
+    codes.map(function(r){ return '<option value="'+r.code+'"'+(GA_MY_CODE===r.code?' selected':'')+'>'+r.name+'</option>'; }).join('');
+  const cid='ga-mesyoy';
+  const t='Comportamiento mes a mes — '+cmpYears.join(' / ');
+  return '<div class="card"><div class="card-hdr"><h3>'+t+'</h3><div class="card-acts">'+
+    '<select class="ga-sel" onchange="gaSetMesYoY(this.value)" title="Elige el concepto a comparar">'+opts+'</select>'+
+    helpBtn(cid)+
+    '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button></div></div>'+
+    '<div class="card-body"><div class="chart-wrap ga-tall"><canvas id="'+cid+'"></canvas></div></div></div>';
+}
+/* cambia el concepto y redibuja solo el gráfico mensual */
+function gaSetMesYoY(code){ GA_MY_CODE=code; renderGaMesYoY(); }
+/* dibuja el gráfico mensual: X = meses, una línea por año */
+function renderGaMesYoY(){
+  const s=FF.sede;
+  const selYears=finYearsSorted();
+  const cmpYears=selYears.length>1?selYears:[2024,2025,2026];
+  const ds=cmpYears.map(function(yr){
+    return {label:String(yr),data:gaMonthlySerie(s,yr,GA_MY_CODE),
+      borderColor:YR_CLR[yr]||C.consol,backgroundColor:YR_CLR[yr]||C.consol,
+      borderWidth:2.5,tension:.3,pointRadius:3,pointHoverRadius:5,fill:false,spanGaps:false};
+  });
+  mkChart('ga-mesyoy','line',MESES,ds,
+    {_tooltipLabel:tipMoney,
+     plugins:{legend:{display:true,position:'top'}},
+     scales:{y:{ticks:{callback:function(v){return fmtM(v);}}}}});
 }
 
 /* ─────────── FIN: BALANCE (escala de operación) ─────────── */
