@@ -1119,7 +1119,8 @@ function buildFinPnl(){
   const mNeto = T.ing? T.neto/T.ing*100:0;
   const mEbit = T.ing? T.ebit/T.ing*100:0;
   /* ── Comparativo rubro a rubro contra año anterior (mismo período: meses sel. > YTD) ── */
-  const yPrevP=y-1, nMc=ultMes(), rngCmp=mesExpl? mesLbl : ('Ene-'+MESES[nMc-1]);
+  /* si el usuario selecciona exactamente 2 años, comparar esos dos; si no, y-1 */
+  const yPrevP=(vtYearsEarly.length===2?vtYearsEarly[0]:y-1), nMc=ultMes(), rngCmp=mesExpl? mesLbl : ('Ene-'+MESES[nMc-1]);
   const RUB=[
     ['Ingresos','4',1],['Costo Dir.','6',0],['Nómina','7',0],['G. Admin','5',0]
   ];
@@ -1183,7 +1184,7 @@ function buildFinPnl(){
   }
   const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
   el.innerHTML =
-    '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(vtYearsEarly.length===2?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
     '<div class="kpis k4">'+
       kpi('navy','EBIT',fmtM(T.ebit),'margen '+fmtPct(mEbit))+
@@ -1213,7 +1214,7 @@ function buildFinPnl(){
       card('Ingresos vs EBIT vs Utilidad Neta','millones COP','fp-bars','')+
       card('Cascada del P&amp;G (acumulado)','de ingresos a utilidad neta','fp-stack','')+
     '</div>'+
-    '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+(y-1)+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
+    '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+yPrevP+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
     '<div class="gfull">'+card('Análisis Vertical — Estructura del ingreso por mes',(function(){var yy=vtYearsEarly; if(yy.length<2) return '% del ingreso por rubro · '+s+' '+yy[0]; return 'color = rubro · tono claro→oscuro = '+yy[0]+'→'+yy[yy.length-1]+' · '+s;})(),'fp-vertical','')+'</div>'+
     cmpInsight+
     '<div class="insight">De <strong>'+fmtM(T.ing)+'</strong> en ingresos, el EBIT es <strong>'+fmtM(T.ebit)+'</strong> ('+fmtPct(mEbit)+') y el EBITDA <strong>'+fmtM(T.ebitda)+'</strong>. Tras otros ingresos, gastos no operacionales e impuesto de renta ('+fmtM(T.imp)+'), la <strong>utilidad neta cierra en '+fmtM(T.neto)+'</strong> — margen neto de '+fmtPct(mNeto)+'.</div>';
