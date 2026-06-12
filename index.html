@@ -2250,6 +2250,26 @@ function metTooltip(aggByIndex){
     }
   };
 }
+/* tooltip multi-año: muestra todas las métricas por dataset (año) al hacer hover */
+function metTooltipMultiYr(years,aggYr,items){
+  return {
+    title:function(tis){ return tis.length&&items[tis[0].dataIndex]?items[tis[0].dataIndex].name||tis[0].label:tis[0]?tis[0].label:''; },
+    label:function(c){
+      const MD=metDef();
+      const yy=years[c.datasetIndex];
+      const item=items[c.dataIndex];
+      const a=(item&&aggYr[yy]&&item.i!==undefined)?(aggYr[yy][item.i]||{cx:0,fac:0,min:0,facCx:0}):{cx:0,fac:0,min:0,facCx:0};
+      if(!a.cx) return ' '+String(yy)+': sin datos';
+      const lines=[' '+String(yy)+' · '+MD.noun+': '+MD.fmt(MD.val(a))];
+      if(OPE_METRICA!=='cx') lines.push('   Cirugías: '+fmtNum(a.cx));
+      if(OPE_METRICA!=='fac'&&a.fac) lines.push('   Facturación: '+fmtM(a.fac));
+      if(OPE_METRICA!=='ticket'&&a.facCx) lines.push('   Ticket: '+fmtMd(a.fac/a.facCx,2));
+      if(OPE_METRICA!=='hora'&&a.min&&a.fac) lines.push('   $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
+      if(a.cx&&a.min) lines.push('   T. prom: '+fmtNum(Math.round(a.min/a.cx))+' min');
+      return lines;
+    }
+  };
+}
 function setOpeMetrica(m){
   if(!METRICAS[m]||m===OPE_METRICA){ OPEN_DD=null; renderOpeFilters(); return; }
   OPE_METRICA=m; OPEN_DD=null;
@@ -2551,7 +2571,8 @@ function buildOpeEsp(){
     });
     mkChart('oe-bar','bar',top.map(function(a){return a.name;}),
       opeYears.map(function(yy){return {label:String(yy),data:top.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top)}},
        scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
     mkChart('oe-dona','bar',top.slice(0,8).map(function(a){return a.name;}),
       opeYears.map(function(yy){return {label:String(yy),data:top.slice(0,8).map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
@@ -2608,7 +2629,8 @@ function buildOpeCir(){
     });
     mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),
       opeYears.map(function(yy){return {label:String(yy),data:top15.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top15)}},
        scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
   } else {
     mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
@@ -2656,7 +2678,8 @@ function buildOpeQx(){
     });
     mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
       opeYears.map(function(yy){return {label:String(yy),data:arr.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.y);}}}},
+      {interaction:{mode:'index',intersect:false},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,arr)}},
        scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
   } else {
     mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
@@ -2714,7 +2737,18 @@ function buildOpeSedes(){
       opeYears.map(function(yy){
         return {label:String(yy),data:[metVal(sedeDataYear(0,yy)),metVal(sedeDataYear(1,yy))],backgroundColor:YR_CLR[yy]||C.tesoro};
       }),
-      {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.y);}}}},
+      {interaction:{mode:'index',intersect:false},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{
+         label:function(c){
+           const MD=metDef(), yy=opeYears[c.datasetIndex], sIdx=c.dataIndex;
+           const a=sedeDataYear(sIdx,yy);
+           const lines=[' '+String(yy)+' · '+MD.noun+': '+MD.fmt(MD.val(a))];
+           if(a.fac) lines.push('   Facturación: '+fmtM(a.fac));
+           if(a.facCx) lines.push('   Ticket: '+fmtMd(a.fac/a.facCx,2));
+           if(a.min&&a.fac) lines.push('   $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
+           return lines;
+         }
+       }}},
        scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
     mkChart('os-dona','bar',opeYears.map(String),
       [{label:'Tesoro',data:opeYears.map(function(yy){return MD.dval(sedeDataYear(0,yy));}),backgroundColor:C.tesoro},
@@ -2815,7 +2849,8 @@ function buildOpeEps(){
     });
     mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
       opeYears.map(function(yy){return {label:String(yy),data:top8.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top8)}},
        scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
     mkChart('op-dona','bar',top5.map(function(a){return a.name.split(' ')[0];}),
       opeYears.map(function(yy){return {label:String(yy),data:top5.map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
