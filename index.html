@@ -1237,7 +1237,6 @@ function buildFinPnl(){
     }
     return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(curMgn)+'</strong></td><td class="pct-col"></td>'+varCell+'</tr>';
   }
-  const curGasto=cur['Nómina']+cur['G. Admin'], prvGasto=prv['Nómina']+prv['G. Admin'];
   const mHdr = cols.map(function(c){
     const lblM=twoYr?(MESES[c.mi]+" '"+String(c.yr).slice(2)):MESES[c.mi];
     const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
@@ -1248,11 +1247,11 @@ function buildFinPnl(){
     '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(vtYearsEarly.length===2?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
     '<div class="kpis k6">'+
-      kpi('gold','Ingresos',fmtM(T.ing),fmtVar(pctVar(cur['Ingresos'],prv['Ingresos']))+' vs '+yPrevP)+
-      kpi('red','Costo Dir.',fmtM(T.cd),fmtVarInv(pctVar(cur['Costo Dir.'],prv['Costo Dir.']))+' vs '+yPrevP)+
-      kpi('','Gasto Operativo',fmtM(T.nom+T.adm),fmtVarInv(pctVar(curGasto,prvGasto))+' vs '+yPrevP)+
-      kpi('','EBITDA',fmtM(T.ebitda),fmtVar(pctVar(cur['EBITDA'],prv['EBITDA']))+' vs '+yPrevP)+
-      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),fmtVar(pctVar(cur['Util. Neta'],prv['Util. Neta']))+' vs '+yPrevP)+
+      kpi('gold','Ingresos',fmtM(twoYr?cur['Ingresos']:T.ing),fmtVar(pctVar(cur['Ingresos'],prv['Ingresos']))+' vs '+yPrevP+(twoYr&&prv['Ingresos']?' ('+fmtM(prv['Ingresos'])+')':''))+
+      kpi('red','Costo Dir.',fmtM(twoYr?cur['Costo Dir.']:T.cd),fmtVarInv(pctVar(cur['Costo Dir.'],prv['Costo Dir.']))+' vs '+yPrevP+(twoYr&&prv['Costo Dir.']?' ('+fmtM(prv['Costo Dir.'])+')':''))+
+      kpi('','Gastos Admin',fmtM(twoYr?cur['G. Admin']:T.adm),fmtVarInv(pctVar(cur['G. Admin'],prv['G. Admin']))+' vs '+yPrevP+(twoYr&&prv['G. Admin']?' ('+fmtM(prv['G. Admin'])+')':''))+
+      kpi('navy','EBIT',fmtM(twoYr?cur['EBIT']:T.ebit),fmtVar(pctVar(cur['EBIT'],prv['EBIT']))+' vs '+yPrevP+(twoYr&&prv['EBIT']?' ('+fmtM(prv['EBIT'])+')':''))+
+      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(twoYr?cur['Util. Neta']:T.neto),fmtVar(pctVar(cur['Util. Neta'],prv['Util. Neta']))+' vs '+yPrevP+(twoYr&&prv['Util. Neta']?' ('+fmtM(prv['Util. Neta'])+')':''))+
       kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'EBIT '+fmtPct(mEbit))+
     '</div>'+
     '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(twoYr?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">'+(twoYr?'Cada mes abierto por año · Var% comparativo':'Cascada completa hasta Utilidad Neta')+'</span></div>'+
