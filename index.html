@@ -467,7 +467,7 @@ a{text-decoration:none;color:inherit;}
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
   </nav>
-  <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
+  <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span><br><span id="hdr-build" style="opacity:.55;font-size:9.5px;"></span></div>
 </header>
 
 <!-- ═══ SUB-NAV ═══ -->
@@ -667,16 +667,22 @@ const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10
 
 async function loadData(){
   try{
+    const NS={cache:'no-store'}; /* datos siempre frescos, nunca de caché del navegador */
     const res = await Promise.all([
-      fetch('datos/financiero.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/comercial.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/gastos_admin.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
+      fetch('datos/financiero.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/comercial.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/flujo_caja.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/gastos_admin.json',NS).then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
     FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3];
     const um=(FIN.ultimo_mes_cerrado||4)-1;
     document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
+    /* sello de versión = fecha real del HTML cargado. Si ves una fecha vieja aquí,
+       estás viendo una copia en caché: recarga con Cmd+Shift+R. */
+    try{ var lm=new Date(document.lastModified);
+      document.getElementById('hdr-build').textContent='actualizado '+lm.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' '+lm.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){}
     document.getElementById('loader').style.display='none';
     boot();
   }catch(e){
