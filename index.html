@@ -2403,6 +2403,7 @@ function buildOpeInicio(){
   const ticket=fac.length?totFac/fac.length:0;
   const porHora=horas?totFac/horas:0;
   const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
+  const multiYr=yrSet.length>1;
   /* agregados por año/mes para poder derivar cualquier métrica */
   const aggByYrMonth={}; yrSet.forEach(function(y){ aggByYrMonth[y]=[]; for(var i=0;i<12;i++) aggByYrMonth[y].push({cx:0,fac:0,min:0,facCx:0}); });
   all.forEach(function(r){ const a=aggByYrMonth[r[COL.anio]][r[COL.mes]-1]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.valM]>0){a.fac+=r[COL.valM];a.facCx++;} });
@@ -2481,8 +2482,14 @@ function buildOpeInicio(){
         return ' '+c.dataset.label+' · '+MD.noun+' acum.: '+MD.fmt(MD.val(cum)); }
     }}},
     scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
-  mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
+  if(multiYr){
+    mkChart('oi-fac','bar',MESES,yrSet.map(function(yy){
+      return {label:String(yy),data:aggByYrMonth[yy].map(function(a){return a.fac||null;}),backgroundColor:YR_CLR[yy]||C.acento};
+    }),{_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
+    mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
+  }
   /* barras comparativas YTD por mes — usa la MÉTRICA ACTIVA (no solo cirugías) */
   function ytdMetSeries(yy){
     const a=aggByYrMonth[yy]; const out=[];
@@ -2506,6 +2513,7 @@ function buildOpeEsp(){
   const el=document.getElementById('ope-esp');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
+  const multiYr=OF.anio.size>=2;const opeYears=multiYr?Array.from(OF.anio).sort():null;
   const agg={};
   all.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
   fac.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
@@ -2533,13 +2541,30 @@ function buildOpeEsp(){
         '</tbody></table></div></div></div>'+
     '<div class="insight green"><strong>'+(bestHr?bestHr.name:'Cirugía Endocrina')+'</strong> es la especialidad más rentable por hora de quirófano ('+(bestHr?fmtMd(bestHr.perHr,2):'')+'/h) — muy por encima del promedio. Priorizar su agenda maximiza el retorno de cada hora de sala.</div>'+
     footnoteMetrica();
-  mkChart('oe-bar','bar',top.map(function(a){return a.name;}),[{label:MD.lbl,data:top.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
-  const top7=arr.slice(0,7), otros7=arr.slice(7);
-  const donaTop=top7.map(function(a){return MD.dval(a);}).concat([otros7.reduce(function(s,a){return s+MD.dval(a);},0)]);
-  mkChart('oe-dona','doughnut',top7.map(function(a){return a.name;}).concat(['Otras']),
-    [{data:donaTop,backgroundColor:[C.tesoro,C.oviedo,C.acento,C.consol,'#6E8AB5','#8AAE7A','#C7A23E','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
-    {cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9.5},padding:7}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  if(multiYr){
+    const aggYr={};
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYr[yy]=ay;
+    });
+    mkChart('oe-bar','bar',top.map(function(a){return a.name;}),
+      opeYears.map(function(yy){return {label:String(yy),data:top.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
+    mkChart('oe-dona','bar',top.slice(0,8).map(function(a){return a.name;}),
+      opeYears.map(function(yy){return {label:String(yy),data:top.slice(0,8).map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    mkChart('oe-bar','bar',top.map(function(a){return a.name;}),[{label:MD.lbl,data:top.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
+    const top7=arr.slice(0,7), otros7=arr.slice(7);
+    const donaTop=top7.map(function(a){return MD.dval(a);}).concat([otros7.reduce(function(s,a){return s+MD.dval(a);},0)]);
+    mkChart('oe-dona','doughnut',top7.map(function(a){return a.name;}).concat(['Otras']),
+      [{data:donaTop,backgroundColor:[C.tesoro,C.oviedo,C.acento,C.consol,'#6E8AB5','#8AAE7A','#C7A23E','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+      {cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9.5},padding:7}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  }
 }
 
 /* ─────────── OPE: CIRUJANOS ─────────── */
@@ -2547,10 +2572,11 @@ function buildOpeCir(){
   const el=document.getElementById('ope-cir');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
+  const multiYr=OF.anio.size>=2;const opeYears=multiYr?Array.from(OF.anio).sort():null;
   const agg={};
   all.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; e.sedes.add(r[COL.sede]); });
   fac.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.fac+=r[COL.valM]; e.facCx++; });
-  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.cirs[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.cirs[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
   const top15=arr.slice(0,15);
   const lider=arr[0];
@@ -2572,8 +2598,22 @@ function buildOpeCir(){
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(conc>15?'warn':'')+'"><strong>'+(lider?shortName(lider.name):'')+'</strong> concentra el <strong>'+fmtPct(conc)+'</strong> de la facturación. '+(conc>12?'Es una concentración relevante: la salida de un cirujano top impacta directo el P&amp;G. Conviene fortalecer la cantera de cirujanos medios.':'La facturación está razonablemente diversificada entre cirujanos.')+'</div>'+
     footnoteMetrica();
-  mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top15)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+  if(multiYr){
+    const aggYr={};
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYr[yy]=ay;
+    });
+    mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),
+      opeYears.map(function(yy){return {label:String(yy),data:top15.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+  } else {
+    mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top15)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+  }
 }
 
 /* ─────────── OPE: QUIRÓFANOS ─────────── */
@@ -2581,6 +2621,7 @@ function buildOpeQx(){
   const el=document.getElementById('ope-qx');
   const MD=metDef();
   const all=opeRows(false);
+  const multiYr=OF.anio.size>=2;const opeYears=multiYr?Array.from(OF.anio).sort():null;
   const agg={};
   all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;} });
   const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.qxs[i]},agg[i]); }).filter(function(a){return a.cx>0;}).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
@@ -2603,9 +2644,25 @@ function buildOpeQx(){
     '</div>'+
     '<div class="insight">La capacidad se mide sobre horario L-V 7-18h (11h) + Sáb 7-14h (7h) = 62h/semana por sala. '+(arrOc.some(function(a){return a.oc<60;})?'Hay salas por debajo del 60% de ocupación: redistribuir agenda o concentrar días libera capacidad para nuevas especialidades.':'Las salas operan con buena ocupación.')+'</div>'+
     footnoteMetrica();
-  mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
-    [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
-    {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(arr)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  if(multiYr){
+    const aggYr={};
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy&&r[COL.qx]>=0;}).forEach(function(r){
+        const e=ay[r[COL.qx]]||(ay[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0});
+        e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;}
+      });
+      aggYr[yy]=ay;
+    });
+    mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
+      opeYears.map(function(yy){return {label:String(yy),data:arr.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.y);}}}},
+       scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  } else {
+    mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
+      [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
+      {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(arr)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  }
   mkChart('oq-oc','bar',arrOc.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
     [{label:'Ocupación %',data:arrOc.map(function(a){return +a.oc.toFixed(1);}),backgroundColor:arrOc.map(clr)}],
     {_tooltipLabel:tipPct,_yPct:true,plugins:{legend:{display:false}}});
@@ -2615,6 +2672,14 @@ function buildOpeQx(){
 function buildOpeSedes(){
   const el=document.getElementById('ope-sedes');
   const MD=metDef();
+  const multiYr=OF.anio.size>=2;const opeYears=multiYr?Array.from(OF.anio).sort():null;
+  function sedeDataYear(s,yy){
+    const rows=COM.rows.filter(function(r){return r[COL.sede]===s&&r[COL.anio]===yy;});
+    const facRows=rows.filter(function(r){return r[COL.met]===0;});
+    const min=rows.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
+    const f=facRows.reduce(function(a,r){return a+r[COL.valM];},0);
+    return {cx:rows.length,fac:f,min:min,facCx:facRows.length,ticket:facRows.length?f/facRows.length:0,perHr:min?f/(min/60):0,esps:new Set(rows.filter(function(r){return r[COL.esp]>=0;}).map(function(r){return r[COL.esp];})).size};
+  }
   function sedeData(s){
     const all=COM.rows.filter(function(r){return r[COL.sede]===s && (!OF.anio.size||OF.anio.has(r[COL.anio]));});
     const fac=all.filter(function(r){return r[COL.met]===0;});
@@ -2644,11 +2709,24 @@ function buildOpeSedes(){
     '</div>'+
     '<div class="insight">Tesoro aporta el volumen base; Oviedo es el motor de crecimiento. '+(T.perHr>O.perHr?'Tesoro rinde más por hora de sala — útil para priorizar inversión de capacidad.':'Oviedo rinde más por hora de sala — confirma el acierto de su expansión.')+'</div>'+
     footnoteMetrica();
-  mkChart('os-comp','bar',['Tesoro','Oviedo'],[
-    {label:MD.lbl,data:[metVal(T),metVal(O)],backgroundColor:[C.tesoro,C.oviedo]}
-  ],{plugins:{legend:{display:false},tooltip:{callbacks:metTooltip([T,O])}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  mkChart('os-dona','doughnut',['Tesoro','Oviedo'],[{data:[MD.dval(T),MD.dval(O)],backgroundColor:[C.tesoro,C.oviedo],borderWidth:2,borderColor:'#fff'}],
-    {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  if(multiYr){
+    mkChart('os-comp','bar',['Tesoro','Oviedo'],
+      opeYears.map(function(yy){
+        return {label:String(yy),data:[metVal(sedeDataYear(0,yy)),metVal(sedeDataYear(1,yy))],backgroundColor:YR_CLR[yy]||C.tesoro};
+      }),
+      {plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.y);}}}},
+       scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+    mkChart('os-dona','bar',opeYears.map(String),
+      [{label:'Tesoro',data:opeYears.map(function(yy){return MD.dval(sedeDataYear(0,yy));}),backgroundColor:C.tesoro},
+       {label:'Oviedo',data:opeYears.map(function(yy){return MD.dval(sedeDataYear(1,yy));}),backgroundColor:C.oviedo}],
+      {_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    mkChart('os-comp','bar',['Tesoro','Oviedo'],[
+      {label:MD.lbl,data:[metVal(T),metVal(O)],backgroundColor:[C.tesoro,C.oviedo]}
+    ],{plugins:{legend:{display:false},tooltip:{callbacks:metTooltip([T,O])}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+    mkChart('os-dona','doughnut',['Tesoro','Oviedo'],[{data:[MD.dval(T),MD.dval(O)],backgroundColor:[C.tesoro,C.oviedo],borderWidth:2,borderColor:'#fff'}],
+      {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  }
 }
 
 /* ─────────── OPE: OCUPACIÓN ─────────── */
@@ -2697,10 +2775,11 @@ function buildOpeEps(){
   const el=document.getElementById('ope-eps');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
+  const multiYr=OF.anio.size>=2;const opeYears=multiYr?Array.from(OF.anio).sort():null;
   const agg={};
   all.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
   fac.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
-  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.epss[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.epss[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
   const sura=arr.filter(function(a){return /SURAMERICANA|SURA/i.test(a.name);})[0];
   const suraPct=(sura&&totFac)?sura.fac/totFac*100:0;
@@ -2725,13 +2804,31 @@ function buildOpeEps(){
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(suraPct>40?'neg':'warn')+'"><strong>SURA representa el '+fmtPct(suraPct)+'</strong> de la facturación. Es una dependencia crítica: cualquier cambio de tarifa o contrato con SURA mueve el negocio entero. Diversificar pagadores (particular, otras prepagadas) es prioridad estratégica de riesgo.</div>'+
     footnoteMetrica();
-  mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
-    [{label:MD.lbl,data:top8.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top8)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
-  const top5=arr.slice(0,5), otros5=arr.slice(5).reduce(function(s,a){return s+MD.dval(a);},0);
-  mkChart('op-dona','doughnut',top5.map(function(a){return a.name.split(' ')[0];}).concat(['Otras']),
-    [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
-    {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  const top5=arr.slice(0,5);
+  if(multiYr){
+    const aggYr={};
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYr[yy]=ay;
+    });
+    mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
+      opeYears.map(function(yy){return {label:String(yy),data:top8.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {indexAxis:'y',plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+MD.fmt(c.parsed.x);}}}},
+       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+    mkChart('op-dona','bar',top5.map(function(a){return a.name.split(' ')[0];}),
+      opeYears.map(function(yy){return {label:String(yy),data:top5.map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      {_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
+      [{label:MD.lbl,data:top8.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top8)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+    const otros5=arr.slice(5).reduce(function(s,a){return s+MD.dval(a);},0);
+    mkChart('op-dona','doughnut',top5.map(function(a){return a.name.split(' ')[0];}).concat(['Otras']),
+      [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+      {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
+  }
 }
 
 /* ════════════════════════════════════════
