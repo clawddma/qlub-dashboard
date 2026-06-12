@@ -244,6 +244,13 @@ a{text-decoration:none;color:inherit;}
 .tbl .tot .var-neg{color:#f5a0a0;font-weight:700;font-style:normal;}
 .tbl .sub .var-pos{color:#1A6B35;font-weight:700;font-style:normal;}
 .tbl .sub .var-neg{color:#C0392B;font-weight:700;font-style:normal;}
+/* columna del año anterior (modo comparativo 2 años): fondo tenue para parear visualmente cada mes */
+.tbl td.yr-prev{background:#f3f6fb;color:#5d7290;}
+.tbl th.yr-prev{background:#16314f;}
+.tbl .sub td.yr-prev{background:#e4edf8;}
+.tbl .tot td.yr-prev{background:#14304e;color:#cfe0f5;}
+.tbl td.yr-cur{border-right:2px solid #d0daea;}
+.tbl th.yr-cur{border-right:2px solid rgba(255,255,255,.25);}
 .pos{color:var(--pos);font-weight:700;}
 .neg{color:var(--neg);font-weight:700;}
 
@@ -1165,9 +1172,37 @@ function buildFinPnl(){
       cmpInsight='<div class="insight green">Los ingresos crecen '+(ingGrow>=0?'+':'')+ingGrow.toFixed(1)+'% ('+cmpTag+') vs '+yPrevP+' y ningún rubro de costo crece por encima — el margen se mantiene o mejora.</div>';
     }
   }
-  function row(lbl,arr,cls,ingTot,prvTot,posGood){
-    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
-    const tot=sumActive(arr,act);
+  /* serie de cualquier rubro para CUALQUIER año (para columnas por año en modo comparativo) */
+  function serie(key,yr){
+    switch(key){
+      case 'ing': return pygArr(s,yr,'4'); case 'cd': return pygArr(s,yr,'6');
+      case 'nom': return pygArr(s,yr,'7'); case 'adm': return pygArr(s,yr,'5');
+      case 'oi': return pygArr(s,yr,'42'); case 'gno': return pygArr(s,yr,'53');
+      case 'imp': return pygArr(s,yr,'54'); case 'ub': return ubArr(s,yr);
+      case 'ebit': return ebitArr(s,yr); case 'da': return daArr(s,yr);
+      case 'ebitda': return ebitdaArr(s,yr); case 'uai': return uaiArr(s,yr);
+      case 'neto': return netoArr(s,yr);
+    }
+    return new Array(12).fill(0);
+  }
+  /* ── Modelo de columnas: en modo 2 años, cada mes se abre en [año ant. · año act.] ── */
+  const twoYr=(vtYearsEarly.length===2);
+  const actPrvAll=twoYr?monthsActive(s,yPrevP):[];
+  let winIdx;
+  if(mesExpl){ winIdx=Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return m-1;}); }
+  else if(FF.ytd){ winIdx=ytdIdx(); }
+  else { const u={}; act.forEach(function(i){u[i]=1;}); actPrvAll.forEach(function(i){u[i]=1;}); winIdx=Object.keys(u).map(Number).sort(function(a,b){return a-b;}); }
+  const cols=[];
+  if(twoYr){ winIdx.forEach(function(mi){ cols.push({yr:yPrevP,mi:mi}); cols.push({yr:y,mi:mi}); }); }
+  else { act.forEach(function(mi){ cols.push({yr:y,mi:mi}); }); }
+  function isActYr(yr,mi){ return (yr===y?act:actPrvAll).indexOf(mi)>=0; }
+  function row(lbl,key,cls,ingTot,prvTot,posGood){
+    const tds=cols.map(function(c){
+      const v=serie(key,c.yr)[c.mi];
+      const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
+      return '<td'+(cl?' class="'+cl+'"':'')+'>'+(isActYr(c.yr,c.mi)?fmtMd(v,0):'—')+'</td>';
+    }).join('');
+    const tot=sumActive(serie(key,y),act);
     const pct=(ingTot&&ingTot!==0)?fmtPct(tot/ingTot*100):'—';
     let varCell='<td class="pct-col">—</td>';
     if(prvTot!==undefined&&prvTot!==null&&Math.abs(prvTot)>0.001){
@@ -1177,9 +1212,13 @@ function buildFinPnl(){
     }
     return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td><td class="pct-col">'+pct+'</td>'+varCell+'</tr>';
   }
-  function rowPct(lbl,arr,baseArr,prvTot,prvBase){
-    const tds=act.map(function(i){ return '<td>'+fmtPct(baseArr[i]?arr[i]/baseArr[i]*100:0)+'</td>'; }).join('');
-    const totA=sumActive(arr,act), totB=sumActive(baseArr,act);
+  function rowPct(lbl,keyA,keyB,prvTot,prvBase){
+    const tds=cols.map(function(c){
+      const a=serie(keyA,c.yr)[c.mi], b=serie(keyB,c.yr)[c.mi];
+      const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
+      return '<td'+(cl?' class="'+cl+'"':'')+'>'+(isActYr(c.yr,c.mi)?fmtPct(b?a/b*100:0):'—')+'</td>';
+    }).join('');
+    const totA=sumActive(serie(keyA,y),act), totB=sumActive(serie(keyB,y),act);
     const curMgn=totB?totA/totB*100:0;
     let varCell='<td class="pct-col">—</td>';
     if(prvBase&&Math.abs(prvBase)>0.001){
@@ -1188,7 +1227,12 @@ function buildFinPnl(){
     }
     return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(curMgn)+'</strong></td><td class="pct-col"></td>'+varCell+'</tr>';
   }
-  const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
+  const mHdr = cols.map(function(c){
+    const lblM=twoYr?(MESES[c.mi]+" '"+String(c.yr).slice(2)):MESES[c.mi];
+    const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
+    return '<th'+(cl?' class="'+cl+'"':'')+'>'+lblM+'</th>';
+  }).join('');
+  const totHdr = twoYr?('Total '+y):'Total';
   el.innerHTML =
     '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(vtYearsEarly.length===2?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
@@ -1198,23 +1242,23 @@ function buildFinPnl(){
       kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
       kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
+    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(twoYr?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">'+(twoYr?'Cada mes abierto por año · Var% comparativo':'Cascada completa hasta Utilidad Neta')+'</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th><th class="pct-col">% Ing.</th><th class="pct-col">Var. vs '+yPrevP+'</th></tr></thead><tbody>'+
-          row('Ingresos',ing,'',T.ing,prv['Ingresos'],true)+
-          row('(−) Costo Directo',cd,'',T.ing,prv['Costo Dir.'],false)+
-          row('= Utilidad Bruta',ub,'sub',T.ing,prv['Util. Bruta'],true)+
-          row('(−) Nómina Directa',nom,'',T.ing,prv['Nómina'],false)+
-          row('(−) Gastos Admin',adm,'',T.ing,prv['G. Admin'],false)+
-          row('= EBIT (Util. Operativa)',ebit,'tot',T.ing,prv['EBIT'],true)+
-          row('(+) Depreciac. y Amortiz.',da,'',T.ing,prv['D&A'],true)+
-          row('= EBITDA',ebitda,'sub',T.ing,prv['EBITDA'],true)+
-          row('(+) Otros Ingresos',oi,'',T.ing,prv['Otros Ing.'],true)+
-          row('(−) Gastos No Operac.',gno,'',T.ing,prv['G. No Op.'],false)+
-          row('= Utilidad Antes de Imp.',uai,'sub',T.ing,prv['UAI'],true)+
-          row('(−) Impuesto de Renta',imp,'',T.ing,prv['Impuesto'],false)+
-          row('= UTILIDAD NETA',neto,'tot',T.ing,prv['Util. Neta'],true)+
-          rowPct('Margen Neto %',neto,ing,prv['Util. Neta'],prv['Ingresos'])+
+        '<thead><tr><th>Concepto</th>'+mHdr+'<th>'+totHdr+'</th><th class="pct-col">% Ing.</th><th class="pct-col">Var. vs '+yPrevP+'</th></tr></thead><tbody>'+
+          row('Ingresos','ing','',T.ing,prv['Ingresos'],true)+
+          row('(−) Costo Directo','cd','',T.ing,prv['Costo Dir.'],false)+
+          row('= Utilidad Bruta','ub','sub',T.ing,prv['Util. Bruta'],true)+
+          row('(−) Nómina Directa','nom','',T.ing,prv['Nómina'],false)+
+          row('(−) Gastos Admin','adm','',T.ing,prv['G. Admin'],false)+
+          row('= EBIT (Util. Operativa)','ebit','tot',T.ing,prv['EBIT'],true)+
+          row('(+) Depreciac. y Amortiz.','da','',T.ing,prv['D&A'],true)+
+          row('= EBITDA','ebitda','sub',T.ing,prv['EBITDA'],true)+
+          row('(+) Otros Ingresos','oi','',T.ing,prv['Otros Ing.'],true)+
+          row('(−) Gastos No Operac.','gno','',T.ing,prv['G. No Op.'],false)+
+          row('= Utilidad Antes de Imp.','uai','sub',T.ing,prv['UAI'],true)+
+          row('(−) Impuesto de Renta','imp','',T.ing,prv['Impuesto'],false)+
+          row('= UTILIDAD NETA','neto','tot',T.ing,prv['Util. Neta'],true)+
+          rowPct('Margen Neto %','neto','ing',prv['Util. Neta'],prv['Ingresos'])+
         '</tbody></table></div></div></div>'+
     '<div class="g2" style="margin-top:16px">'+
       card('Ingresos vs EBIT vs Utilidad Neta','millones COP','fp-bars','')+
