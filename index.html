@@ -556,6 +556,7 @@ const C = {
   acento:'#D4A843', pos:'#1A7A3C', neg:'#C0392B', grid:'#E9ECEF', txt:'#6b7f9c'
 };
 const YR_CLR = {2024:'#9AA8BD', 2025:'#1B3A6B', 2026:'#D4A843'};
+const YR_TXT = {2024:'#0E2240', 2025:'#ffffff', 2026:'#0E2240'}; /* texto sobre fondo YR_CLR */
 /* color estable por rubro contable (cuenta 5) — usado en barras apiladas y composición */
 const GA_RUBRO_CLR = {
   '5105':'#1B3A6B','5120':'#D4A843','5135':'#1A6B35','5110':'#C0392B','5115':'#6b7f9c',
@@ -713,7 +714,7 @@ const SUBSECS = {
   fin:[['fin-inicio','📋','Inicio'],['fin-pnl','📑','P&G'],['fin-margen','📐','Márgenes'],
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
-       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
+       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','Aseguradoras']],
   rep:[], acc:[]
 };
 let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio'};
@@ -2329,7 +2330,7 @@ function renderOpeFilters(){
     md('esp','Especialidad',espOpts)+
     md('cir','Cirujano',cirOpts)+
     md('qx','Quirófano',qxOpts)+
-    md('eps','EPS',epsOpts)+
+    md('eps','Aseguradoras',epsOpts)+
     md('dia','Día',diaOpts)+
     '<button class="chip chip-clear" onclick="clearOpe()">✕ Limpiar filtros</button>'+
     activeChipsHtml();
@@ -2555,7 +2556,7 @@ function buildOpeEsp(){
   }
   function espTblHdr(){
     if(!multiYr) return '<tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr>';
-    return '<tr><th>Especialidad</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>T. prom</th></tr>';
+    return '<tr><th>Especialidad</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>T. prom</th></tr>';
   }
   function espTblRow(a){
     if(!multiYr){const hr=a.min/60;return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>';}
@@ -2630,7 +2631,7 @@ function buildOpeCir(){
   }
   function cirTblHdr(){
     if(!multiYr) return '<tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr>';
-    return '<tr><th>Cirujano</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th><th>Sedes</th></tr>';
+    return '<tr><th>Cirujano</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th><th>Sedes</th></tr>';
   }
   function cirTblRow(a){
     const sedesHtml=Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ');
@@ -2725,7 +2726,20 @@ function buildOpeQx(){
 function buildOpeSedes(){
   const el=document.getElementById('ope-sedes');
   const MD=metDef();
-  const allOpe=opeRows(false); /* respeta todos los filtros OF: mes, esp, cir, etc. */
+  /* Sedes siempre compara las DOS sedes; ignoramos OF.sede para que ambas tarjetas
+     muestren datos incluso si el usuario tiene un filtro de sede activo. */
+  const _ym=(OPE_YTD&&OF.mes.size===0)?ultMesOpe():0;
+  const allOpe=COM.rows.filter(function(r){
+    if(_ym&&r[COL.mes]>_ym) return false;
+    if(OF.anio.size&&!OF.anio.has(r[COL.anio])) return false;
+    if(OF.mes.size &&!OF.mes.has(r[COL.mes]))   return false;
+    if(OF.esp.size &&!OF.esp.has(r[COL.esp]))   return false;
+    if(OF.cir.size &&!OF.cir.has(r[COL.cir]))   return false;
+    if(OF.qx.size  &&!OF.qx.has(r[COL.qx]))     return false;
+    if(OF.eps.size &&!OF.eps.has(r[COL.eps]))   return false;
+    if(OF.dia.size &&!OF.dia.has(r[COL.dia]))   return false;
+    return true;
+  });
   const yrSet=Array.from(new Set(allOpe.map(function(r){return r[COL.anio];}))).sort();
   const multiYr=yrSet.length>1;const opeYears=yrSet;
   function sedeDataFromRows(rows){
@@ -2857,8 +2871,8 @@ function buildOpeEps(){
     });
   }
   function epsTblHdr(){
-    if(!multiYr) return '<tr><th>Entidad</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr>';
-    return '<tr><th>Entidad</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th></tr>';
+    if(!multiYr) return '<tr><th>Aseguradora</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr>';
+    return '<tr><th>Aseguradora</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th></tr>';
   }
   function epsTblRow(a){
     if(!multiYr) return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>';
@@ -2867,8 +2881,8 @@ function buildOpeEps(){
     return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td></tr>';
   }
   el.innerHTML=
-    '<div class="sec-title">EPS / Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
-    '<div class="sec-sub">'+arr.length+' entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
+    '<div class="sec-title">Aseguradoras <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">'+arr.length+' aseguradoras / entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
     '<div class="kpis k3">'+
       kpi(suraPct>40?'red':'gold','Concentración SURA',fmtPct(suraPct),'de la facturación')+
       kpi('navy','Entidades activas',String(arr.length),'pagadoras')+
