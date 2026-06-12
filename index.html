@@ -594,6 +594,7 @@ function fmtVarInv(p){
   const cls=p>=0?'n':'p', arr=p>=0?'&#9650;':'&#9660;';
   return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
 }
+function hexToRgba(hex,a){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 
 /* ── Chart.js base + mkChart ── */
 Chart.defaults.font.family = "'Inter',sans-serif";
@@ -1284,14 +1285,27 @@ function buildFinPnl(){
     /* fp-bars: 6 datasets (3 métricas × 2 años) — año anterior al 45% de opacidad */
     const actPrvFilt=finMesesIdx(s,yPrevP);
     const allM2=(function(){var u={};act.forEach(function(i){u[i]=1;});actPrvFilt.forEach(function(i){u[i]=1;});return Object.keys(u).map(Number).sort(function(a,b){return a-b;});})();
+    var _yc=YR_CLR[y]||C.acento, _pc=YR_CLR[yPrevP]||C.consol;
     mkChart('fp-bars','bar',allM2.map(function(i){return MESES[i];}),[
-      {label:'Ingresos '+y,        data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ing',y)[i]:null;}),           backgroundColor:C.tesoro},
-      {label:'EBIT '+y,            data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ebit',y)[i]:null;}),          backgroundColor:C.acento},
-      {label:'Util. Neta '+y,      data:allM2.map(function(i){return act.indexOf(i)>=0?serie('neto',y)[i]:null;}),          backgroundColor:C.oviedo},
-      {label:'Ingresos '+yPrevP,   data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ing',yPrevP)[i]:null;}),  backgroundColor:'rgba(27,58,107,0.45)'},
-      {label:'EBIT '+yPrevP,       data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ebit',yPrevP)[i]:null;}), backgroundColor:'rgba(212,168,67,0.45)'},
-      {label:'Util. Neta '+yPrevP, data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('neto',yPrevP)[i]:null;}),backgroundColor:'rgba(26,107,53,0.45)'}
-    ],{_tooltipLabel:tipMoney,_yMoney:true});
+      {label:'Ingresos '+y,        data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ing',y)[i]:null;}),           backgroundColor:_yc},
+      {label:'EBIT '+y,            data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ebit',y)[i]:null;}),          backgroundColor:hexToRgba(_yc,0.65)},
+      {label:'Util. Neta '+y,      data:allM2.map(function(i){return act.indexOf(i)>=0?serie('neto',y)[i]:null;}),          backgroundColor:hexToRgba(_yc,0.35)},
+      {label:'Ingresos '+yPrevP,   data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ing',yPrevP)[i]:null;}),  backgroundColor:_pc},
+      {label:'EBIT '+yPrevP,       data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ebit',yPrevP)[i]:null;}), backgroundColor:hexToRgba(_pc,0.65)},
+      {label:'Util. Neta '+yPrevP, data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('neto',yPrevP)[i]:null;}),backgroundColor:hexToRgba(_pc,0.35)}
+    ],{_yMoney:true,plugins:{tooltip:{footerFont:{size:10.5,weight:'600'},footerColor:'rgba(255,255,255,0.8)',callbacks:{
+      label:tipMoney,
+      footer:function(items){
+        var N=['Ingresos','EBIT','Util. Neta'],lines=[];
+        for(var k=0;k<3;k++){
+          var ci=items[k],pi=items[k+3];
+          if(!ci||!pi||ci.parsed.y==null||pi.parsed.y==null||Math.abs(pi.parsed.y)<0.001) continue;
+          var g=(ci.parsed.y-pi.parsed.y)/Math.abs(pi.parsed.y)*100;
+          lines.push(N[k]+': '+(g>=0?'▲ +':'▼ ')+Math.abs(g).toFixed(1)+'% vs '+yPrevP);
+        }
+        return lines;
+      }
+    }}}});
     /* fp-stack: cascada paralela — stack 'p' = año anterior, stack 'c' = año actual */
     const wf2=[
       ['Ingresos',  cur['Ingresos'],   prv['Ingresos'],  C.tesoro, 0],
@@ -1382,8 +1396,8 @@ function buildFinPnl(){
     {label:String(y),data:curAllVals,backgroundColor:allClrs}
   ],{_tooltipLabel:tipMoney,_yMoney:true,_chartPlugins:[varLblPlugin],
      plugins:{tooltip:{callbacks:{afterLabel:function(c){
-       if(c.datasetIndex!==1)return '';
-       const p=prvAllVals[c.dataIndex]; if(!p||Math.abs(p)<0.001)return '';
+       if(c.datasetIndex!==1)return;
+       const p=prvAllVals[c.dataIndex]; if(!p||Math.abs(p)<0.001)return;
        const g=(curAllVals[c.dataIndex]-p)/Math.abs(p)*100;
        return (leakSet[CMP_ALL_LBLS[c.dataIndex]]?'⚠ ':'')+'var. '+(g>=0?'+':'')+g.toFixed(1)+'% vs '+yPrevP;
      }}}},
