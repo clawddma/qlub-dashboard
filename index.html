@@ -1280,48 +1280,86 @@ function buildFinPnl(){
     '<div class="gfull">'+card('Análisis Vertical — Estructura del ingreso por mes',(function(){var yy=vtYearsEarly; if(yy.length<2) return '% del ingreso por rubro · '+s+' '+yy[0]; return 'color = rubro · tono claro→oscuro = '+yy[0]+'→'+yy[yy.length-1]+' · '+s;})(),'fp-vertical','')+'</div>'+
     cmpInsight+
     '<div class="insight">De <strong>'+fmtM(T.ing)+'</strong> en ingresos, el EBIT es <strong>'+fmtM(T.ebit)+'</strong> ('+fmtPct(mEbit)+') y el EBITDA <strong>'+fmtM(T.ebitda)+'</strong>. Tras otros ingresos, gastos no operacionales e impuesto de renta ('+fmtM(T.imp)+'), la <strong>utilidad neta cierra en '+fmtM(T.neto)+'</strong> — margen neto de '+fmtPct(mNeto)+'.</div>';
-  const lbls=act.map(function(i){return MESES[i];});
-  mkChart('fp-bars','bar',lbls,[
-    {label:'Ingresos',data:act.map(function(i){return ing[i];}),backgroundColor:C.tesoro},
-    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento},
-    {label:'Utilidad Neta',data:act.map(function(i){return neto[i];}),backgroundColor:C.oviedo}
-  ],{_tooltipLabel:tipMoney,_yMoney:true});
-  /* Cascada (waterfall) acumulada: ingresos → restas → utilidad neta */
-  const wf=[
-    ['Ingresos',T.ing,C.tesoro,0],
-    ['Costo Dir.',-T.cd,C.neg,0],
-    ['Nómina',-T.nom,C.neg,0],
-    ['G. Admin',-T.adm,C.neg,0],
-    ['Otros Ing.',T.oi,C.oviedo,0],
-    ['G. No Op.',-T.gno,C.neg,0],
-    ['Impuesto',-T.imp,C.neg,0],
-    ['Util. Neta',T.neto,C.acento,1]
-  ];
-  let run=0; const segBase=[], segVal=[], segClr=[], wfLbls=[];
-  wf.forEach(function(w){
-    wfLbls.push(w[0]);
-    if(w[3]===1){ segBase.push(0); segVal.push(Math.max(w[1],0)); }
-    else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
-    else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
-    segClr.push(w[2]);
-  });
-  mkChart('fp-stack','bar',wfLbls,[
-    {label:'base',data:segBase,backgroundColor:'transparent',stack:'w',grouped:false},
-    {label:'P&G',data:segVal,backgroundColor:segClr,stack:'w'}
-  ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
-     scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  if(twoYr){
+    /* fp-bars: 6 datasets (3 métricas × 2 años) — año anterior al 45% de opacidad */
+    const allM2=(function(){var u={};act.forEach(function(i){u[i]=1;});actPrvAll.forEach(function(i){u[i]=1;});return Object.keys(u).map(Number).sort(function(a,b){return a-b;});})();
+    mkChart('fp-bars','bar',allM2.map(function(i){return MESES[i];}),[
+      {label:'Ingresos '+y,        data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ing',y)[i]:null;}),       backgroundColor:C.tesoro},
+      {label:'EBIT '+y,            data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ebit',y)[i]:null;}),      backgroundColor:C.acento},
+      {label:'Util. Neta '+y,      data:allM2.map(function(i){return act.indexOf(i)>=0?serie('neto',y)[i]:null;}),      backgroundColor:C.oviedo},
+      {label:'Ingresos '+yPrevP,   data:allM2.map(function(i){return actPrvAll.indexOf(i)>=0?serie('ing',yPrevP)[i]:null;}),  backgroundColor:'rgba(27,58,107,0.45)'},
+      {label:'EBIT '+yPrevP,       data:allM2.map(function(i){return actPrvAll.indexOf(i)>=0?serie('ebit',yPrevP)[i]:null;}), backgroundColor:'rgba(212,168,67,0.45)'},
+      {label:'Util. Neta '+yPrevP, data:allM2.map(function(i){return actPrvAll.indexOf(i)>=0?serie('neto',yPrevP)[i]:null;}),backgroundColor:'rgba(26,107,53,0.45)'}
+    ],{_tooltipLabel:tipMoney,_yMoney:true});
+    /* fp-stack: cascada paralela — stack 'p' = año anterior, stack 'c' = año actual */
+    const wf2=[
+      ['Ingresos',  cur['Ingresos'],   prv['Ingresos'],  C.tesoro, 0],
+      ['Costo Dir.',-cur['Costo Dir.'],-prv['Costo Dir.'],C.neg,   0],
+      ['Nómina',   -cur['Nómina'],     -prv['Nómina'],   C.neg,   0],
+      ['G. Admin',  -cur['G. Admin'],  -prv['G. Admin'],  C.neg,   0],
+      ['Otros Ing.', cur['Otros Ing.'], prv['Otros Ing.'],C.oviedo,0],
+      ['G. No Op.',  -cur['G. No Op.'],-prv['G. No Op.'],C.neg,   0],
+      ['Impuesto',  -cur['Impuesto'],  -prv['Impuesto'],  C.neg,   0],
+      ['Util. Neta', cur['Util. Neta'], prv['Util. Neta'],C.acento,1]
+    ];
+    var rC=0,rP=0,bsC=[],vlC=[],bsP=[],vlP=[];
+    wf2.forEach(function(w){
+      var cv=w[1],pv=w[2],fin=w[4]===1;
+      if(fin){bsC.push(0);vlC.push(Math.max(cv,0));bsP.push(0);vlP.push(Math.max(pv,0));}
+      else{
+        if(cv>=0){bsC.push(rC);vlC.push(cv);rC+=cv;}else{rC+=cv;bsC.push(rC);vlC.push(-cv);}
+        if(pv>=0){bsP.push(rP);vlP.push(pv);rP+=pv;}else{rP+=pv;bsP.push(rP);vlP.push(-pv);}
+      }
+    });
+    mkChart('fp-stack','bar',wf2.map(function(w){return w[0];}),[
+      {label:'base_p',data:bsP,backgroundColor:'transparent',stack:'p'},
+      {label:String(yPrevP),data:vlP,backgroundColor:YR_CLR[yPrevP]||C.consol,stack:'p'},
+      {label:'base_c',data:bsC,backgroundColor:'transparent',stack:'c'},
+      {label:String(y),data:vlC,backgroundColor:YR_CLR[y]||C.acento,stack:'c'}
+    ],{plugins:{
+        legend:{labels:{filter:function(i){return i.text!=='base_p'&&i.text!=='base_c';}}},
+        tooltip:{filter:function(c){return c.dataset.label!=='base_p'&&c.dataset.label!=='base_c';},
+          callbacks:{label:function(c){var r=wf2[c.dataIndex];return ' '+r[0]+': '+fmtMd(c.dataset.label===String(y)?r[1]:r[2],0);}}}},
+       scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  } else {
+    const lbls=act.map(function(i){return MESES[i];});
+    mkChart('fp-bars','bar',lbls,[
+      {label:'Ingresos',data:act.map(function(i){return ing[i];}),backgroundColor:C.tesoro},
+      {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento},
+      {label:'Utilidad Neta',data:act.map(function(i){return neto[i];}),backgroundColor:C.oviedo}
+    ],{_tooltipLabel:tipMoney,_yMoney:true});
+    /* Cascada (waterfall) acumulada: ingresos → restas → utilidad neta */
+    const wf=[
+      ['Ingresos',T.ing,C.tesoro,0],
+      ['Costo Dir.',-T.cd,C.neg,0],
+      ['Nómina',-T.nom,C.neg,0],
+      ['G. Admin',-T.adm,C.neg,0],
+      ['Otros Ing.',T.oi,C.oviedo,0],
+      ['G. No Op.',-T.gno,C.neg,0],
+      ['Impuesto',-T.imp,C.neg,0],
+      ['Util. Neta',T.neto,C.acento,1]
+    ];
+    let run=0; const segBase=[], segVal=[], segClr=[], wfLbls=[];
+    wf.forEach(function(w){
+      wfLbls.push(w[0]);
+      if(w[3]===1){ segBase.push(0); segVal.push(Math.max(w[1],0)); }
+      else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
+      else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
+      segClr.push(w[2]);
+    });
+    mkChart('fp-stack','bar',wfLbls,[
+      {label:'base',data:segBase,backgroundColor:'transparent',stack:'w',grouped:false},
+      {label:'P&G',data:segVal,backgroundColor:segClr,stack:'w'}
+    ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
+       scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  }
   /* Cascada comparable EXPANDIDA — todos los rubros del P&G con Var.% visible */
   const leakSet={}; leaks.forEach(function(l){leakSet[l.k]=1;});
   const CMP_ALL_LBLS=['Ingresos','Costo Dir.','Util. Bruta','Nómina','G. Admin','EBIT','EBITDA','Otros Ing.','G. No Op.','UAI','Impuesto','Util. Neta'];
   const CMP_POS_GOOD=[true,false,true,false,false,true,true,true,false,true,false,true];
   const curAllVals=CMP_ALL_LBLS.map(function(l){return cur[l]||0;});
   const prvAllVals=CMP_ALL_LBLS.map(function(l){return prv[l]||0;});
-  const allClrs=CMP_ALL_LBLS.map(function(l,i){
-    const p=prvAllVals[i]; if(!p||Math.abs(p)<0.001) return YR_CLR[y]||C.acento;
-    const g=(curAllVals[i]-p)/Math.abs(p)*100;
-    const good=CMP_POS_GOOD[i]?g>=0:g<=0;
-    return good?(YR_CLR[y]||C.acento):C.neg;
-  });
+  const allClrs=CMP_ALL_LBLS.map(function(){ return YR_CLR[y]||C.acento; });
   const varLblPlugin={
     id:'varLbl_pnl',
     afterDatasetsDraw:function(chart){
