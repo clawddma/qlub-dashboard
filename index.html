@@ -2196,7 +2196,7 @@ function aggRows(rows){
   rows.forEach(function(r){
     a.cx++;
     if(r[COL.tmin]>0) a.min+=r[COL.tmin];
-    if(r[COL.met]===0){ a.fac+=r[COL.valM]; a.facCx++; }
+    if(r[COL.valM]>0){ a.fac+=r[COL.valM]; a.facCx++; }
   });
   return a;
 }
@@ -2371,7 +2371,7 @@ function opeRows(facturable){
     if(OF.qx.size   && !OF.qx.has(r[COL.qx]))    return false;
     if(OF.eps.size  && !OF.eps.has(r[COL.eps]))  return false;
     if(OF.dia.size  && !OF.dia.has(r[COL.dia]))  return false;
-    if(facturable && r[COL.met]!==0) return false;
+    if(facturable && r[COL.valM]===0) return false;
     return true;
   });
 }
@@ -2676,7 +2676,7 @@ function buildOpeQx(){
   const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
   const multiYr=yrSet.length>1;const opeYears=yrSet;
   const agg={};
-  all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;} });
+  all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.valM]>0){e.fac+=r[COL.valM];e.facCx++;} });
   const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.qxs[i]},agg[i]); }).filter(function(a){return a.cx>0;}).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const months=new Set(all.filter(function(r){return r[COL.qx]>=0;}).map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size||1;
   const semanas=months*4.33;
@@ -2703,7 +2703,7 @@ function buildOpeQx(){
       const ay={};
       all.filter(function(r){return r[COL.anio]===yy&&r[COL.qx]>=0;}).forEach(function(r){
         const e=ay[r[COL.qx]]||(ay[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0});
-        e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;}
+        e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];if(r[COL.valM]>0){e.fac+=r[COL.valM];e.facCx++;}
       });
       aggYr[yy]=ay;
     });
@@ -2743,7 +2743,7 @@ function buildOpeSedes(){
   const yrSet=Array.from(new Set(allOpe.map(function(r){return r[COL.anio];}))).sort();
   const multiYr=yrSet.length>1;const opeYears=yrSet;
   function sedeDataFromRows(rows){
-    const facRows=rows.filter(function(r){return r[COL.met]===0;});
+    const facRows=rows.filter(function(r){return r[COL.valM]>0;});
     const min=rows.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
     const f=facRows.reduce(function(a,r){return a+r[COL.valM];},0);
     return {cx:rows.length,fac:f,min:min,facCx:facRows.length,ticket:facRows.length?f/facRows.length:0,perHr:min?f/(min/60):0,esps:new Set(rows.filter(function(r){return r[COL.esp]>=0;}).map(function(r){return r[COL.esp];})).size};
@@ -2811,7 +2811,7 @@ function buildOpeOcup(){
   const diaCx=new Array(6).fill(0), diaMin=new Array(6).fill(0);
   const diaAgg=[]; for(var d=0;d<6;d++) diaAgg.push({cx:0,fac:0,min:0,facCx:0});
   all.forEach(function(r){ if(r[COL.dia]>=0&&r[COL.dia]<6){ diaCx[r[COL.dia]]++; if(r[COL.tmin]>0)diaMin[r[COL.dia]]+=r[COL.tmin];
-    const a=diaAgg[r[COL.dia]]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.met]===0){a.fac+=r[COL.valM];a.facCx++;} } });
+    const a=diaAgg[r[COL.dia]]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.valM]>0){a.fac+=r[COL.valM];a.facCx++;} } });
   const diasLbl=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const ocup=estOcupacion(all);
   const conDia=all.filter(function(r){return r[COL.dia]>=0;}).length;
