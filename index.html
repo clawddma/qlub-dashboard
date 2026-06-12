@@ -2543,6 +2543,26 @@ function buildOpeEsp(){
   const top=arr.slice(0,12);
   const withHr=arr.filter(function(a){return a.min>0;}).map(function(a){return Object.assign({},a,{perHr:a.fac/(a.min/60)});}).sort(function(a,b){return b.perHr-a.perHr;});
   const bestHr=withHr[0];
+  const y1esp=opeYears[0],yNesp=opeYears[opeYears.length-1];
+  const aggYr={};
+  if(multiYr){
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYr[yy]=ay;
+    });
+  }
+  function espTblHdr(){
+    if(!multiYr) return '<tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr>';
+    return '<tr><th>Especialidad</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>T. prom</th></tr>';
+  }
+  function espTblRow(a){
+    if(!multiYr){const hr=a.min/60;return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>';}
+    const yrCells=opeYears.map(function(yy){const d=aggYr[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
+    const delta=opeYears.length===2?(function(){const d1=aggYr[y1esp][a.i]||{cx:0,fac:0},d2=aggYr[yNesp][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
+    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>';
+  }
   el.innerHTML=
     '<div class="sec-title">Especialidades <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">Ranking por <strong>'+MD.noun+'</strong> · pasa el mouse para ver todas las métricas de cada especialidad</div>'+
@@ -2555,21 +2575,14 @@ function buildOpeEsp(){
       card('Top 12 especialidades · por '+MD.noun,'métrica: '+MD.lbl,'oe-bar','tall')+
       card('Mix de '+MD.dnoun,'composición','oe-dona','tall')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle por especialidad</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por especialidad'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr></thead><tbody>'+
-        arr.map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>'; }).join('')+
+        '<thead>'+espTblHdr()+'</thead><tbody>'+
+        arr.map(espTblRow).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight green"><strong>'+(bestHr?bestHr.name:'Cirugía Endocrina')+'</strong> es la especialidad más rentable por hora de quirófano ('+(bestHr?fmtMd(bestHr.perHr,2):'')+'/h) — muy por encima del promedio. Priorizar su agenda maximiza el retorno de cada hora de sala.</div>'+
     footnoteMetrica();
   if(multiYr){
-    const aggYr={};
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYr[yy]=ay;
-    });
     mkChart('oe-bar','bar',top.map(function(a){return a.name;}),
       opeYears.map(function(yy){return {label:String(yy),data:top.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
       {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
@@ -2605,6 +2618,27 @@ function buildOpeCir(){
   const lider=arr[0];
   const conc=(lider&&totFac)?lider.fac/totFac*100:0;
   const top5=totFac?arr.slice(0,5).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
+  const y1cir=opeYears[0],yNcir=opeYears[opeYears.length-1];
+  const aggYr={};
+  if(multiYr){
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYr[yy]=ay;
+    });
+  }
+  function cirTblHdr(){
+    if(!multiYr) return '<tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr>';
+    return '<tr><th>Cirujano</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th><th>Sedes</th></tr>';
+  }
+  function cirTblRow(a){
+    const sedesHtml=Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ');
+    if(!multiYr){const hr=a.min/60;return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+sedesHtml+'</td></tr>';}
+    const yrCells=opeYears.map(function(yy){const d=aggYr[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
+    const delta=opeYears.length===2?(function(){const d1=aggYr[y1cir][a.i]||{cx:0,fac:0},d2=aggYr[yNcir][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
+    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+sedesHtml+'</td></tr>';
+  }
   el.innerHTML=
     '<div class="sec-title">Cirujanos <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">'+arr.length+' cirujanos con actividad · ranking por <strong>'+MD.noun+'</strong> · hover para ver todas las métricas</div>'+
@@ -2614,21 +2648,14 @@ function buildOpeCir(){
       kpi(conc>15?'red':'green','Top 5 concentración',fmtPct(top5),'de la facturación')+
     '</div>'+
     '<div class="gfull">'+card('Top 15 cirujanos · por '+MD.noun,'métrica: '+MD.lbl,'oc-bar','tall')+'</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle Top 25 cirujanos</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle Top 25 cirujanos'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr></thead><tbody>'+
-        arr.slice(0,25).map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ')+'</td></tr>'; }).join('')+
+        '<thead>'+cirTblHdr()+'</thead><tbody>'+
+        arr.slice(0,25).map(cirTblRow).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(conc>15?'warn':'')+'"><strong>'+(lider?shortName(lider.name):'')+'</strong> concentra el <strong>'+fmtPct(conc)+'</strong> de la facturación. '+(conc>12?'Es una concentración relevante: la salida de un cirujano top impacta directo el P&amp;G. Conviene fortalecer la cantera de cirujanos medios.':'La facturación está razonablemente diversificada entre cirujanos.')+'</div>'+
     footnoteMetrica();
   if(multiYr){
-    const aggYr={};
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYr[yy]=ay;
-    });
     mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),
       opeYears.map(function(yy){return {label:String(yy),data:top15.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
       {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
@@ -2819,6 +2846,26 @@ function buildOpeEps(){
   const suraPct=(sura&&totFac)?sura.fac/totFac*100:0;
   const top3=totFac?arr.slice(0,3).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
   const top8=arr.slice(0,8);
+  const y1eps=opeYears[0],yNeps=opeYears[opeYears.length-1];
+  const aggYrEps={};
+  if(multiYr){
+    opeYears.forEach(function(yy){
+      const ay={};
+      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
+      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
+      aggYrEps[yy]=ay;
+    });
+  }
+  function epsTblHdr(){
+    if(!multiYr) return '<tr><th>Entidad</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr>';
+    return '<tr><th>Entidad</th>'+opeYears.map(function(yy){return '<th style="color:'+YR_CLR[yy]+'">'+yy+' Cx</th><th style="color:'+YR_CLR[yy]+'">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th></tr>';
+  }
+  function epsTblRow(a){
+    if(!multiYr) return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>';
+    const yrCells=opeYears.map(function(yy){const d=aggYrEps[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
+    const delta=opeYears.length===2?(function(){const d1=aggYrEps[y1eps][a.i]||{cx:0,fac:0},d2=aggYrEps[yNeps][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
+    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td></tr>';
+  }
   el.innerHTML=
     '<div class="sec-title">EPS / Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">'+arr.length+' entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
@@ -2831,29 +2878,22 @@ function buildOpeEps(){
       card('Top 8 entidades · por '+MD.noun,'métrica: '+MD.lbl,'op-bar','')+
       card('Mix de pagadores ('+MD.dnoun+')','composición','op-dona','')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle por entidad (Top 15)</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por entidad (Top 15)'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Entidad</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr></thead><tbody>'+
-        arr.slice(0,15).map(function(a){ return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>'; }).join('')+
+        '<thead>'+epsTblHdr()+'</thead><tbody>'+
+        arr.slice(0,15).map(epsTblRow).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(suraPct>40?'neg':'warn')+'"><strong>SURA representa el '+fmtPct(suraPct)+'</strong> de la facturación. Es una dependencia crítica: cualquier cambio de tarifa o contrato con SURA mueve el negocio entero. Diversificar pagadores (particular, otras prepagadas) es prioridad estratégica de riesgo.</div>'+
     footnoteMetrica();
   const top5=arr.slice(0,5);
   if(multiYr){
-    const aggYr={};
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYr[yy]=ay;
-    });
     mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
-      opeYears.map(function(yy){return {label:String(yy),data:top8.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      opeYears.map(function(yy){return {label:String(yy),data:top8.map(function(a){return metVal(aggYrEps[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
       {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top8)}},
+       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYrEps,top8)}},
        scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
     mkChart('op-dona','bar',top5.map(function(a){return a.name.split(' ')[0];}),
-      opeYears.map(function(yy){return {label:String(yy),data:top5.map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
+      opeYears.map(function(yy){return {label:String(yy),data:top5.map(function(a){return MD.dval(aggYrEps[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
       {_tooltipLabel:tipMoney,_yMoney:true});
   } else {
     mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
