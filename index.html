@@ -589,6 +589,11 @@ function fmtVar(p){
   return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
 }
 function pctVar(cur,prev){ if(!prev||prev===0) return null; return (cur-prev)/Math.abs(prev)*100; }
+function fmtVarInv(p){
+  if(p===null||p===undefined||isNaN(p)||!isFinite(p)) return '<span>—</span>';
+  const cls=p>=0?'n':'p', arr=p>=0?'&#9650;':'&#9660;';
+  return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
+}
 
 /* ── Chart.js base + mkChart ── */
 Chart.defaults.font.family = "'Inter',sans-serif";
@@ -1232,6 +1237,7 @@ function buildFinPnl(){
     }
     return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(curMgn)+'</strong></td><td class="pct-col"></td>'+varCell+'</tr>';
   }
+  const curGasto=cur['Nómina']+cur['G. Admin'], prvGasto=prv['Nómina']+prv['G. Admin'];
   const mHdr = cols.map(function(c){
     const lblM=twoYr?(MESES[c.mi]+" '"+String(c.yr).slice(2)):MESES[c.mi];
     const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
@@ -1241,11 +1247,13 @@ function buildFinPnl(){
   el.innerHTML =
     '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(vtYearsEarly.length===2?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
-    '<div class="kpis k4">'+
-      kpi('navy','EBIT',fmtM(T.ebit),'margen '+fmtPct(mEbit))+
-      kpi('','EBITDA',fmtM(T.ebitda),'+ D&amp;A '+fmtM(T.da))+
-      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
-      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
+    '<div class="kpis k6">'+
+      kpi('gold','Ingresos',fmtM(T.ing),fmtVar(pctVar(cur['Ingresos'],prv['Ingresos']))+' vs '+yPrevP)+
+      kpi('red','Costo Dir.',fmtM(T.cd),fmtVarInv(pctVar(cur['Costo Dir.'],prv['Costo Dir.']))+' vs '+yPrevP)+
+      kpi('','Gasto Operativo',fmtM(T.nom+T.adm),fmtVarInv(pctVar(curGasto,prvGasto))+' vs '+yPrevP)+
+      kpi('','EBITDA',fmtM(T.ebitda),fmtVar(pctVar(cur['EBITDA'],prv['EBITDA']))+' vs '+yPrevP)+
+      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),fmtVar(pctVar(cur['Util. Neta'],prv['Util. Neta']))+' vs '+yPrevP)+
+      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'EBIT '+fmtPct(mEbit))+
     '</div>'+
     '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(twoYr?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">'+(twoYr?'Cada mes abierto por año · Var% comparativo':'Cascada completa hasta Utilidad Neta')+'</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
@@ -1416,79 +1424,148 @@ function buildFinPnl(){
 /* ─────────── FIN: MÁRGENES ─────────── */
 function buildFinMargen(){
   const el=document.getElementById('fin-margen');
-  const s=FF.sede, y=finYear();
+  const s=FF.sede, y=finYear(), selYears=finYearsSorted();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
-  const act=finMesesIdx(s,y);
-  const ing=pygArr(s,y,'4'), ub=ubArr(s,y), ebit=ebitArr(s,y);
-  const mb=ing.map(function(v,i){return v?ub[i]/v*100:null;});
-  const me=ing.map(function(v,i){return v?ebit[i]/v*100:null;});
-  const tIng=sumActive(ing,act), tUb=sumActive(ub,act), tEbit=sumActive(ebit,act);
-  let bi=-1,bv=-1e9; act.forEach(function(i){ if(me[i]>bv){bv=me[i];bi=i;} });
+  const multiYr=(selYears.length>1);
+  const winA=finMesesIdx(s,y);
+  function aggM(yy){
+    const actY=monthsActive(s,yy);
+    const act=winA.filter(function(i){return actY.indexOf(i)>=0;});
+    const sa=function(arr){return act.reduce(function(t,i){return t+(arr[i]||0);},0);};
+    const tI=sa(pygArr(s,yy,'4')), tU=sa(ubArr(s,yy)), tE=sa(ebitArr(s,yy));
+    return {ing:tI,ub:tU,ebit:tE,act:act,mb:tI?tU/tI*100:0,me:tI?tE/tI*100:0};
+  }
+  const yp=(selYears.length===2?selYears[0]:y-1);
+  const A=aggM(y), B=aggM(yp);
+  /* mejor mes EBIT del año principal */
+  const ingY=pygArr(s,y,'4'), ebitY=ebitArr(s,y);
+  const meY=ingY.map(function(v,i){return v?ebitY[i]/v*100:null;});
+  let bi=-1,bv=-1e9; A.act.forEach(function(i){ if(meY[i]!==null&&meY[i]>bv){bv=meY[i];bi=i;} });
+  const vMb=pctVar(A.mb,B.mb), vMe=pctVar(A.me,B.me);
   el.innerHTML=
-    '<div class="sec-title">Márgenes <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
-    '<div class="sec-sub">Evolución de márgenes bruto y EBIT mes a mes · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
+    '<div class="sec-title">Márgenes <span class="st-badge">'+s+' · '+y+(multiYr?' vs '+yp:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-sub">Evolución de márgenes bruto y EBIT · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
     '<div class="kpis k3">'+
-      kpi('','Margen Bruto prom.',fmtPct(tIng?tUb/tIng*100:0),'')+
-      kpi('navy','Margen EBIT prom.',fmtPct(tIng?tEbit/tIng*100:0),'')+
+      kpi('','Margen Bruto',fmtPct(A.mb),fmtVar(vMb)+(vMb!==null?' vs '+yp+' ('+fmtPct(B.mb)+')':''))+
+      kpi('navy','Margen EBIT',fmtPct(A.me),fmtVar(vMe)+(vMe!==null?' vs '+yp+' ('+fmtPct(B.me)+')':''))+
       kpi('gold','Mejor mes (EBIT%)',(bi>=0?MESES[bi]:'—'),(bi>=0?fmtPct(bv):''))+
     '</div>'+
-    '<div class="gfull">'+card('Margen Bruto vs Margen EBIT — '+y,'% sobre ingresos','fm-chart','')+'</div>'+
+    '<div class="gfull">'+card('Margen Bruto vs Margen EBIT','% sobre ingresos · '+(multiYr?selYears.join(' vs '):String(y)),'fm-chart','')+'</div>'+
     '<div class="gfull">'+card('Utilidad Bruta vs EBIT mensual (millones)','','fm-abs','short')+'</div>'+
-    '<div class="insight">El margen EBIT promedio del periodo es <strong>'+fmtPct(tIng?tEbit/tIng*100:0)+'</strong>. La brecha contra el margen bruto ('+fmtPct(tIng?tUb/tIng*100:0)+') muestra el peso de nómina y administración sobre la operación.</div>';
-  const lbls=act.map(function(i){return MESES[i];});
-  mkChart('fm-chart','line',lbls,[
-    {label:'Margen Bruto %',data:act.map(function(i){return mb[i];}),borderColor:C.tesoro,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.3,pointRadius:3},
-    {label:'Margen EBIT %',data:act.map(function(i){return me[i];}),borderColor:C.acento,backgroundColor:'rgba(212,168,67,.10)',fill:true,tension:.3,pointRadius:3}
-  ],{_tooltipLabel:tipPct,_yPct:true});
-  mkChart('fm-abs','bar',lbls,[
-    {label:'Utilidad Bruta',data:act.map(function(i){return ub[i];}),backgroundColor:C.tesoro},
-    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento}
-  ],{_tooltipLabel:tipMoney,_yMoney:true});
+    '<div class="insight">El margen EBIT del período es <strong>'+fmtPct(A.me)+'</strong>'+(vMe!==null?' ('+fmtPct(B.me)+' en '+yp+')'  :'')+'. La brecha contra el margen bruto ('+fmtPct(A.mb)+') muestra el peso de nómina y administración sobre la operación.</div>';
+  /* charts: si mesExpl + multi-year → grouped bar por mes/año; si no → líneas por año */
+  if(mesExpl && multiYr){
+    const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;});
+    const lbls=mesSel.map(function(m){return MESES[m-1];});
+    mkChart('fm-chart','bar',lbls,[
+      {label:'M. Bruto '+yp,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,yp,'4')[i]; return iv?ubArr(s,yp)[i]/iv*100:null;}),backgroundColor:YR_CLR[yp]||C.tesoro,barPercentage:.85},
+      {label:'M. EBIT '+yp,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,yp,'4')[i]; return iv?ebitArr(s,yp)[i]/iv*100:null;}),backgroundColor:YR_CLR[yp]||C.tesoro,borderWidth:2,borderColor:'#fff',barPercentage:.85},
+      {label:'M. Bruto '+y,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,y,'4')[i]; return iv?ubArr(s,y)[i]/iv*100:null;}),backgroundColor:YR_CLR[y]||C.acento,barPercentage:.85},
+      {label:'M. EBIT '+y,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,y,'4')[i]; return iv?ebitArr(s,y)[i]/iv*100:null;}),backgroundColor:YR_CLR[y]||C.acento,borderWidth:2,borderColor:'#fff',barPercentage:.85}
+    ],{_tooltipLabel:tipPct,_yPct:true});
+    mkChart('fm-abs','bar',lbls,[
+      {label:'U. Bruta '+yp,data:mesSel.map(function(m){return ubArr(s,yp)[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.tesoro},
+      {label:'EBIT '+yp,data:mesSel.map(function(m){return ebitArr(s,yp)[m-1]||null;}),backgroundColor:(YR_CLR[yp]||C.tesoro),borderWidth:2,borderColor:'#fff'},
+      {label:'U. Bruta '+y,data:mesSel.map(function(m){return ubArr(s,y)[m-1]||null;}),backgroundColor:YR_CLR[y]||C.acento},
+      {label:'EBIT '+y,data:mesSel.map(function(m){return ebitArr(s,y)[m-1]||null;}),backgroundColor:(YR_CLR[y]||C.acento),borderWidth:2,borderColor:'#fff'}
+    ],{_tooltipLabel:tipMoney,_yMoney:true});
+  } else if(multiYr){
+    const chartYears=selYears.slice(); if(chartYears.indexOf(yp)<0) chartYears.unshift(yp); chartYears.sort();
+    const upTo=Math.max.apply(null,chartYears.map(function(yy){return finMesesIdx(s,yy).length>0?Math.max.apply(null,finMesesIdx(s,yy))+1:0;}));
+    const lbls=MESES.slice(0,upTo);
+    mkChart('fm-chart','line',lbls,chartYears.map(function(yy){
+      var ingA=pygArr(s,yy,'4'), ubA=ubArr(s,yy), ebitA=ebitArr(s,yy), actY=finMesesIdx(s,yy);
+      return [{label:'M. Bruto '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0&&ingA[i]?ubA[i]/ingA[i]*100:null;}),borderColor:YR_CLR[yy]||C.tesoro,tension:.3,pointRadius:3},
+              {label:'M. EBIT '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0&&ingA[i]?ebitA[i]/ingA[i]*100:null;}),borderColor:YR_CLR[yy]||C.acento,borderDash:[4,3],tension:.3,pointRadius:3}];
+    }).reduce(function(a,b){return a.concat(b);},[]),{_tooltipLabel:tipPct,_yPct:true});
+    mkChart('fm-abs','bar',lbls,chartYears.map(function(yy){
+      var ubA=ubArr(s,yy), ebitA=ebitArr(s,yy), actY=finMesesIdx(s,yy);
+      return [{label:'U. Bruta '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0?ubA[i]:null;}),backgroundColor:YR_CLR[yy]||C.tesoro},
+              {label:'EBIT '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0?ebitA[i]:null;}),backgroundColor:YR_CLR[yy]||C.acento}];
+    }).reduce(function(a,b){return a.concat(b);},[]),{_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    const act=A.act;
+    const ing=pygArr(s,y,'4'), ub=ubArr(s,y), ebit=ebitArr(s,y);
+    const mb2=ing.map(function(v,i){return v?ub[i]/v*100:null;});
+    const me2=ing.map(function(v,i){return v?ebit[i]/v*100:null;});
+    const lbls=act.map(function(i){return MESES[i];});
+    mkChart('fm-chart','line',lbls,[
+      {label:'Margen Bruto %',data:act.map(function(i){return mb2[i];}),borderColor:C.tesoro,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.3,pointRadius:3},
+      {label:'Margen EBIT %',data:act.map(function(i){return me2[i];}),borderColor:C.acento,backgroundColor:'rgba(212,168,67,.10)',fill:true,tension:.3,pointRadius:3}
+    ],{_tooltipLabel:tipPct,_yPct:true});
+    mkChart('fm-abs','bar',lbls,[
+      {label:'Utilidad Bruta',data:act.map(function(i){return ub[i];}),backgroundColor:C.tesoro},
+      {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento}
+    ],{_tooltipLabel:tipMoney,_yMoney:true});
+  }
 }
 
 /* ─────────── FIN: COSTOS ─────────── */
 function buildFinCostos(){
   const el=document.getElementById('fin-costos');
-  const s=FF.sede, y=finYear();
+  const s=FF.sede, y=finYear(), selYears=finYearsSorted();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
-  const act=finMesesIdx(s,y);
-  const cd=pygArr(s,y,'6'),nom=pygArr(s,y,'7'),adm=pygArr(s,y,'5');
-  const tCd=sumActive(cd,act),tNom=sumActive(nom,act),tAdm=sumActive(adm,act);
-  const tTot=tCd+tNom+tAdm;
+  const multiYr=(selYears.length>1);
+  const winA=finMesesIdx(s,y);
+  function aggC(sede,yy){
+    const actY=monthsActive(sede,yy);
+    const wA=(sede===s)?winA:finMesesIdx(sede,yy);
+    const act=wA.filter(function(i){return actY.indexOf(i)>=0;});
+    const sa=function(arr){return act.reduce(function(t,i){return t+(arr[i]||0);},0);};
+    const ing=sa(pygArr(sede,yy,'4'))||1;
+    const cd=sa(pygArr(sede,yy,'6')), nom=sa(pygArr(sede,yy,'7')), adm=sa(pygArr(sede,yy,'5'));
+    return {cd:cd,nom:nom,adm:adm,tot:cd+nom+adm,ing:ing,act:act,
+            pCd:cd/ing*100,pNom:nom/ing*100,pAdm:adm/ing*100,
+            ebitPct:(ing-cd-nom-adm)/ing*100};
+  }
+  const yp=(selYears.length===2?selYears[0]:y-1);
+  const A=aggC(s,y), B=aggC(s,yp);
+  const tTot=A.tot;
   el.innerHTML=
-    '<div class="sec-title">Estructura de Costos <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-title">Estructura de Costos <span class="st-badge">'+s+' · '+y+(multiYr?' vs '+yp:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">Composición y evolución de costos directos, nómina y administración · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
     '<div class="kpis k3">'+
-      kpi('','Costo Directo',fmtM(tCd),fmtPct(tTot?tCd/tTot*100:0)+' del costo')+
-      kpi('green','Nómina',fmtM(tNom),fmtPct(tTot?tNom/tTot*100:0)+' del costo')+
-      kpi('navy','Gastos Admin',fmtM(tAdm),fmtPct(tTot?tAdm/tTot*100:0)+' del costo')+
+      kpi('','Costo Directo',fmtM(A.cd),fmtVarInv(pctVar(A.cd,B.cd))+(pctVar(A.cd,B.cd)!==null?' vs '+yp:'  '+fmtPct(tTot?A.cd/tTot*100:0)+' del costo'))+
+      kpi('green','Nómina',fmtM(A.nom),fmtVarInv(pctVar(A.nom,B.nom))+(pctVar(A.nom,B.nom)!==null?' vs '+yp:'  '+fmtPct(tTot?A.nom/tTot*100:0)+' del costo'))+
+      kpi('navy','Gastos Admin',fmtM(A.adm),fmtVarInv(pctVar(A.adm,B.adm))+(pctVar(A.adm,B.adm)!==null?' vs '+yp:'  '+fmtPct(tTot?A.adm/tTot*100:0)+' del costo'))+
     '</div>'+
     '<div class="g4060">'+
-      card('Mix de costos','','fc-dona','')+
+      card('Mix de costos '+y,'','fc-dona','')+
       card('Costos por mes (apilado)','millones COP','fc-stack','')+
     '</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Costos y gastos por sede — % del ingreso de cada sede','compara qué pesa más cada rubro en Tesoro vs Oviedo · '+y,'fc-sedes','')+'</div>'+
-    '<div class="insight">El <strong>costo directo</strong> (insumos, derechos de sala, honorarios) es '+fmtPct(tTot?tCd/tTot*100:0)+' de la estructura. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
+    '<div class="insight">El <strong>costo directo</strong> es '+fmtPct(tTot?A.cd/tTot*100:0)+' de la estructura'+(pctVar(A.cd,B.cd)!==null?' ('+fmtPct(B.cd/(B.tot||1)*100)+' en '+yp+')':'')+'. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
+  /* fc-dona: siempre año principal */
   mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
-    [{data:[tCd,tNom,tAdm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
+    [{data:[A.cd,A.nom,A.adm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
     {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
-  const lbls=act.map(function(i){return MESES[i];});
-  mkChart('fc-stack','bar',lbls,[
-    {label:'Costo Directo',data:act.map(function(i){return cd[i];}),backgroundColor:C.tesoro},
-    {label:'Nómina',data:act.map(function(i){return nom[i];}),backgroundColor:C.oviedo},
-    {label:'Gastos Admin',data:act.map(function(i){return adm[i];}),backgroundColor:C.consol}
-  ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
-  /* ── Comparativo proporcional por sede: cada rubro como % del ingreso de SU sede ── */
-  function costPctSede(sede){
-    const a=finMesesIdx(sede,y), ing=sumActive(pygArr(sede,y,'4'),a)||1;
-    return {cd:sumActive(pygArr(sede,y,'6'),a)/ing*100, nom:sumActive(pygArr(sede,y,'7'),a)/ing*100,
-            adm:sumActive(pygArr(sede,y,'5'),a)/ing*100,
-            ebit:(ing-sumActive(pygArr(sede,y,'6'),a)-sumActive(pygArr(sede,y,'7'),a)-sumActive(pygArr(sede,y,'5'),a))/ing*100};
+  /* fc-stack */
+  if(mesExpl && multiYr){
+    const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;});
+    const lbls=mesSel.map(function(m){return MESES[m-1];});
+    mkChart('fc-stack','bar',lbls,[
+      {label:'Costo Dir. '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'6')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.tesoro,stack:String(yp)},
+      {label:'Nómina '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'7')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.oviedo,stack:String(yp)},
+      {label:'G. Admin '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'5')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.consol,stack:String(yp)},
+      {label:'Costo Dir. '+y,data:mesSel.map(function(m){return pygArr(s,y,'6')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.tesoro,stack:String(y)},
+      {label:'Nómina '+y,data:mesSel.map(function(m){return pygArr(s,y,'7')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.oviedo,stack:String(y)},
+      {label:'G. Admin '+y,data:mesSel.map(function(m){return pygArr(s,y,'5')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.consol,stack:String(y)}
+    ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  } else {
+    const act=A.act;
+    const cd2=pygArr(s,y,'6'),nom2=pygArr(s,y,'7'),adm2=pygArr(s,y,'5');
+    const lbls=act.map(function(i){return MESES[i];});
+    mkChart('fc-stack','bar',lbls,[
+      {label:'Costo Directo',data:act.map(function(i){return cd2[i];}),backgroundColor:C.tesoro},
+      {label:'Nómina',data:act.map(function(i){return nom2[i];}),backgroundColor:C.oviedo},
+      {label:'Gastos Admin',data:act.map(function(i){return adm2[i];}),backgroundColor:C.consol}
+    ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
   }
-  const pT=costPctSede('Tesoro'), pO=costPctSede('Oviedo');
+  /* fc-sedes: % del ingreso de cada sede (año principal) */
+  const pT=aggC('Tesoro',y), pO=aggC('Oviedo',y);
   mkChart('fc-sedes','bar',['Costo Directo','Nómina','Gastos Admin','EBIT (margen)'],[
-    {label:'Tesoro',data:[pT.cd,pT.nom,pT.adm,pT.ebit],backgroundColor:C.tesoro},
-    {label:'Oviedo',data:[pO.cd,pO.nom,pO.adm,pO.ebit],backgroundColor:C.oviedo}
+    {label:'Tesoro',data:[pT.pCd,pT.pNom,pT.pAdm,pT.ebitPct],backgroundColor:C.tesoro},
+    {label:'Oviedo',data:[pO.pCd,pO.pNom,pO.pAdm,pO.ebitPct],backgroundColor:C.oviedo}
   ],{_yPct:true,plugins:{tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmtPct(c.raw);}}}},
      scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
 }
