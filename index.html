@@ -1582,35 +1582,41 @@ function buildFinCostos(){
       kpi('navy','Gastos Admin',fmtM(A.adm),fmtVarInv(pctVar(A.adm,B.adm))+(pctVar(A.adm,B.adm)!==null?' vs '+yp:'  '+fmtPct(tTot?A.adm/tTot*100:0)+' del costo'))+
     '</div>'+
     '<div class="g4060">'+
-      card('Mix de costos '+y,'','fc-dona','')+
+      card(multiYr?'Mix de costos — '+y+' vs '+yp:'Mix de costos '+y,'','fc-dona','')+
       card('Costos por mes (apilado)','millones COP','fc-stack','')+
     '</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Costos y gastos por sede — % del ingreso de cada sede','compara qué pesa más cada rubro en Tesoro vs Oviedo · '+y,'fc-sedes','')+'</div>'+
     '<div class="insight">El <strong>costo directo</strong> es '+fmtPct(tTot?A.cd/tTot*100:0)+' de la estructura'+(pctVar(A.cd,B.cd)!==null?' ('+fmtPct(B.cd/(B.tot||1)*100)+' en '+yp+')':'')+'. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
-  /* fc-dona: siempre año principal */
-  mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
-    [{data:[A.cd,A.nom,A.adm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
-    {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
-  /* fc-stack */
-  if(mesExpl && multiYr){
-    const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;});
-    const lbls=mesSel.map(function(m){return MESES[m-1];});
-    mkChart('fc-stack','bar',lbls,[
-      {label:'Costo Dir. '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'6')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.tesoro,stack:String(yp)},
-      {label:'Nómina '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'7')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.oviedo,stack:String(yp)},
-      {label:'G. Admin '+yp,data:mesSel.map(function(m){return pygArr(s,yp,'5')[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.consol,stack:String(yp)},
-      {label:'Costo Dir. '+y,data:mesSel.map(function(m){return pygArr(s,y,'6')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.tesoro,stack:String(y)},
-      {label:'Nómina '+y,data:mesSel.map(function(m){return pygArr(s,y,'7')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.oviedo,stack:String(y)},
-      {label:'G. Admin '+y,data:mesSel.map(function(m){return pygArr(s,y,'5')[m-1]||null;}),backgroundColor:YR_CLR[y]||C.consol,stack:String(y)}
+  /* fc-dona: 1 año → donut; 2 años → barras agrupadas por rubro */
+  if(multiYr){
+    mkChart('fc-dona','bar',['Costo Directo','Nómina','Gastos Admin'],[
+      {label:String(yp),data:[B.cd,B.nom,B.adm],backgroundColor:YR_CLR[yp]||C.consol},
+      {label:String(y), data:[A.cd,A.nom,A.adm],backgroundColor:YR_CLR[y]||C.acento}
+    ],{_tooltipLabel:tipMoney,_yMoney:true});
+  } else {
+    mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
+      [{data:[A.cd,A.nom,A.adm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
+      {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+  }
+  /* fc-stack: 2 años → apilado paralelo con colores por rubro + opacidad por año */
+  if(multiYr){
+    const actY=finMesesIdx(s,y), actP=finMesesIdx(s,yp);
+    const allMc=(function(){var u={};actY.forEach(function(i){u[i]=1;});actP.forEach(function(i){u[i]=1;});return Object.keys(u).map(Number).sort(function(a,b){return a-b;});})();
+    mkChart('fc-stack','bar',allMc.map(function(i){return MESES[i];}),[
+      {label:'Costo Dir. '+yp, data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'6')[i]:null;}),backgroundColor:hexToRgba(C.tesoro,0.45),stack:String(yp)},
+      {label:'Nómina '+yp,     data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'7')[i]:null;}),backgroundColor:hexToRgba(C.oviedo,0.45),stack:String(yp)},
+      {label:'G. Admin '+yp,   data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'5')[i]:null;}),backgroundColor:hexToRgba(C.consol,0.45),stack:String(yp)},
+      {label:'Costo Dir. '+y,  data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'6')[i]:null;}), backgroundColor:C.tesoro,stack:String(y)},
+      {label:'Nómina '+y,      data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'7')[i]:null;}), backgroundColor:C.oviedo,stack:String(y)},
+      {label:'G. Admin '+y,    data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'5')[i]:null;}), backgroundColor:C.consol,stack:String(y)}
     ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
   } else {
     const act=A.act;
     const cd2=pygArr(s,y,'6'),nom2=pygArr(s,y,'7'),adm2=pygArr(s,y,'5');
-    const lbls=act.map(function(i){return MESES[i];});
-    mkChart('fc-stack','bar',lbls,[
+    mkChart('fc-stack','bar',act.map(function(i){return MESES[i];}),[
       {label:'Costo Directo',data:act.map(function(i){return cd2[i];}),backgroundColor:C.tesoro},
-      {label:'Nómina',data:act.map(function(i){return nom2[i];}),backgroundColor:C.oviedo},
-      {label:'Gastos Admin',data:act.map(function(i){return adm2[i];}),backgroundColor:C.consol}
+      {label:'Nómina',       data:act.map(function(i){return nom2[i];}),backgroundColor:C.oviedo},
+      {label:'Gastos Admin', data:act.map(function(i){return adm2[i];}),backgroundColor:C.consol}
     ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
   }
   /* fc-sedes: % del ingreso de cada sede (año principal) */
