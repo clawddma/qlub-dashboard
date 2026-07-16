@@ -238,19 +238,6 @@ a{text-decoration:none;color:inherit;}
 .tbl .pct-col{color:#6b7a99;font-style:italic;font-size:11px;border-left:1px solid #d0daea;}
 .tbl th.pct-col{font-style:italic;font-size:10px;opacity:.85;border-left:1px solid rgba(255,255,255,.2);}
 .tbl .tot .pct-col{color:#aec6e8;}
-.tbl .var-pos{color:#1A6B35;font-weight:700;font-style:normal;}
-.tbl .var-neg{color:#C0392B;font-weight:700;font-style:normal;}
-.tbl .tot .var-pos{color:#7dd9a3;font-weight:700;font-style:normal;}
-.tbl .tot .var-neg{color:#f5a0a0;font-weight:700;font-style:normal;}
-.tbl .sub .var-pos{color:#1A6B35;font-weight:700;font-style:normal;}
-.tbl .sub .var-neg{color:#C0392B;font-weight:700;font-style:normal;}
-/* columna del año anterior (modo comparativo 2 años): fondo tenue para parear visualmente cada mes */
-.tbl td.yr-prev{background:#f3f6fb;color:#5d7290;}
-.tbl th.yr-prev{background:#16314f;}
-.tbl .sub td.yr-prev{background:#e4edf8;}
-.tbl .tot td.yr-prev{background:#14304e;color:#cfe0f5;}
-.tbl td.yr-cur{border-right:2px solid #d0daea;}
-.tbl th.yr-cur{border-right:2px solid rgba(255,255,255,.25);}
 .pos{color:var(--pos);font-weight:700;}
 .neg{color:var(--neg);font-weight:700;}
 
@@ -474,7 +461,7 @@ a{text-decoration:none;color:inherit;}
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
   </nav>
-  <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span><br><span id="hdr-build" style="opacity:.55;font-size:9.5px;"></span></div>
+  <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
 </header>
 
 <!-- ═══ SUB-NAV ═══ -->
@@ -556,7 +543,6 @@ const C = {
   acento:'#D4A843', pos:'#1A7A3C', neg:'#C0392B', grid:'#E9ECEF', txt:'#6b7f9c'
 };
 const YR_CLR = {2024:'#9AA8BD', 2025:'#1B3A6B', 2026:'#D4A843'};
-const YR_TXT = {2024:'#0E2240', 2025:'#ffffff', 2026:'#0E2240'}; /* texto sobre fondo YR_CLR */
 /* color estable por rubro contable (cuenta 5) — usado en barras apiladas y composición */
 const GA_RUBRO_CLR = {
   '5105':'#1B3A6B','5120':'#D4A843','5135':'#1A6B35','5110':'#C0392B','5115':'#6b7f9c',
@@ -590,12 +576,6 @@ function fmtVar(p){
   return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
 }
 function pctVar(cur,prev){ if(!prev||prev===0) return null; return (cur-prev)/Math.abs(prev)*100; }
-function fmtVarInv(p){
-  if(p===null||p===undefined||isNaN(p)||!isFinite(p)) return '<span>—</span>';
-  const cls=p>=0?'n':'p', arr=p>=0?'&#9650;':'&#9660;';
-  return '<span class="'+cls+'">'+arr+' '+Math.abs(p).toFixed(1)+'%</span>';
-}
-function hexToRgba(hex,a){var r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return 'rgba('+r+','+g+','+b+','+a+')';}
 
 /* ── Chart.js base + mkChart ── */
 Chart.defaults.font.family = "'Inter',sans-serif";
@@ -611,7 +591,7 @@ function mkChart(id, type, labels, datasets, opts){
   datasets.forEach(function(ds){ if((!ds.type||ds.type==='bar') && ds.borderRadius===undefined) ds.borderRadius=4; });
   _chartSpecs[id] = {type:type, labels:labels, datasets:datasets, opts:opts};
   const o = buildChartOpts(datasets, opts, type);
-  _charts[id] = new Chart(el, {type:type, data:{labels:labels, datasets:datasets}, options:o, plugins:opts._chartPlugins||[]});
+  _charts[id] = new Chart(el, {type:type, data:{labels:labels, datasets:datasets}, options:o});
   return _charts[id];
 }
 /* charts circulares no tienen ejes cartesianos */
@@ -660,7 +640,7 @@ function openChartModal(srcId, title){
   const ds=spec.datasets.map(function(d){ return Object.assign({}, d); });
   const o=buildChartOpts(ds, spec.opts, spec.type);
   o.plugins.legend.display=true;
-  _modalChart=new Chart(cv,{type:spec.type,data:{labels:spec.labels,datasets:ds},options:o,plugins:spec.opts._chartPlugins||[]});
+  _modalChart=new Chart(cv,{type:spec.type,data:{labels:spec.labels,datasets:ds},options:o});
 }
 function closeChartModal(){
   const modal=document.getElementById('chart-modal');
@@ -681,22 +661,16 @@ const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10
 
 async function loadData(){
   try{
-    const NS={cache:'no-store'}; /* datos siempre frescos, nunca de caché del navegador */
     const res = await Promise.all([
-      fetch('datos/financiero.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/comercial.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/flujo_caja.json',NS).then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/gastos_admin.json',NS).then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
+      fetch('datos/financiero.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/comercial.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
+      fetch('datos/gastos_admin.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
     FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3];
     const um=(FIN.ultimo_mes_cerrado||4)-1;
     document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
-    /* sello de versión = fecha real del HTML cargado. Si ves una fecha vieja aquí,
-       estás viendo una copia en caché: recarga con Cmd+Shift+R. */
-    try{ var lm=new Date(document.lastModified);
-      document.getElementById('hdr-build').textContent='actualizado '+lm.toLocaleDateString('es-CO',{day:'2-digit',month:'short'})+' '+lm.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
-    }catch(e){}
     document.getElementById('loader').style.display='none';
     boot();
   }catch(e){
@@ -714,7 +688,7 @@ const SUBSECS = {
   fin:[['fin-inicio','📋','Inicio'],['fin-pnl','📑','P&G'],['fin-margen','📐','Márgenes'],
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
-       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','Aseguradoras']],
+       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
   rep:[], acc:[]
 };
 let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio'};
@@ -1139,32 +1113,16 @@ function buildFinPnl(){
   const mNeto = T.ing? T.neto/T.ing*100:0;
   const mEbit = T.ing? T.ebit/T.ing*100:0;
   /* ── Comparativo rubro a rubro contra año anterior (mismo período: meses sel. > YTD) ── */
-  /* si el usuario selecciona exactamente 2 años, comparar esos dos; si no, y-1 */
-  const yPrevP=(vtYearsEarly.length===2?vtYearsEarly[0]:y-1), nMc=ultMes(), rngCmp=mesExpl? mesLbl : ('Ene-'+MESES[nMc-1]);
+  const yPrevP=y-1, nMc=ultMes(), rngCmp=mesExpl? mesLbl : ('Ene-'+MESES[nMc-1]);
   const RUB=[
     ['Ingresos','4',1],['Costo Dir.','6',0],['Nómina','7',0],['G. Admin','5',0]
   ];
-  /* índices del período comparable: meses explícitos o YTD, pero SOLO los meses que
-     AMBOS años tienen con datos → el Var% siempre compara manzanas con manzanas
-     (nunca May-2026 solo contra May+Ago-2025, ni un mes futuro sin cerrar) */
-  const _winI = mesExpl ? Array.from(FF.meses).map(function(m){return m-1;}) : ytdIdx();
-  const _actC = monthsActive(s,y), _actP = monthsActive(s,yPrevP);
-  const cmpIdx = _winI.filter(function(i){ return _actC.indexOf(i)>=0 && _actP.indexOf(i)>=0; });
+  /* índices del período comparable: meses explícitos (sin filtrar por datos, para comparar
+     el MISMO mes calendario en ambos años) o YTD Ene..ultMes */
+  const cmpIdx = mesExpl ? Array.from(FF.meses).map(function(m){return m-1;}) : ytdIdx();
   function sumCmp(arr){ return cmpIdx.reduce(function(t,i){return t+(arr[i]||0);},0); }
   const cur={}, prv={};
   RUB.forEach(function(r){ cur[r[0]]=sumCmp(pygArr(s,y,r[1])); prv[r[0]]=sumCmp(pygArr(s,yPrevP,r[1])); });
-  /* extender a todos los rubros del P&G */
-  cur['Otros Ing.']=sumCmp(pygArr(s,y,'42'));     prv['Otros Ing.']=sumCmp(pygArr(s,yPrevP,'42'));
-  cur['G. No Op.']=sumCmp(pygArr(s,y,'53'));      prv['G. No Op.']=sumCmp(pygArr(s,yPrevP,'53'));
-  cur['Impuesto']=sumCmp(pygArr(s,y,'54'));       prv['Impuesto']=sumCmp(pygArr(s,yPrevP,'54'));
-  cur['D&A']=cmpIdx.reduce(function(t,i){return t+(daArr(s,y)[i]||0);},0);
-  prv['D&A']=cmpIdx.reduce(function(t,i){return t+(daArr(s,yPrevP)[i]||0);},0);
-  cur['Util. Bruta']=cur['Ingresos']-cur['Costo Dir.'];   prv['Util. Bruta']=prv['Ingresos']-prv['Costo Dir.'];
-  cur['EBIT']=cur['Ingresos']-cur['Costo Dir.']-cur['Nómina']-cur['G. Admin'];
-  prv['EBIT']=prv['Ingresos']-prv['Costo Dir.']-prv['Nómina']-prv['G. Admin'];
-  cur['EBITDA']=cur['EBIT']+cur['D&A'];                   prv['EBITDA']=prv['EBIT']+prv['D&A'];
-  cur['UAI']=cur['EBIT']+cur['Otros Ing.']-cur['G. No Op.']; prv['UAI']=prv['EBIT']+prv['Otros Ing.']-prv['G. No Op.'];
-  cur['Util. Neta']=cur['UAI']-cur['Impuesto'];           prv['Util. Neta']=prv['UAI']-prv['Impuesto'];
   const ingGrow = prv['Ingresos']? (cur['Ingresos']-prv['Ingresos'])/prv['Ingresos']*100 : null;
   const cmpTag = mesExpl ? mesLbl : ('YTD '+rngCmp);
   /* rubros de costo que crecen MÁS que el ingreso = fuga de margen */
@@ -1182,228 +1140,95 @@ function buildFinPnl(){
       cmpInsight='<div class="insight green">Los ingresos crecen '+(ingGrow>=0?'+':'')+ingGrow.toFixed(1)+'% ('+cmpTag+') vs '+yPrevP+' y ningún rubro de costo crece por encima — el margen se mantiene o mejora.</div>';
     }
   }
-  /* serie de cualquier rubro para CUALQUIER año (para columnas por año en modo comparativo) */
-  function serie(key,yr){
-    switch(key){
-      case 'ing': return pygArr(s,yr,'4'); case 'cd': return pygArr(s,yr,'6');
-      case 'nom': return pygArr(s,yr,'7'); case 'adm': return pygArr(s,yr,'5');
-      case 'oi': return pygArr(s,yr,'42'); case 'gno': return pygArr(s,yr,'53');
-      case 'imp': return pygArr(s,yr,'54'); case 'ub': return ubArr(s,yr);
-      case 'ebit': return ebitArr(s,yr); case 'da': return daArr(s,yr);
-      case 'ebitda': return ebitdaArr(s,yr); case 'uai': return uaiArr(s,yr);
-      case 'neto': return netoArr(s,yr);
-    }
-    return new Array(12).fill(0);
-  }
-  /* ── Modelo de columnas: en modo 2 años, cada mes se abre en [año ant. · año act.] ── */
-  const twoYr=(vtYearsEarly.length===2);
-  const actPrvAll=twoYr?monthsActive(s,yPrevP):[];
-  let winIdx;
-  if(mesExpl){ winIdx=Array.from(FF.meses).sort(function(a,b){return a-b;}).map(function(m){return m-1;}); }
-  else if(FF.ytd){ winIdx=ytdIdx(); }
-  else { const u={}; act.forEach(function(i){u[i]=1;}); actPrvAll.forEach(function(i){u[i]=1;}); winIdx=Object.keys(u).map(Number).sort(function(a,b){return a-b;}); }
-  const cols=[];
-  if(twoYr){ winIdx.forEach(function(mi){ cols.push({yr:yPrevP,mi:mi}); cols.push({yr:y,mi:mi}); }); }
-  else { act.forEach(function(mi){ cols.push({yr:y,mi:mi}); }); }
-  function isActYr(yr,mi){ return (yr===y?act:actPrvAll).indexOf(mi)>=0; }
-  /* Var% se calcula con curTot/prvTot — ambos sobre los MISMOS meses comparables (cmpIdx),
-     independiente del Total mostrado (que es el total real del año actual sobre sus meses). */
-  function row(lbl,key,cls,ingTot,curTot,prvTot,posGood){
-    const tds=cols.map(function(c){
-      const v=serie(key,c.yr)[c.mi];
-      const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
-      return '<td'+(cl?' class="'+cl+'"':'')+'>'+(isActYr(c.yr,c.mi)?fmtMd(v,0):'—')+'</td>';
-    }).join('');
-    const tot=sumActive(serie(key,y),act);
+  function row(lbl,arr,cls,ingTot){
+    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
+    const tot=sumActive(arr,act);
     const pct=(ingTot&&ingTot!==0)?fmtPct(tot/ingTot*100):'—';
-    let varCell='<td class="pct-col">—</td>';
-    if(prvTot!==undefined&&prvTot!==null&&Math.abs(prvTot)>0.001){
-      const g=(curTot-prvTot)/Math.abs(prvTot)*100;
-      const good=(posGood!==false)?g>=0:g<=0;
-      varCell='<td class="pct-col '+(good?'var-pos':'var-neg')+'">'+(g>=0?'+':'')+g.toFixed(1)+'%</td>';
-    }
-    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td><td class="pct-col">'+pct+'</td>'+varCell+'</tr>';
+    return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td><td class="pct-col">'+pct+'</td></tr>';
   }
-  function rowPct(lbl,keyA,keyB,curTot,curBase,prvTot,prvBase){
-    const tds=cols.map(function(c){
-      const a=serie(keyA,c.yr)[c.mi], b=serie(keyB,c.yr)[c.mi];
-      const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
-      return '<td'+(cl?' class="'+cl+'"':'')+'>'+(isActYr(c.yr,c.mi)?fmtPct(b?a/b*100:0):'—')+'</td>';
-    }).join('');
-    const totA=sumActive(serie(keyA,y),act), totB=sumActive(serie(keyB,y),act);
-    const curMgn=totB?totA/totB*100:0;
-    let varCell='<td class="pct-col">—</td>';
-    if(prvBase&&Math.abs(prvBase)>0.001&&curBase&&Math.abs(curBase)>0.001){
-      const curMgnCmp=curTot/curBase*100, prvMgn=prvTot/prvBase*100, diff=curMgnCmp-prvMgn;
-      varCell='<td class="pct-col '+(diff>=0?'var-pos':'var-neg')+'">'+(diff>=0?'+':'')+diff.toFixed(1)+' pp</td>';
-    }
-    return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(curMgn)+'</strong></td><td class="pct-col"></td>'+varCell+'</tr>';
+  function rowPct(lbl,arr,baseArr){
+    const tds=act.map(function(i){ return '<td>'+fmtPct(baseArr[i]?arr[i]/baseArr[i]*100:0)+'</td>'; }).join('');
+    const totA=sumActive(arr,act), totB=sumActive(baseArr,act);
+    return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(totB?totA/totB*100:0)+'</strong></td><td class="pct-col"></td></tr>';
   }
-  const mHdr = cols.map(function(c){
-    const lblM=twoYr?(MESES[c.mi]+" '"+String(c.yr).slice(2)):MESES[c.mi];
-    const cl=(c.yr!==y)?'yr-prev':(twoYr?'yr-cur':'');
-    return '<th'+(cl?' class="'+cl+'"':'')+'>'+lblM+'</th>';
-  }).join('');
-  const totHdr = twoYr?('Total '+y):'Total';
+  const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
   el.innerHTML =
-    '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(vtYearsEarly.length===2?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
-    '<div class="kpis k6">'+
-      kpi('gold','Ingresos',fmtM(twoYr?cur['Ingresos']:T.ing),fmtVar(pctVar(cur['Ingresos'],prv['Ingresos']))+' vs '+yPrevP+(twoYr&&prv['Ingresos']?' ('+fmtM(prv['Ingresos'])+')':''))+
-      kpi('red','Costo Dir.',fmtM(twoYr?cur['Costo Dir.']:T.cd),fmtVarInv(pctVar(cur['Costo Dir.'],prv['Costo Dir.']))+' vs '+yPrevP+(twoYr&&prv['Costo Dir.']?' ('+fmtM(prv['Costo Dir.'])+')':''))+
-      kpi('','Gastos Admin',fmtM(twoYr?cur['G. Admin']:T.adm),fmtVarInv(pctVar(cur['G. Admin'],prv['G. Admin']))+' vs '+yPrevP+(twoYr&&prv['G. Admin']?' ('+fmtM(prv['G. Admin'])+')':''))+
-      kpi('navy','EBIT',fmtM(twoYr?cur['EBIT']:T.ebit),fmtVar(pctVar(cur['EBIT'],prv['EBIT']))+' vs '+yPrevP+(twoYr&&prv['EBIT']?' ('+fmtM(prv['EBIT'])+')':''))+
-      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(twoYr?cur['Util. Neta']:T.neto),fmtVar(pctVar(cur['Util. Neta'],prv['Util. Neta']))+' vs '+yPrevP+(twoYr&&prv['Util. Neta']?' ('+fmtM(prv['Util. Neta'])+')':''))+
-      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'EBIT '+fmtPct(mEbit))+
+    '<div class="kpis k4">'+
+      kpi('navy','EBIT',fmtM(T.ebit),'margen '+fmtPct(mEbit))+
+      kpi('','EBITDA',fmtM(T.ebitda),'+ D&amp;A '+fmtM(T.da))+
+      kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
+      kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(twoYr?' vs '+yPrevP:'')+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">'+(twoYr?'Cada mes abierto por año · Var% comparativo':'Cascada completa hasta Utilidad Neta')+'</span></div>'+
+    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead><tr><th>Concepto</th>'+mHdr+'<th>'+totHdr+'</th><th class="pct-col">% Ing.</th><th class="pct-col">Var. vs '+yPrevP+'</th></tr></thead><tbody>'+
-          row('Ingresos','ing','',T.ing,cur['Ingresos'],prv['Ingresos'],true)+
-          row('(−) Costo Directo','cd','',T.ing,cur['Costo Dir.'],prv['Costo Dir.'],false)+
-          row('= Utilidad Bruta','ub','sub',T.ing,cur['Util. Bruta'],prv['Util. Bruta'],true)+
-          row('(−) Nómina Directa','nom','',T.ing,cur['Nómina'],prv['Nómina'],false)+
-          row('(−) Gastos Admin','adm','',T.ing,cur['G. Admin'],prv['G. Admin'],false)+
-          row('= EBIT (Util. Operativa)','ebit','tot',T.ing,cur['EBIT'],prv['EBIT'],true)+
-          row('(+) Depreciac. y Amortiz.','da','',T.ing,cur['D&A'],prv['D&A'],true)+
-          row('= EBITDA','ebitda','sub',T.ing,cur['EBITDA'],prv['EBITDA'],true)+
-          row('(+) Otros Ingresos','oi','',T.ing,cur['Otros Ing.'],prv['Otros Ing.'],true)+
-          row('(−) Gastos No Operac.','gno','',T.ing,cur['G. No Op.'],prv['G. No Op.'],false)+
-          row('= Utilidad Antes de Imp.','uai','sub',T.ing,cur['UAI'],prv['UAI'],true)+
-          row('(−) Impuesto de Renta','imp','',T.ing,cur['Impuesto'],prv['Impuesto'],false)+
-          row('= UTILIDAD NETA','neto','tot',T.ing,cur['Util. Neta'],prv['Util. Neta'],true)+
-          rowPct('Margen Neto %','neto','ing',cur['Util. Neta'],cur['Ingresos'],prv['Util. Neta'],prv['Ingresos'])+
+        '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th><th class="pct-col">% Ing.</th></tr></thead><tbody>'+
+          row('Ingresos',ing,'',T.ing)+
+          row('(−) Costo Directo',cd,'',T.ing)+
+          row('= Utilidad Bruta',ub,'sub',T.ing)+
+          row('(−) Nómina Directa',nom,'',T.ing)+
+          row('(−) Gastos Admin',adm,'',T.ing)+
+          row('= EBIT (Util. Operativa)',ebit,'tot',T.ing)+
+          row('(+) Depreciac. y Amortiz.',da,'',T.ing)+
+          row('= EBITDA',ebitda,'sub',T.ing)+
+          row('(+) Otros Ingresos',oi,'',T.ing)+
+          row('(−) Gastos No Operac.',gno,'',T.ing)+
+          row('= Utilidad Antes de Imp.',uai,'sub',T.ing)+
+          row('(−) Impuesto de Renta',imp,'',T.ing)+
+          row('= UTILIDAD NETA',neto,'tot',T.ing)+
+          rowPct('Margen Neto %',neto,ing)+
         '</tbody></table></div></div></div>'+
     '<div class="g2" style="margin-top:16px">'+
       card('Ingresos vs EBIT vs Utilidad Neta','millones COP','fp-bars','')+
       card('Cascada del P&amp;G (acumulado)','de ingresos a utilidad neta','fp-stack','')+
     '</div>'+
-    '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+yPrevP+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
+    '<div class="gfull">'+card('Cascada P&amp;G comparable — '+y+' vs '+(y-1)+' ('+cmpTag+')','rubro a rubro · detecta dónde el costo crece más que el ingreso','fp-cmpwf','tall')+'</div>'+
     '<div class="gfull">'+card('Análisis Vertical — Estructura del ingreso por mes',(function(){var yy=vtYearsEarly; if(yy.length<2) return '% del ingreso por rubro · '+s+' '+yy[0]; return 'color = rubro · tono claro→oscuro = '+yy[0]+'→'+yy[yy.length-1]+' · '+s;})(),'fp-vertical','')+'</div>'+
     cmpInsight+
     '<div class="insight">De <strong>'+fmtM(T.ing)+'</strong> en ingresos, el EBIT es <strong>'+fmtM(T.ebit)+'</strong> ('+fmtPct(mEbit)+') y el EBITDA <strong>'+fmtM(T.ebitda)+'</strong>. Tras otros ingresos, gastos no operacionales e impuesto de renta ('+fmtM(T.imp)+'), la <strong>utilidad neta cierra en '+fmtM(T.neto)+'</strong> — margen neto de '+fmtPct(mNeto)+'.</div>';
-  if(twoYr){
-    /* fp-bars: 6 datasets (3 métricas × 2 años) — año anterior al 45% de opacidad */
-    const actPrvFilt=finMesesIdx(s,yPrevP);
-    const allM2=(function(){var u={};act.forEach(function(i){u[i]=1;});actPrvFilt.forEach(function(i){u[i]=1;});return Object.keys(u).map(Number).sort(function(a,b){return a-b;});})();
-    var _yc=YR_CLR[y]||C.acento, _pc=YR_CLR[yPrevP]||C.consol;
-    mkChart('fp-bars','bar',allM2.map(function(i){return MESES[i];}),[
-      {label:'Ingresos '+y,        data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ing',y)[i]:null;}),           backgroundColor:_yc},
-      {label:'EBIT '+y,            data:allM2.map(function(i){return act.indexOf(i)>=0?serie('ebit',y)[i]:null;}),          backgroundColor:hexToRgba(_yc,0.65)},
-      {label:'Util. Neta '+y,      data:allM2.map(function(i){return act.indexOf(i)>=0?serie('neto',y)[i]:null;}),          backgroundColor:hexToRgba(_yc,0.35)},
-      {label:'Ingresos '+yPrevP,   data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ing',yPrevP)[i]:null;}),  backgroundColor:_pc},
-      {label:'EBIT '+yPrevP,       data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('ebit',yPrevP)[i]:null;}), backgroundColor:hexToRgba(_pc,0.65)},
-      {label:'Util. Neta '+yPrevP, data:allM2.map(function(i){return actPrvFilt.indexOf(i)>=0?serie('neto',yPrevP)[i]:null;}),backgroundColor:hexToRgba(_pc,0.35)}
-    ],{_yMoney:true,plugins:{tooltip:{footerFont:{size:10.5,weight:'600'},footerColor:'rgba(255,255,255,0.8)',callbacks:{
-      label:tipMoney,
-      footer:function(items){
-        var N=['Ingresos','EBIT','Util. Neta'],lines=[];
-        for(var k=0;k<3;k++){
-          var ci=items[k],pi=items[k+3];
-          if(!ci||!pi||ci.parsed.y==null||pi.parsed.y==null||Math.abs(pi.parsed.y)<0.001) continue;
-          var g=(ci.parsed.y-pi.parsed.y)/Math.abs(pi.parsed.y)*100;
-          lines.push(N[k]+': '+(g>=0?'▲ +':'▼ ')+Math.abs(g).toFixed(1)+'% vs '+yPrevP);
-        }
-        return lines;
-      }
-    }}}});
-    /* fp-stack: cascada paralela — stack 'p' = año anterior, stack 'c' = año actual */
-    const wf2=[
-      ['Ingresos',  cur['Ingresos'],   prv['Ingresos'],  C.tesoro, 0],
-      ['Costo Dir.',-cur['Costo Dir.'],-prv['Costo Dir.'],C.neg,   0],
-      ['Nómina',   -cur['Nómina'],     -prv['Nómina'],   C.neg,   0],
-      ['G. Admin',  -cur['G. Admin'],  -prv['G. Admin'],  C.neg,   0],
-      ['Otros Ing.', cur['Otros Ing.'], prv['Otros Ing.'],C.oviedo,0],
-      ['G. No Op.',  -cur['G. No Op.'],-prv['G. No Op.'],C.neg,   0],
-      ['Impuesto',  -cur['Impuesto'],  -prv['Impuesto'],  C.neg,   0],
-      ['Util. Neta', cur['Util. Neta'], prv['Util. Neta'],C.acento,1]
-    ];
-    var rC=0,rP=0,bsC=[],vlC=[],bsP=[],vlP=[];
-    wf2.forEach(function(w){
-      var cv=w[1],pv=w[2],fin=w[4]===1;
-      if(fin){bsC.push(0);vlC.push(Math.max(cv,0));bsP.push(0);vlP.push(Math.max(pv,0));}
-      else{
-        if(cv>=0){bsC.push(rC);vlC.push(cv);rC+=cv;}else{rC+=cv;bsC.push(rC);vlC.push(-cv);}
-        if(pv>=0){bsP.push(rP);vlP.push(pv);rP+=pv;}else{rP+=pv;bsP.push(rP);vlP.push(-pv);}
-      }
-    });
-    mkChart('fp-stack','bar',wf2.map(function(w){return w[0];}),[
-      {label:'base_p',data:bsP,backgroundColor:'transparent',stack:'p'},
-      {label:String(yPrevP),data:vlP,backgroundColor:YR_CLR[yPrevP]||C.consol,stack:'p'},
-      {label:'base_c',data:bsC,backgroundColor:'transparent',stack:'c'},
-      {label:String(y),data:vlC,backgroundColor:YR_CLR[y]||C.acento,stack:'c'}
-    ],{plugins:{
-        legend:{labels:{filter:function(i){return i.text!=='base_p'&&i.text!=='base_c';}}},
-        tooltip:{filter:function(c){return c.dataset.label!=='base_p'&&c.dataset.label!=='base_c';},
-          callbacks:{label:function(c){var r=wf2[c.dataIndex];return ' '+r[0]+': '+fmtMd(c.dataset.label===String(y)?r[1]:r[2],0);}}}},
-       scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
-  } else {
-    const lbls=act.map(function(i){return MESES[i];});
-    mkChart('fp-bars','bar',lbls,[
-      {label:'Ingresos',data:act.map(function(i){return ing[i];}),backgroundColor:C.tesoro},
-      {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento},
-      {label:'Utilidad Neta',data:act.map(function(i){return neto[i];}),backgroundColor:C.oviedo}
-    ],{_tooltipLabel:tipMoney,_yMoney:true});
-    /* Cascada (waterfall) acumulada: ingresos → restas → utilidad neta */
-    const wf=[
-      ['Ingresos',T.ing,C.tesoro,0],
-      ['Costo Dir.',-T.cd,C.neg,0],
-      ['Nómina',-T.nom,C.neg,0],
-      ['G. Admin',-T.adm,C.neg,0],
-      ['Otros Ing.',T.oi,C.oviedo,0],
-      ['G. No Op.',-T.gno,C.neg,0],
-      ['Impuesto',-T.imp,C.neg,0],
-      ['Util. Neta',T.neto,C.acento,1]
-    ];
-    let run=0; const segBase=[], segVal=[], segClr=[], wfLbls=[];
-    wf.forEach(function(w){
-      wfLbls.push(w[0]);
-      if(w[3]===1){ segBase.push(0); segVal.push(Math.max(w[1],0)); }
-      else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
-      else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
-      segClr.push(w[2]);
-    });
-    mkChart('fp-stack','bar',wfLbls,[
-      {label:'base',data:segBase,backgroundColor:'transparent',stack:'w',grouped:false},
-      {label:'P&G',data:segVal,backgroundColor:segClr,stack:'w'}
-    ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
-       scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
-  }
-  /* Cascada comparable EXPANDIDA — todos los rubros del P&G con Var.% visible */
-  const leakSet={}; leaks.forEach(function(l){leakSet[l.k]=1;});
-  const CMP_ALL_LBLS=['Ingresos','Costo Dir.','Util. Bruta','Nómina','G. Admin','EBIT','EBITDA','Otros Ing.','G. No Op.','UAI','Impuesto','Util. Neta'];
-  const CMP_POS_GOOD=[true,false,true,false,false,true,true,true,false,true,false,true];
-  const curAllVals=CMP_ALL_LBLS.map(function(l){return cur[l]||0;});
-  const prvAllVals=CMP_ALL_LBLS.map(function(l){return prv[l]||0;});
-  const allClrs=CMP_ALL_LBLS.map(function(){ return YR_CLR[y]||C.acento; });
-  const varLblPlugin={
-    id:'varLbl_pnl',
-    afterDatasetsDraw:function(chart){
-      const ctx=chart.ctx, m=chart.getDatasetMeta(1);
-      if(!m||!m.data) return;
-      ctx.save(); ctx.font='bold 9px Inter,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-      m.data.forEach(function(bar,i){
-        const p=prvAllVals[i]; if(!p||Math.abs(p)<0.001) return;
-        const g=(curAllVals[i]-p)/Math.abs(p)*100;
-        const good=CMP_POS_GOOD[i]?g>=0:g<=0;
-        ctx.fillStyle=good?'#1A6B35':'#C0392B';
-        ctx.fillText((g>=0?'+':'')+g.toFixed(1)+'%', bar.x, Math.min(bar.y,bar.base)-3);
-      });
-      ctx.restore();
-    }
-  };
-  mkChart('fp-cmpwf','bar',CMP_ALL_LBLS,[
-    {label:String(yPrevP),data:prvAllVals,backgroundColor:YR_CLR[yPrevP]||C.consol},
-    {label:String(y),data:curAllVals,backgroundColor:allClrs}
-  ],{_tooltipLabel:tipMoney,_yMoney:true,_chartPlugins:[varLblPlugin],
-     plugins:{tooltip:{callbacks:{afterLabel:function(c){
-       if(c.datasetIndex!==1)return;
-       const p=prvAllVals[c.dataIndex]; if(!p||Math.abs(p)<0.001)return;
-       const g=(curAllVals[c.dataIndex]-p)/Math.abs(p)*100;
-       return (leakSet[CMP_ALL_LBLS[c.dataIndex]]?'⚠ ':'')+'var. '+(g>=0?'+':'')+g.toFixed(1)+'% vs '+yPrevP;
-     }}}},
-     scales:{x:{ticks:{font:{size:9},maxRotation:40}}}
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fp-bars','bar',lbls,[
+    {label:'Ingresos',data:act.map(function(i){return ing[i];}),backgroundColor:C.tesoro},
+    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento},
+    {label:'Utilidad Neta',data:act.map(function(i){return neto[i];}),backgroundColor:C.oviedo}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
+  /* Cascada (waterfall) acumulada: ingresos → restas → utilidad neta */
+  const wf=[
+    ['Ingresos',T.ing,C.tesoro,0],
+    ['Costo Dir.',-T.cd,C.neg,0],
+    ['Nómina',-T.nom,C.neg,0],
+    ['G. Admin',-T.adm,C.neg,0],
+    ['Otros Ing.',T.oi,C.oviedo,0],
+    ['G. No Op.',-T.gno,C.neg,0],
+    ['Impuesto',-T.imp,C.neg,0],
+    ['Util. Neta',T.neto,C.acento,1]
+  ];
+  let run=0; const segBase=[], segVal=[], segClr=[], wfLbls=[];
+  wf.forEach(function(w){
+    wfLbls.push(w[0]);
+    if(w[3]===1){ segBase.push(0); segVal.push(Math.max(w[1],0)); }
+    else if(w[1]>=0){ segBase.push(run); segVal.push(w[1]); run+=w[1]; }
+    else { run+=w[1]; segBase.push(run); segVal.push(-w[1]); }
+    segClr.push(w[2]);
   });
+  mkChart('fp-stack','bar',wfLbls,[
+    {label:'base',data:segBase,backgroundColor:'transparent',stack:'w',grouped:false},
+    {label:'P&G',data:segVal,backgroundColor:segClr,stack:'w'}
+  ],{plugins:{legend:{display:false},tooltip:{filter:function(c){return c.datasetIndex===1;},callbacks:{label:function(c){return ' '+wfLbls[c.dataIndex]+': '+fmtMd(wf[c.dataIndex][1],0);}}}},
+     scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  /* Cascada comparable rubro a rubro: año actual vs anterior (YTD), rubros-fuga en rojo */
+  const cmpLbls=['Ingresos','Costo Dir.','Nómina','G. Admin','EBIT'];
+  const curEbit=cur['Ingresos']-cur['Costo Dir.']-cur['Nómina']-cur['G. Admin'];
+  const prvEbit=prv['Ingresos']-prv['Costo Dir.']-prv['Nómina']-prv['G. Admin'];
+  const curVals=[cur['Ingresos'],cur['Costo Dir.'],cur['Nómina'],cur['G. Admin'],curEbit];
+  const prvVals=[prv['Ingresos'],prv['Costo Dir.'],prv['Nómina'],prv['G. Admin'],prvEbit];
+  const leakSet={}; leaks.forEach(function(l){leakSet[l.k]=1;});
+  const curClr=cmpLbls.map(function(l){ return leakSet[l]?C.neg:(YR_CLR[y]||C.acento); });
+  mkChart('fp-cmpwf','bar',cmpLbls,[
+    {label:String(yPrevP),data:prvVals,backgroundColor:YR_CLR[yPrevP]||C.consol},
+    {label:String(y),data:curVals,backgroundColor:curClr}
+  ],{_tooltipLabel:tipMoney,_yMoney:true,plugins:{tooltip:{callbacks:{afterLabel:function(c){ if(c.datasetIndex!==1)return ''; const p=prvVals[c.dataIndex]; if(!p)return ''; const g=(curVals[c.dataIndex]-p)/Math.abs(p)*100; return (leakSet[cmpLbls[c.dataIndex]]?'⚠ ':'')+'var. '+(g>=0?'+':'')+g.toFixed(1)+'% vs '+yPrevP; }}}}});
   /* Análisis Vertical: color = RUBRO; el TONO del color (claro→oscuro) = año
      (antiguo→reciente), estilo Tableau. Banda de fondo agrupa los años de cada mes. */
   const vtYears=finYearsSorted();
@@ -1477,154 +1302,79 @@ function buildFinPnl(){
 /* ─────────── FIN: MÁRGENES ─────────── */
 function buildFinMargen(){
   const el=document.getElementById('fin-margen');
-  const s=FF.sede, y=finYear(), selYears=finYearsSorted();
+  const s=FF.sede, y=finYear();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
-  const multiYr=(selYears.length>1);
-  const winA=finMesesIdx(s,y);
-  function aggM(yy){
-    const actY=monthsActive(s,yy);
-    const act=winA.filter(function(i){return actY.indexOf(i)>=0;});
-    const sa=function(arr){return act.reduce(function(t,i){return t+(arr[i]||0);},0);};
-    const tI=sa(pygArr(s,yy,'4')), tU=sa(ubArr(s,yy)), tE=sa(ebitArr(s,yy));
-    return {ing:tI,ub:tU,ebit:tE,act:act,mb:tI?tU/tI*100:0,me:tI?tE/tI*100:0};
-  }
-  const yp=(selYears.length===2?selYears[0]:y-1);
-  const A=aggM(y), B=aggM(yp);
-  /* mejor mes EBIT del año principal */
-  const ingY=pygArr(s,y,'4'), ebitY=ebitArr(s,y);
-  const meY=ingY.map(function(v,i){return v?ebitY[i]/v*100:null;});
-  let bi=-1,bv=-1e9; A.act.forEach(function(i){ if(meY[i]!==null&&meY[i]>bv){bv=meY[i];bi=i;} });
-  const vMb=pctVar(A.mb,B.mb), vMe=pctVar(A.me,B.me);
+  const act=finMesesIdx(s,y);
+  const ing=pygArr(s,y,'4'), ub=ubArr(s,y), ebit=ebitArr(s,y);
+  const mb=ing.map(function(v,i){return v?ub[i]/v*100:null;});
+  const me=ing.map(function(v,i){return v?ebit[i]/v*100:null;});
+  const tIng=sumActive(ing,act), tUb=sumActive(ub,act), tEbit=sumActive(ebit,act);
+  let bi=-1,bv=-1e9; act.forEach(function(i){ if(me[i]>bv){bv=me[i];bi=i;} });
   el.innerHTML=
-    '<div class="sec-title">Márgenes <span class="st-badge">'+s+' · '+y+(multiYr?' vs '+yp:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
-    '<div class="sec-sub">Evolución de márgenes bruto y EBIT · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
+    '<div class="sec-title">Márgenes <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-sub">Evolución de márgenes bruto y EBIT mes a mes · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
     '<div class="kpis k3">'+
-      kpi('','Margen Bruto',fmtPct(A.mb),fmtVar(vMb)+(vMb!==null?' vs '+yp+' ('+fmtPct(B.mb)+')':''))+
-      kpi('navy','Margen EBIT',fmtPct(A.me),fmtVar(vMe)+(vMe!==null?' vs '+yp+' ('+fmtPct(B.me)+')':''))+
+      kpi('','Margen Bruto prom.',fmtPct(tIng?tUb/tIng*100:0),'')+
+      kpi('navy','Margen EBIT prom.',fmtPct(tIng?tEbit/tIng*100:0),'')+
       kpi('gold','Mejor mes (EBIT%)',(bi>=0?MESES[bi]:'—'),(bi>=0?fmtPct(bv):''))+
     '</div>'+
-    '<div class="gfull">'+card('Margen Bruto vs Margen EBIT','% sobre ingresos · '+(multiYr?selYears.join(' vs '):String(y)),'fm-chart','')+'</div>'+
+    '<div class="gfull">'+card('Margen Bruto vs Margen EBIT — '+y,'% sobre ingresos','fm-chart','')+'</div>'+
     '<div class="gfull">'+card('Utilidad Bruta vs EBIT mensual (millones)','','fm-abs','short')+'</div>'+
-    '<div class="insight">El margen EBIT del período es <strong>'+fmtPct(A.me)+'</strong>'+(vMe!==null?' ('+fmtPct(B.me)+' en '+yp+')'  :'')+'. La brecha contra el margen bruto ('+fmtPct(A.mb)+') muestra el peso de nómina y administración sobre la operación.</div>';
-  /* charts: si mesExpl + multi-year → grouped bar por mes/año; si no → líneas por año */
-  if(mesExpl && multiYr){
-    const mesSel=Array.from(FF.meses).sort(function(a,b){return a-b;});
-    const lbls=mesSel.map(function(m){return MESES[m-1];});
-    mkChart('fm-chart','bar',lbls,[
-      {label:'M. Bruto '+yp,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,yp,'4')[i]; return iv?ubArr(s,yp)[i]/iv*100:null;}),backgroundColor:YR_CLR[yp]||C.tesoro,barPercentage:.85},
-      {label:'M. EBIT '+yp,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,yp,'4')[i]; return iv?ebitArr(s,yp)[i]/iv*100:null;}),backgroundColor:YR_CLR[yp]||C.tesoro,borderWidth:2,borderColor:'#fff',barPercentage:.85},
-      {label:'M. Bruto '+y,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,y,'4')[i]; return iv?ubArr(s,y)[i]/iv*100:null;}),backgroundColor:YR_CLR[y]||C.acento,barPercentage:.85},
-      {label:'M. EBIT '+y,data:mesSel.map(function(m){var i=m-1; var iv=pygArr(s,y,'4')[i]; return iv?ebitArr(s,y)[i]/iv*100:null;}),backgroundColor:YR_CLR[y]||C.acento,borderWidth:2,borderColor:'#fff',barPercentage:.85}
-    ],{_tooltipLabel:tipPct,_yPct:true});
-    mkChart('fm-abs','bar',lbls,[
-      {label:'U. Bruta '+yp,data:mesSel.map(function(m){return ubArr(s,yp)[m-1]||null;}),backgroundColor:YR_CLR[yp]||C.tesoro},
-      {label:'EBIT '+yp,data:mesSel.map(function(m){return ebitArr(s,yp)[m-1]||null;}),backgroundColor:(YR_CLR[yp]||C.tesoro),borderWidth:2,borderColor:'#fff'},
-      {label:'U. Bruta '+y,data:mesSel.map(function(m){return ubArr(s,y)[m-1]||null;}),backgroundColor:YR_CLR[y]||C.acento},
-      {label:'EBIT '+y,data:mesSel.map(function(m){return ebitArr(s,y)[m-1]||null;}),backgroundColor:(YR_CLR[y]||C.acento),borderWidth:2,borderColor:'#fff'}
-    ],{_tooltipLabel:tipMoney,_yMoney:true});
-  } else if(multiYr){
-    const chartYears=selYears.slice(); if(chartYears.indexOf(yp)<0) chartYears.unshift(yp); chartYears.sort();
-    const upTo=Math.max.apply(null,chartYears.map(function(yy){return finMesesIdx(s,yy).length>0?Math.max.apply(null,finMesesIdx(s,yy))+1:0;}));
-    const lbls=MESES.slice(0,upTo);
-    mkChart('fm-chart','line',lbls,chartYears.map(function(yy){
-      var ingA=pygArr(s,yy,'4'), ubA=ubArr(s,yy), ebitA=ebitArr(s,yy), actY=finMesesIdx(s,yy);
-      return [{label:'M. Bruto '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0&&ingA[i]?ubA[i]/ingA[i]*100:null;}),borderColor:YR_CLR[yy]||C.tesoro,tension:.3,pointRadius:3},
-              {label:'M. EBIT '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0&&ingA[i]?ebitA[i]/ingA[i]*100:null;}),borderColor:YR_CLR[yy]||C.acento,borderDash:[4,3],tension:.3,pointRadius:3}];
-    }).reduce(function(a,b){return a.concat(b);},[]),{_tooltipLabel:tipPct,_yPct:true});
-    mkChart('fm-abs','bar',lbls,chartYears.map(function(yy){
-      var ubA=ubArr(s,yy), ebitA=ebitArr(s,yy), actY=finMesesIdx(s,yy);
-      return [{label:'U. Bruta '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0?ubA[i]:null;}),backgroundColor:YR_CLR[yy]||C.tesoro},
-              {label:'EBIT '+yy,data:lbls.map(function(_,i){return actY.indexOf(i)>=0?ebitA[i]:null;}),backgroundColor:YR_CLR[yy]||C.acento}];
-    }).reduce(function(a,b){return a.concat(b);},[]),{_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    const act=A.act;
-    const ing=pygArr(s,y,'4'), ub=ubArr(s,y), ebit=ebitArr(s,y);
-    const mb2=ing.map(function(v,i){return v?ub[i]/v*100:null;});
-    const me2=ing.map(function(v,i){return v?ebit[i]/v*100:null;});
-    const lbls=act.map(function(i){return MESES[i];});
-    mkChart('fm-chart','line',lbls,[
-      {label:'Margen Bruto %',data:act.map(function(i){return mb2[i];}),borderColor:C.tesoro,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.3,pointRadius:3},
-      {label:'Margen EBIT %',data:act.map(function(i){return me2[i];}),borderColor:C.acento,backgroundColor:'rgba(212,168,67,.10)',fill:true,tension:.3,pointRadius:3}
-    ],{_tooltipLabel:tipPct,_yPct:true});
-    mkChart('fm-abs','bar',lbls,[
-      {label:'Utilidad Bruta',data:act.map(function(i){return ub[i];}),backgroundColor:C.tesoro},
-      {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento}
-    ],{_tooltipLabel:tipMoney,_yMoney:true});
-  }
+    '<div class="insight">El margen EBIT promedio del periodo es <strong>'+fmtPct(tIng?tEbit/tIng*100:0)+'</strong>. La brecha contra el margen bruto ('+fmtPct(tIng?tUb/tIng*100:0)+') muestra el peso de nómina y administración sobre la operación.</div>';
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fm-chart','line',lbls,[
+    {label:'Margen Bruto %',data:act.map(function(i){return mb[i];}),borderColor:C.tesoro,backgroundColor:'rgba(27,58,107,.08)',fill:true,tension:.3,pointRadius:3},
+    {label:'Margen EBIT %',data:act.map(function(i){return me[i];}),borderColor:C.acento,backgroundColor:'rgba(212,168,67,.10)',fill:true,tension:.3,pointRadius:3}
+  ],{_tooltipLabel:tipPct,_yPct:true});
+  mkChart('fm-abs','bar',lbls,[
+    {label:'Utilidad Bruta',data:act.map(function(i){return ub[i];}),backgroundColor:C.tesoro},
+    {label:'EBIT',data:act.map(function(i){return ebit[i];}),backgroundColor:C.acento}
+  ],{_tooltipLabel:tipMoney,_yMoney:true});
 }
 
 /* ─────────── FIN: COSTOS ─────────── */
 function buildFinCostos(){
   const el=document.getElementById('fin-costos');
-  const s=FF.sede, y=finYear(), selYears=finYearsSorted();
+  const s=FF.sede, y=finYear();
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
-  const multiYr=(selYears.length>1);
-  const winA=finMesesIdx(s,y);
-  function aggC(sede,yy){
-    const actY=monthsActive(sede,yy);
-    const wA=(sede===s)?winA:finMesesIdx(sede,yy);
-    const act=wA.filter(function(i){return actY.indexOf(i)>=0;});
-    const sa=function(arr){return act.reduce(function(t,i){return t+(arr[i]||0);},0);};
-    const ing=sa(pygArr(sede,yy,'4'))||1;
-    const cd=sa(pygArr(sede,yy,'6')), nom=sa(pygArr(sede,yy,'7')), adm=sa(pygArr(sede,yy,'5'));
-    return {cd:cd,nom:nom,adm:adm,tot:cd+nom+adm,ing:ing,act:act,
-            pCd:cd/ing*100,pNom:nom/ing*100,pAdm:adm/ing*100,
-            ebitPct:(ing-cd-nom-adm)/ing*100};
-  }
-  const yp=(selYears.length===2?selYears[0]:y-1);
-  const A=aggC(s,y), B=aggC(s,yp);
-  const tTot=A.tot;
+  const act=finMesesIdx(s,y);
+  const cd=pygArr(s,y,'6'),nom=pygArr(s,y,'7'),adm=pygArr(s,y,'5');
+  const tCd=sumActive(cd,act),tNom=sumActive(nom,act),tAdm=sumActive(adm,act);
+  const tTot=tCd+tNom+tAdm;
   el.innerHTML=
-    '<div class="sec-title">Estructura de Costos <span class="st-badge">'+s+' · '+y+(multiYr?' vs '+yp:'')+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
+    '<div class="sec-title">Estructura de Costos <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
     '<div class="sec-sub">Composición y evolución de costos directos, nómina y administración · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):'todos los meses con datos')+'</div>'+
     '<div class="kpis k3">'+
-      kpi('','Costo Directo',fmtM(A.cd),fmtVarInv(pctVar(A.cd,B.cd))+(pctVar(A.cd,B.cd)!==null?' vs '+yp:'  '+fmtPct(tTot?A.cd/tTot*100:0)+' del costo'))+
-      kpi('green','Nómina',fmtM(A.nom),fmtVarInv(pctVar(A.nom,B.nom))+(pctVar(A.nom,B.nom)!==null?' vs '+yp:'  '+fmtPct(tTot?A.nom/tTot*100:0)+' del costo'))+
-      kpi('navy','Gastos Admin',fmtM(A.adm),fmtVarInv(pctVar(A.adm,B.adm))+(pctVar(A.adm,B.adm)!==null?' vs '+yp:'  '+fmtPct(tTot?A.adm/tTot*100:0)+' del costo'))+
+      kpi('','Costo Directo',fmtM(tCd),fmtPct(tTot?tCd/tTot*100:0)+' del costo')+
+      kpi('green','Nómina',fmtM(tNom),fmtPct(tTot?tNom/tTot*100:0)+' del costo')+
+      kpi('navy','Gastos Admin',fmtM(tAdm),fmtPct(tTot?tAdm/tTot*100:0)+' del costo')+
     '</div>'+
     '<div class="g4060">'+
-      card(multiYr?'Mix de costos — '+y+' vs '+yp:'Mix de costos '+y,'','fc-dona','')+
+      card('Mix de costos','','fc-dona','')+
       card('Costos por mes (apilado)','millones COP','fc-stack','')+
     '</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Costos y gastos por sede — % del ingreso de cada sede','compara qué pesa más cada rubro en Tesoro vs Oviedo · '+y,'fc-sedes','')+'</div>'+
-    '<div class="insight">El <strong>costo directo</strong> es '+fmtPct(tTot?A.cd/tTot*100:0)+' de la estructura'+(pctVar(A.cd,B.cd)!==null?' ('+fmtPct(B.cd/(B.tot||1)*100)+' en '+yp+')':'')+'. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
-  /* fc-dona: 1 año → donut; 2 años → barras agrupadas por rubro */
-  if(multiYr){
-    mkChart('fc-dona','bar',['Costo Directo','Nómina','Gastos Admin'],[
-      {label:String(yp),data:[B.cd,B.nom,B.adm],backgroundColor:YR_CLR[yp]||C.consol},
-      {label:String(y), data:[A.cd,A.nom,A.adm],backgroundColor:YR_CLR[y]||C.acento}
-    ],{_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
-      [{data:[A.cd,A.nom,A.adm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
-      {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+    '<div class="insight">El <strong>costo directo</strong> (insumos, derechos de sala, honorarios) es '+fmtPct(tTot?tCd/tTot*100:0)+' de la estructura. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
+  mkChart('fc-dona','doughnut',['Costo Directo','Nómina','Gastos Admin'],
+    [{data:[tCd,tNom,tAdm],backgroundColor:[C.tesoro,C.oviedo,C.consol],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+fmtMd(c.parsed,0);}}}}});
+  const lbls=act.map(function(i){return MESES[i];});
+  mkChart('fc-stack','bar',lbls,[
+    {label:'Costo Directo',data:act.map(function(i){return cd[i];}),backgroundColor:C.tesoro},
+    {label:'Nómina',data:act.map(function(i){return nom[i];}),backgroundColor:C.oviedo},
+    {label:'Gastos Admin',data:act.map(function(i){return adm[i];}),backgroundColor:C.consol}
+  ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
+  /* ── Comparativo proporcional por sede: cada rubro como % del ingreso de SU sede ── */
+  function costPctSede(sede){
+    const a=finMesesIdx(sede,y), ing=sumActive(pygArr(sede,y,'4'),a)||1;
+    return {cd:sumActive(pygArr(sede,y,'6'),a)/ing*100, nom:sumActive(pygArr(sede,y,'7'),a)/ing*100,
+            adm:sumActive(pygArr(sede,y,'5'),a)/ing*100,
+            ebit:(ing-sumActive(pygArr(sede,y,'6'),a)-sumActive(pygArr(sede,y,'7'),a)-sumActive(pygArr(sede,y,'5'),a))/ing*100};
   }
-  /* fc-stack: 2 años → apilado paralelo con colores por rubro + opacidad por año */
-  if(multiYr){
-    const actY=finMesesIdx(s,y), actP=finMesesIdx(s,yp);
-    const allMc=(function(){var u={};actY.forEach(function(i){u[i]=1;});actP.forEach(function(i){u[i]=1;});return Object.keys(u).map(Number).sort(function(a,b){return a-b;});})();
-    mkChart('fc-stack','bar',allMc.map(function(i){return MESES[i];}),[
-      {label:'Costo Dir. '+yp, data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'6')[i]:null;}),backgroundColor:hexToRgba(C.tesoro,0.45),stack:String(yp)},
-      {label:'Nómina '+yp,     data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'7')[i]:null;}),backgroundColor:hexToRgba(C.oviedo,0.45),stack:String(yp)},
-      {label:'G. Admin '+yp,   data:allMc.map(function(i){return actP.indexOf(i)>=0?pygArr(s,yp,'5')[i]:null;}),backgroundColor:hexToRgba(C.consol,0.45),stack:String(yp)},
-      {label:'Costo Dir. '+y,  data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'6')[i]:null;}), backgroundColor:C.tesoro,stack:String(y)},
-      {label:'Nómina '+y,      data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'7')[i]:null;}), backgroundColor:C.oviedo,stack:String(y)},
-      {label:'G. Admin '+y,    data:allMc.map(function(i){return actY.indexOf(i)>=0?pygArr(s,y,'5')[i]:null;}), backgroundColor:C.consol,stack:String(y)}
-    ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
-  } else {
-    const act=A.act;
-    const cd2=pygArr(s,y,'6'),nom2=pygArr(s,y,'7'),adm2=pygArr(s,y,'5');
-    mkChart('fc-stack','bar',act.map(function(i){return MESES[i];}),[
-      {label:'Costo Directo',data:act.map(function(i){return cd2[i];}),backgroundColor:C.tesoro},
-      {label:'Nómina',       data:act.map(function(i){return nom2[i];}),backgroundColor:C.oviedo},
-      {label:'Gastos Admin', data:act.map(function(i){return adm2[i];}),backgroundColor:C.consol}
-    ],{_tooltipLabel:tipMoney,scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:function(v){return fmtM(v);}}}}});
-  }
-  /* fc-sedes: % del ingreso de cada sede (año principal) */
-  const pT=aggC('Tesoro',y), pO=aggC('Oviedo',y);
+  const pT=costPctSede('Tesoro'), pO=costPctSede('Oviedo');
   mkChart('fc-sedes','bar',['Costo Directo','Nómina','Gastos Admin','EBIT (margen)'],[
-    {label:'Tesoro',data:[pT.pCd,pT.pNom,pT.pAdm,pT.ebitPct],backgroundColor:C.tesoro},
-    {label:'Oviedo',data:[pO.pCd,pO.pNom,pO.pAdm,pO.ebitPct],backgroundColor:C.oviedo}
+    {label:'Tesoro',data:[pT.cd,pT.nom,pT.adm,pT.ebit],backgroundColor:C.tesoro},
+    {label:'Oviedo',data:[pO.cd,pO.nom,pO.adm,pO.ebit],backgroundColor:C.oviedo}
   ],{_yPct:true,plugins:{tooltip:{callbacks:{label:function(c){return ' '+c.dataset.label+': '+fmtPct(c.raw);}}}},
      scales:{y:{ticks:{callback:function(v){return v+'%';}}}}});
 }
@@ -2196,7 +1946,7 @@ function aggRows(rows){
   rows.forEach(function(r){
     a.cx++;
     if(r[COL.tmin]>0) a.min+=r[COL.tmin];
-    if(r[COL.valM]>0){ a.fac+=r[COL.valM]; a.facCx++; }
+    if(r[COL.met]===0){ a.fac+=r[COL.valM]; a.facCx++; }
   });
   return a;
 }
@@ -2247,26 +1997,6 @@ function metTooltip(aggByIndex){
       if(OPE_METRICA!=='ticket'&&a.facCx) lines.push(' Ticket: '+fmtMd(a.fac/a.facCx,2));
       if(OPE_METRICA!=='hora'&&a.min&&a.fac) lines.push(' $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
       if(a.cx&&a.min) lines.push(' T. prom: '+fmtNum(Math.round(a.min/a.cx))+' min');
-      return lines;
-    }
-  };
-}
-/* tooltip multi-año: muestra todas las métricas por dataset (año) al hacer hover */
-function metTooltipMultiYr(years,aggYr,items){
-  return {
-    title:function(tis){ return tis.length&&items[tis[0].dataIndex]?items[tis[0].dataIndex].name||tis[0].label:tis[0]?tis[0].label:''; },
-    label:function(c){
-      const MD=metDef();
-      const yy=years[c.datasetIndex];
-      const item=items[c.dataIndex];
-      const a=(item&&aggYr[yy]&&item.i!==undefined)?(aggYr[yy][item.i]||{cx:0,fac:0,min:0,facCx:0}):{cx:0,fac:0,min:0,facCx:0};
-      if(!a.cx) return ' '+String(yy)+': sin datos';
-      const lines=[' '+String(yy)+' · '+MD.noun+': '+MD.fmt(MD.val(a))];
-      if(OPE_METRICA!=='cx') lines.push('   Cirugías: '+fmtNum(a.cx));
-      if(OPE_METRICA!=='fac'&&a.fac) lines.push('   Facturación: '+fmtM(a.fac));
-      if(OPE_METRICA!=='ticket'&&a.facCx) lines.push('   Ticket: '+fmtMd(a.fac/a.facCx,2));
-      if(OPE_METRICA!=='hora'&&a.min&&a.fac) lines.push('   $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
-      if(a.cx&&a.min) lines.push('   T. prom: '+fmtNum(Math.round(a.min/a.cx))+' min');
       return lines;
     }
   };
@@ -2330,7 +2060,7 @@ function renderOpeFilters(){
     md('esp','Especialidad',espOpts)+
     md('cir','Cirujano',cirOpts)+
     md('qx','Quirófano',qxOpts)+
-    md('eps','Aseguradoras',epsOpts)+
+    md('eps','EPS',epsOpts)+
     md('dia','Día',diaOpts)+
     '<button class="chip chip-clear" onclick="clearOpe()">✕ Limpiar filtros</button>'+
     activeChipsHtml();
@@ -2371,7 +2101,7 @@ function opeRows(facturable){
     if(OF.qx.size   && !OF.qx.has(r[COL.qx]))    return false;
     if(OF.eps.size  && !OF.eps.has(r[COL.eps]))  return false;
     if(OF.dia.size  && !OF.dia.has(r[COL.dia]))  return false;
-    if(facturable && r[COL.valM]===0) return false;
+    if(facturable && r[COL.met]!==0) return false;
     return true;
   });
 }
@@ -2424,7 +2154,6 @@ function buildOpeInicio(){
   const ticket=fac.length?totFac/fac.length:0;
   const porHora=horas?totFac/horas:0;
   const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;
   /* agregados por año/mes para poder derivar cualquier métrica */
   const aggByYrMonth={}; yrSet.forEach(function(y){ aggByYrMonth[y]=[]; for(var i=0;i<12;i++) aggByYrMonth[y].push({cx:0,fac:0,min:0,facCx:0}); });
   all.forEach(function(r){ const a=aggByYrMonth[r[COL.anio]][r[COL.mes]-1]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.valM]>0){a.fac+=r[COL.valM];a.facCx++;} });
@@ -2434,8 +2163,11 @@ function buildOpeInicio(){
   const cxMes=nCx/nMesesActivos;
   const ocup=estOcupacion(all);
 
-  /* Comparativo YTD: año en curso vs anterior, hasta el último mes cerrado (respeta filtros activos salvo año) */
-  const nM=ultMes(), yCur=2026, yPrev=2025, rng='Ene-'+MESES[nM-1];
+  /* Comparativo YTD: año en curso vs anterior, hasta el último mes cerrado (respeta filtros activos salvo año)
+     OJO: usa ultMesOpe() (último mes con datos OPERACIONALES), no ultMes() (cierre financiero).
+     Los dos pueden ir desfasados —hoy financiero=jun, operativo=may— y con ultMes() esto
+     compararía 5 meses de 2026 contra 6 de 2025 rotulando "mismos 6 meses". */
+  const nM=ultMesOpe(), yCur=2026, yPrev=2025, rng='Ene-'+MESES[nM-1];
   function ytdOpe(yy){
     const rs=all.filter(function(r){ return r[COL.anio]===yy && r[COL.mes]<=nM; });
     const rf=rs.filter(function(r){ return r[COL.valM]>0; });
@@ -2503,14 +2235,8 @@ function buildOpeInicio(){
         return ' '+c.dataset.label+' · '+MD.noun+' acum.: '+MD.fmt(MD.val(cum)); }
     }}},
     scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  if(multiYr){
-    mkChart('oi-fac','bar',MESES,yrSet.map(function(yy){
-      return {label:String(yy),data:aggByYrMonth[yy].map(function(a){return a.fac||null;}),backgroundColor:YR_CLR[yy]||C.acento};
-    }),{_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
-    mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
-  }
+  const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
+  mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
   /* barras comparativas YTD por mes — usa la MÉTRICA ACTIVA (no solo cirugías) */
   function ytdMetSeries(yy){
     const a=aggByYrMonth[yy]; const out=[];
@@ -2534,8 +2260,6 @@ function buildOpeEsp(){
   const el=document.getElementById('ope-esp');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
-  const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;const opeYears=yrSet;
   const agg={};
   all.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
   fac.forEach(function(r){ if(r[COL.esp]<0)return; const e=agg[r[COL.esp]]||(agg[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
@@ -2544,26 +2268,6 @@ function buildOpeEsp(){
   const top=arr.slice(0,12);
   const withHr=arr.filter(function(a){return a.min>0;}).map(function(a){return Object.assign({},a,{perHr:a.fac/(a.min/60)});}).sort(function(a,b){return b.perHr-a.perHr;});
   const bestHr=withHr[0];
-  const y1esp=opeYears[0],yNesp=opeYears[opeYears.length-1];
-  const aggYr={};
-  if(multiYr){
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.esp]<0)return;const e=ay[r[COL.esp]]||(ay[r[COL.esp]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYr[yy]=ay;
-    });
-  }
-  function espTblHdr(){
-    if(!multiYr) return '<tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr>';
-    return '<tr><th>Especialidad</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>T. prom</th></tr>';
-  }
-  function espTblRow(a){
-    if(!multiYr){const hr=a.min/60;return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>';}
-    const yrCells=opeYears.map(function(yy){const d=aggYr[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
-    const delta=opeYears.length===2?(function(){const d1=aggYr[y1esp][a.i]||{cx:0,fac:0},d2=aggYr[yNesp][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
-    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>';
-  }
   el.innerHTML=
     '<div class="sec-title">Especialidades <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">Ranking por <strong>'+MD.noun+'</strong> · pasa el mouse para ver todas las métricas de cada especialidad</div>'+
@@ -2576,31 +2280,20 @@ function buildOpeEsp(){
       card('Top 12 especialidades · por '+MD.noun,'métrica: '+MD.lbl,'oe-bar','tall')+
       card('Mix de '+MD.dnoun,'composición','oe-dona','tall')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle por especialidad'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por especialidad</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead>'+espTblHdr()+'</thead><tbody>'+
-        arr.map(espTblRow).join('')+
+        '<thead><tr><th>Especialidad</th><th>Cirugías</th><th>Facturación</th><th>Ticket</th><th>$ / Hora</th><th>T. prom (min)</th></tr></thead><tbody>'+
+        arr.map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+(a.cx?fmtNum(a.min/a.cx):'—')+'</td></tr>'; }).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight green"><strong>'+(bestHr?bestHr.name:'Cirugía Endocrina')+'</strong> es la especialidad más rentable por hora de quirófano ('+(bestHr?fmtMd(bestHr.perHr,2):'')+'/h) — muy por encima del promedio. Priorizar su agenda maximiza el retorno de cada hora de sala.</div>'+
     footnoteMetrica();
-  if(multiYr){
-    mkChart('oe-bar','bar',top.map(function(a){return a.name;}),
-      opeYears.map(function(yy){return {label:String(yy),data:top.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top)}},
-       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
-    mkChart('oe-dona','bar',top.slice(0,8).map(function(a){return a.name;}),
-      opeYears.map(function(yy){return {label:String(yy),data:top.slice(0,8).map(function(a){return MD.dval(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    mkChart('oe-bar','bar',top.map(function(a){return a.name;}),[{label:MD.lbl,data:top.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
-    const top7=arr.slice(0,7), otros7=arr.slice(7);
-    const donaTop=top7.map(function(a){return MD.dval(a);}).concat([otros7.reduce(function(s,a){return s+MD.dval(a);},0)]);
-    mkChart('oe-dona','doughnut',top7.map(function(a){return a.name;}).concat(['Otras']),
-      [{data:donaTop,backgroundColor:[C.tesoro,C.oviedo,C.acento,C.consol,'#6E8AB5','#8AAE7A','#C7A23E','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
-      {cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9.5},padding:7}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
-  }
+  mkChart('oe-bar','bar',top.map(function(a){return a.name;}),[{label:MD.lbl,data:top.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:10}}}}});
+  const top7=arr.slice(0,7), otros7=arr.slice(7);
+  const donaTop=top7.map(function(a){return MD.dval(a);}).concat([otros7.reduce(function(s,a){return s+MD.dval(a);},0)]);
+  mkChart('oe-dona','doughnut',top7.map(function(a){return a.name;}).concat(['Otras']),
+    [{data:donaTop,backgroundColor:[C.tesoro,C.oviedo,C.acento,C.consol,'#6E8AB5','#8AAE7A','#C7A23E','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+    {cutout:'55%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:9.5},padding:7}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
 }
 
 /* ─────────── OPE: CIRUJANOS ─────────── */
@@ -2608,38 +2301,15 @@ function buildOpeCir(){
   const el=document.getElementById('ope-cir');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
-  const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;const opeYears=yrSet;
   const agg={};
   all.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; e.sedes.add(r[COL.sede]); });
   fac.forEach(function(r){ if(r[COL.cir]<0)return; const e=agg[r[COL.cir]]||(agg[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0,sedes:new Set()}); e.fac+=r[COL.valM]; e.facCx++; });
-  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.cirs[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.cirs[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
   const top15=arr.slice(0,15);
   const lider=arr[0];
   const conc=(lider&&totFac)?lider.fac/totFac*100:0;
   const top5=totFac?arr.slice(0,5).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
-  const y1cir=opeYears[0],yNcir=opeYears[opeYears.length-1];
-  const aggYr={};
-  if(multiYr){
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.cir]<0)return;const e=ay[r[COL.cir]]||(ay[r[COL.cir]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYr[yy]=ay;
-    });
-  }
-  function cirTblHdr(){
-    if(!multiYr) return '<tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr>';
-    return '<tr><th>Cirujano</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th><th>Sedes</th></tr>';
-  }
-  function cirTblRow(a){
-    const sedesHtml=Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ');
-    if(!multiYr){const hr=a.min/60;return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+sedesHtml+'</td></tr>';}
-    const yrCells=opeYears.map(function(yy){const d=aggYr[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
-    const delta=opeYears.length===2?(function(){const d1=aggYr[y1cir][a.i]||{cx:0,fac:0},d2=aggYr[yNcir][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
-    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+sedesHtml+'</td></tr>';
-  }
   el.innerHTML=
     '<div class="sec-title">Cirujanos <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">'+arr.length+' cirujanos con actividad · ranking por <strong>'+MD.noun+'</strong> · hover para ver todas las métricas</div>'+
@@ -2649,23 +2319,15 @@ function buildOpeCir(){
       kpi(conc>15?'red':'green','Top 5 concentración',fmtPct(top5),'de la facturación')+
     '</div>'+
     '<div class="gfull">'+card('Top 15 cirujanos · por '+MD.noun,'métrica: '+MD.lbl,'oc-bar','tall')+'</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle Top 25 cirujanos'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle Top 25 cirujanos</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead>'+cirTblHdr()+'</thead><tbody>'+
-        arr.slice(0,25).map(cirTblRow).join('')+
+        '<thead><tr><th>Cirujano</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th><th>$ / Hora</th><th>Sedes</th></tr></thead><tbody>'+
+        arr.slice(0,25).map(function(a){ const hr=a.min/60; return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td><td>'+(hr?fmtMd(a.fac/hr,2):'—')+'</td><td>'+Array.from(a.sedes).map(function(s){return s===0?'T':s===1?'O':'?';}).join(' ')+'</td></tr>'; }).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(conc>15?'warn':'')+'"><strong>'+(lider?shortName(lider.name):'')+'</strong> concentra el <strong>'+fmtPct(conc)+'</strong> de la facturación. '+(conc>12?'Es una concentración relevante: la salida de un cirujano top impacta directo el P&amp;G. Conviene fortalecer la cantera de cirujanos medios.':'La facturación está razonablemente diversificada entre cirujanos.')+'</div>'+
     footnoteMetrica();
-  if(multiYr){
-    mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),
-      opeYears.map(function(yy){return {label:String(yy),data:top15.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,top15)}},
-       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
-  } else {
-    mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top15)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
-  }
+  mkChart('oc-bar','bar',top15.map(function(a){return shortName(a.name);}),[{label:MD.lbl,data:top15.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top15)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
 }
 
 /* ─────────── OPE: QUIRÓFANOS ─────────── */
@@ -2673,10 +2335,8 @@ function buildOpeQx(){
   const el=document.getElementById('ope-qx');
   const MD=metDef();
   const all=opeRows(false);
-  const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;const opeYears=yrSet;
   const agg={};
-  all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.valM]>0){e.fac+=r[COL.valM];e.facCx++;} });
+  all.forEach(function(r){ if(r[COL.qx]<0)return; const e=agg[r[COL.qx]]||(agg[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0,sede:r[COL.sede]}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; if(r[COL.met]===0){e.fac+=r[COL.valM];e.facCx++;} });
   const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.qxs[i]},agg[i]); }).filter(function(a){return a.cx>0;}).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const months=new Set(all.filter(function(r){return r[COL.qx]>=0;}).map(function(r){return r[COL.anio]+'-'+r[COL.mes];})).size||1;
   const semanas=months*4.33;
@@ -2697,26 +2357,9 @@ function buildOpeQx(){
     '</div>'+
     '<div class="insight">La capacidad se mide sobre horario L-V 7-18h (11h) + Sáb 7-14h (7h) = 62h/semana por sala. '+(arrOc.some(function(a){return a.oc<60;})?'Hay salas por debajo del 60% de ocupación: redistribuir agenda o concentrar días libera capacidad para nuevas especialidades.':'Las salas operan con buena ocupación.')+'</div>'+
     footnoteMetrica();
-  if(multiYr){
-    const aggYr={};
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy&&r[COL.qx]>=0;}).forEach(function(r){
-        const e=ay[r[COL.qx]]||(ay[r[COL.qx]]={cx:0,fac:0,min:0,facCx:0});
-        e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];if(r[COL.valM]>0){e.fac+=r[COL.valM];e.facCx++;}
-      });
-      aggYr[yy]=ay;
-    });
-    mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
-      opeYears.map(function(yy){return {label:String(yy),data:arr.map(function(a){return metVal(aggYr[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {interaction:{mode:'index',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYr,arr)}},
-       scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  } else {
-    mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
-      [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
-      {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(arr)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  }
+  mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
+    [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
+    {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(arr)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
   mkChart('oq-oc','bar',arrOc.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
     [{label:'Ocupación %',data:arrOc.map(function(a){return +a.oc.toFixed(1);}),backgroundColor:arrOc.map(clr)}],
     {_tooltipLabel:tipPct,_yPct:true,plugins:{legend:{display:false}}});
@@ -2726,30 +2369,13 @@ function buildOpeQx(){
 function buildOpeSedes(){
   const el=document.getElementById('ope-sedes');
   const MD=metDef();
-  /* Sedes siempre compara las DOS sedes; ignoramos OF.sede para que ambas tarjetas
-     muestren datos incluso si el usuario tiene un filtro de sede activo. */
-  const _ym=(OPE_YTD&&OF.mes.size===0)?ultMesOpe():0;
-  const allOpe=COM.rows.filter(function(r){
-    if(_ym&&r[COL.mes]>_ym) return false;
-    if(OF.anio.size&&!OF.anio.has(r[COL.anio])) return false;
-    if(OF.mes.size &&!OF.mes.has(r[COL.mes]))   return false;
-    if(OF.esp.size &&!OF.esp.has(r[COL.esp]))   return false;
-    if(OF.cir.size &&!OF.cir.has(r[COL.cir]))   return false;
-    if(OF.qx.size  &&!OF.qx.has(r[COL.qx]))     return false;
-    if(OF.eps.size &&!OF.eps.has(r[COL.eps]))   return false;
-    if(OF.dia.size &&!OF.dia.has(r[COL.dia]))   return false;
-    return true;
-  });
-  const yrSet=Array.from(new Set(allOpe.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;const opeYears=yrSet;
-  function sedeDataFromRows(rows){
-    const facRows=rows.filter(function(r){return r[COL.valM]>0;});
-    const min=rows.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
-    const f=facRows.reduce(function(a,r){return a+r[COL.valM];},0);
-    return {cx:rows.length,fac:f,min:min,facCx:facRows.length,ticket:facRows.length?f/facRows.length:0,perHr:min?f/(min/60):0,esps:new Set(rows.filter(function(r){return r[COL.esp]>=0;}).map(function(r){return r[COL.esp];})).size};
+  function sedeData(s){
+    const all=COM.rows.filter(function(r){return r[COL.sede]===s && (!OF.anio.size||OF.anio.has(r[COL.anio]));});
+    const fac=all.filter(function(r){return r[COL.met]===0;});
+    const min=all.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
+    const f=fac.reduce(function(a,r){return a+r[COL.valM];},0);
+    return {cx:all.length,fac:f,min:min,facCx:fac.length,ticket:fac.length?f/fac.length:0,perHr:min?f/(min/60):0,esps:new Set(all.filter(function(r){return r[COL.esp]>=0;}).map(function(r){return r[COL.esp];})).size};
   }
-  function sedeData(s){ return sedeDataFromRows(allOpe.filter(function(r){return r[COL.sede]===s;})); }
-  function sedeDataYear(s,yy){ return sedeDataFromRows(allOpe.filter(function(r){return r[COL.sede]===s&&r[COL.anio]===yy;})); }
   const T=sedeData(0), O=sedeData(1);
   el.innerHTML=
     '<div class="sec-title">Comparativo de Sedes <span class="st-badge">Tesoro vs Oviedo</span></div>'+
@@ -2772,35 +2398,11 @@ function buildOpeSedes(){
     '</div>'+
     '<div class="insight">Tesoro aporta el volumen base; Oviedo es el motor de crecimiento. '+(T.perHr>O.perHr?'Tesoro rinde más por hora de sala — útil para priorizar inversión de capacidad.':'Oviedo rinde más por hora de sala — confirma el acierto de su expansión.')+'</div>'+
     footnoteMetrica();
-  if(multiYr){
-    mkChart('os-comp','bar',['Tesoro','Oviedo'],
-      opeYears.map(function(yy){
-        return {label:String(yy),data:[metVal(sedeDataYear(0,yy)),metVal(sedeDataYear(1,yy))],backgroundColor:YR_CLR[yy]||C.tesoro};
-      }),
-      {interaction:{mode:'index',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:{
-         label:function(c){
-           const MD=metDef(), yy=opeYears[c.datasetIndex], sIdx=c.dataIndex;
-           const a=sedeDataYear(sIdx,yy);
-           const lines=[' '+String(yy)+' · '+MD.noun+': '+MD.fmt(MD.val(a))];
-           if(a.fac) lines.push('   Facturación: '+fmtM(a.fac));
-           if(a.facCx) lines.push('   Ticket: '+fmtMd(a.fac/a.facCx,2));
-           if(a.min&&a.fac) lines.push('   $/Hora: '+fmtMd(a.fac/(a.min/60),2)+'/h');
-           return lines;
-         }
-       }}},
-       scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-    mkChart('os-dona','bar',opeYears.map(String),
-      [{label:'Tesoro',data:opeYears.map(function(yy){return MD.dval(sedeDataYear(0,yy));}),backgroundColor:C.tesoro},
-       {label:'Oviedo',data:opeYears.map(function(yy){return MD.dval(sedeDataYear(1,yy));}),backgroundColor:C.oviedo}],
-      {_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    mkChart('os-comp','bar',['Tesoro','Oviedo'],[
-      {label:MD.lbl,data:[metVal(T),metVal(O)],backgroundColor:[C.tesoro,C.oviedo]}
-    ],{plugins:{legend:{display:false},tooltip:{callbacks:metTooltip([T,O])}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-    mkChart('os-dona','doughnut',['Tesoro','Oviedo'],[{data:[MD.dval(T),MD.dval(O)],backgroundColor:[C.tesoro,C.oviedo],borderWidth:2,borderColor:'#fff'}],
-      {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
-  }
+  mkChart('os-comp','bar',['Tesoro','Oviedo'],[
+    {label:MD.lbl,data:[metVal(T),metVal(O)],backgroundColor:[C.tesoro,C.oviedo]}
+  ],{plugins:{legend:{display:false},tooltip:{callbacks:metTooltip([T,O])}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
+  mkChart('os-dona','doughnut',['Tesoro','Oviedo'],[{data:[MD.dval(T),MD.dval(O)],backgroundColor:[C.tesoro,C.oviedo],borderWidth:2,borderColor:'#fff'}],
+    {cutout:'58%',plugins:{legend:{display:true,position:'bottom'},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
 }
 
 /* ─────────── OPE: OCUPACIÓN ─────────── */
@@ -2811,7 +2413,7 @@ function buildOpeOcup(){
   const diaCx=new Array(6).fill(0), diaMin=new Array(6).fill(0);
   const diaAgg=[]; for(var d=0;d<6;d++) diaAgg.push({cx:0,fac:0,min:0,facCx:0});
   all.forEach(function(r){ if(r[COL.dia]>=0&&r[COL.dia]<6){ diaCx[r[COL.dia]]++; if(r[COL.tmin]>0)diaMin[r[COL.dia]]+=r[COL.tmin];
-    const a=diaAgg[r[COL.dia]]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.valM]>0){a.fac+=r[COL.valM];a.facCx++;} } });
+    const a=diaAgg[r[COL.dia]]; a.cx++; if(r[COL.tmin]>0)a.min+=r[COL.tmin]; if(r[COL.met]===0){a.fac+=r[COL.valM];a.facCx++;} } });
   const diasLbl=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const ocup=estOcupacion(all);
   const conDia=all.filter(function(r){return r[COL.dia]>=0;}).length;
@@ -2849,40 +2451,18 @@ function buildOpeEps(){
   const el=document.getElementById('ope-eps');
   const MD=metDef();
   const all=opeRows(false), fac=opeRows(true);
-  const yrSet=Array.from(new Set(all.map(function(r){return r[COL.anio];}))).sort();
-  const multiYr=yrSet.length>1;const opeYears=yrSet;
   const agg={};
   all.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.cx++; if(r[COL.tmin]>0)e.min+=r[COL.tmin]; });
   fac.forEach(function(r){ if(r[COL.eps]<0)return; const e=agg[r[COL.eps]]||(agg[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0}); e.fac+=r[COL.valM]; e.facCx++; });
-  const arr=Object.keys(agg).map(function(i){ return Object.assign({i:+i,name:COM.epss[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
+  const arr=Object.keys(agg).map(function(i){ return Object.assign({name:COM.epss[i]},agg[i]); }).sort(function(a,b){return metSortKey(b)-metSortKey(a);});
   const totFac=arr.reduce(function(s,a){return s+a.fac;},0);
   const sura=arr.filter(function(a){return /SURAMERICANA|SURA/i.test(a.name);})[0];
   const suraPct=(sura&&totFac)?sura.fac/totFac*100:0;
   const top3=totFac?arr.slice(0,3).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
   const top8=arr.slice(0,8);
-  const y1eps=opeYears[0],yNeps=opeYears[opeYears.length-1];
-  const aggYrEps={};
-  if(multiYr){
-    opeYears.forEach(function(yy){
-      const ay={};
-      all.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.cx++;if(r[COL.tmin]>0)e.min+=r[COL.tmin];});
-      fac.filter(function(r){return r[COL.anio]===yy;}).forEach(function(r){if(r[COL.eps]<0)return;const e=ay[r[COL.eps]]||(ay[r[COL.eps]]={cx:0,fac:0,min:0,facCx:0});e.fac+=r[COL.valM];e.facCx++;});
-      aggYrEps[yy]=ay;
-    });
-  }
-  function epsTblHdr(){
-    if(!multiYr) return '<tr><th>Aseguradora</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr>';
-    return '<tr><th>Aseguradora</th>'+opeYears.map(function(yy){const bg=YR_CLR[yy]||C.tesoro,tx=YR_TXT[yy]||'#fff';return '<th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Cx</th><th style="background:'+bg+';color:'+tx+';font-weight:700">'+yy+' Fac</th>';}).join('')+(opeYears.length===2?'<th>Δ Cx</th><th>Δ Fac</th>':'')+'<th>% Total</th></tr>';
-  }
-  function epsTblRow(a){
-    if(!multiYr) return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>';
-    const yrCells=opeYears.map(function(yy){const d=aggYrEps[yy][a.i]||{cx:0,fac:0};return '<td>'+fmtNum(d.cx)+'</td><td>'+fmtMd(d.fac,0)+'</td>';}).join('');
-    const delta=opeYears.length===2?(function(){const d1=aggYrEps[y1eps][a.i]||{cx:0,fac:0},d2=aggYrEps[yNeps][a.i]||{cx:0,fac:0};return '<td>'+fmtVar(pctVar(d2.cx,d1.cx))+'</td><td>'+fmtVar(pctVar(d2.fac,d1.fac))+'</td>';})():'';
-    return '<tr><td>'+a.name+'</td>'+yrCells+delta+'<td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td></tr>';
-  }
   el.innerHTML=
-    '<div class="sec-title">Aseguradoras <span class="st-badge">'+filterLabel()+'</span></div>'+
-    '<div class="sec-sub">'+arr.length+' aseguradoras / entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
+    '<div class="sec-title">EPS / Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-sub">'+arr.length+' entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
     '<div class="kpis k3">'+
       kpi(suraPct>40?'red':'gold','Concentración SURA',fmtPct(suraPct),'de la facturación')+
       kpi('navy','Entidades activas',String(arr.length),'pagadoras')+
@@ -2892,32 +2472,20 @@ function buildOpeEps(){
       card('Top 8 entidades · por '+MD.noun,'métrica: '+MD.lbl,'op-bar','')+
       card('Mix de pagadores ('+MD.dnoun+')','composición','op-dona','')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Detalle por entidad (Top 15)'+(multiYr?' · '+opeYears.join(' vs '):'')+'</h3></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Detalle por entidad (Top 15)</h3></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
-        '<thead>'+epsTblHdr()+'</thead><tbody>'+
-        arr.slice(0,15).map(epsTblRow).join('')+
+        '<thead><tr><th>Entidad</th><th>Cirugías</th><th>Facturación</th><th>% Total</th><th>Ticket</th></tr></thead><tbody>'+
+        arr.slice(0,15).map(function(a){ return '<tr><td>'+a.name+'</td><td>'+fmtNum(a.cx)+'</td><td>'+fmtMd(a.fac,0)+'</td><td>'+fmtPct(totFac?a.fac/totFac*100:0)+'</td><td>'+(a.facCx?fmtMd(a.fac/a.facCx,2):'—')+'</td></tr>'; }).join('')+
         '</tbody></table></div></div></div>'+
     '<div class="insight '+(suraPct>40?'neg':'warn')+'"><strong>SURA representa el '+fmtPct(suraPct)+'</strong> de la facturación. Es una dependencia crítica: cualquier cambio de tarifa o contrato con SURA mueve el negocio entero. Diversificar pagadores (particular, otras prepagadas) es prioridad estratégica de riesgo.</div>'+
     footnoteMetrica();
-  const top5=arr.slice(0,5);
-  if(multiYr){
-    mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
-      opeYears.map(function(yy){return {label:String(yy),data:top8.map(function(a){return metVal(aggYrEps[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {indexAxis:'y',interaction:{mode:'index',axis:'y',intersect:false},
-       plugins:{legend:{display:true,position:'top'},tooltip:{callbacks:metTooltipMultiYr(opeYears,aggYrEps,top8)}},
-       scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
-    mkChart('op-dona','bar',top5.map(function(a){return a.name.split(' ')[0];}),
-      opeYears.map(function(yy){return {label:String(yy),data:top5.map(function(a){return MD.dval(aggYrEps[yy][a.i]||{cx:0,fac:0,min:0,facCx:0});}),backgroundColor:YR_CLR[yy]||C.tesoro};}),
-      {_tooltipLabel:tipMoney,_yMoney:true});
-  } else {
-    mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
-      [{label:MD.lbl,data:top8.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
-      {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top8)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
-    const otros5=arr.slice(5).reduce(function(s,a){return s+MD.dval(a);},0);
-    mkChart('op-dona','doughnut',top5.map(function(a){return a.name.split(' ')[0];}).concat(['Otras']),
-      [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
-      {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
-  }
+  mkChart('op-bar','bar',top8.map(function(a){return a.name.length>22?a.name.slice(0,22)+'…':a.name;}),
+    [{label:MD.lbl,data:top8.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(top8)}},scales:{x:{ticks:{callback:function(v){return MD.axis(v);}}},y:{ticks:{font:{size:9.5}}}}});
+  const top5=arr.slice(0,5), otros5=arr.slice(5).reduce(function(s,a){return s+MD.dval(a);},0);
+  mkChart('op-dona','doughnut',top5.map(function(a){return a.name.split(' ')[0];}).concat(['Otras']),
+    [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
+    {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
 }
 
 /* ════════════════════════════════════════
