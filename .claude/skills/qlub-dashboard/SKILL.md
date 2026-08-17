@@ -359,7 +359,7 @@ git push origin main
 
 ## Actualización de datos
 
-Los JSON se regeneran desde los archivos fuente con scripts en `/Users/braindma/Qlub/scripts/`:
+Los JSON se regeneran desde los archivos fuente con scripts en `/Users/braindma/braindma/proyectos/qlub/scripts/`:
 
 | Datos | Script | Fuente |
 |-------|--------|--------|
@@ -379,9 +379,9 @@ Al cerrar un mes nuevo:
 
 ## Pruebas (Playwright)
 
-Las suites viven en `/Users/braindma/Qlub/dashboard/` (no en el pub):
+Las suites viven en `/Users/braindma/braindma/proyectos/qlub/dashboard/` (no en el pub):
 ```bash
-cd /Users/braindma/Qlub/dashboard
+cd /Users/braindma/braindma/proyectos/qlub/dashboard
 node test_qa_full.js   # 37 checks (autocontenido, levanta su propio server)
 # o bien:
 python3 -m http.server 8765 &
