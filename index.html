@@ -444,6 +444,36 @@ a{text-decoration:none;color:inherit;}
   .active-chip{font-size:12px;padding:5px 12px;}
   #bottom-nav{display:flex;}
 }
+/* ─── MAPA DE CALOR DE OCUPACIÓN (molde OET, paleta Qlub) ─── */
+.hm-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
+.hm th{font-size:9.5px;font-weight:600;color:#6b7f9c;padding:1px 0;white-space:nowrap}
+.hm thead th:first-child{width:96px;text-align:left}
+.hm tbody th{text-align:right;padding-right:7px;font-size:10px;white-space:nowrap}
+.hm tbody tr.tot th{font-weight:750;color:#0E2240}
+.hm td{text-align:center;padding:7px 0;border-radius:3px;font-size:10.5px;font-weight:650;
+  background:var(--c);color:var(--t);cursor:default}
+.hm td.off{background:#F4F6F9;color:#c2cbd8}
+.hm tbody tr.tot td{box-shadow:inset 0 0 0 1.5px rgba(14,34,64,.28)}
+.hm-leg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;margin-top:10px;color:#6b7f9c}
+.hm-leg .bar{flex:0 1 200px;height:11px;border-radius:3px;
+  background:linear-gradient(90deg,#1A6B35,#D4A843,#C0392B)}
+.hm-ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:0 0 14px}
+.hm-ctl label{display:block;font-size:10px;color:#6b7f9c;margin-bottom:3px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.4px}
+.hm-ctl input[type=date],.hm-ctl select{font:inherit;font-size:12px;padding:6px 8px;
+  border:1px solid #E9ECEF;border-radius:6px;background:#fff;color:#0E2240;min-height:34px}
+.hm-ctl .qk{display:flex;gap:5px;flex-wrap:wrap}
+.hm-ctl .qk button{font:inherit;font-size:11.5px;padding:6px 11px;border:1px solid #E9ECEF;
+  border-radius:6px;background:#fff;color:#1B3A6B;cursor:pointer;min-height:34px}
+.hm-ctl .qk button:hover{background:#F4F6F9}
+.hm-ctl .qk button.on{background:#1B3A6B;color:#fff;border-color:#1B3A6B}
+@media(max-width:640px){
+  .hm-ctl{gap:6px}
+  .hm-ctl input[type=date],.hm-ctl select,.hm-ctl .qk button{font-size:16px;min-height:44px}
+  .hm thead th:first-child{width:74px}
+  .hm tbody th{font-size:9px}
+}
 </style>
 </head>
 <body>
@@ -656,7 +686,7 @@ const tipPct   = function(c){ return ' '+c.dataset.label+': '+(c.parsed.y).toFix
 /* ════════════════════════════════════════
    DATA LOAD
    ════════════════════════════════════════ */
-let FIN=null, COM=null, FLU=null, GAD=null;
+let FIN=null, COM=null, FLU=null, GAD=null, OCU=null;
 const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10};
 
 async function loadData(){
@@ -665,9 +695,13 @@ async function loadData(){
       fetch('datos/financiero.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
       fetch('datos/comercial.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
       fetch('datos/flujo_caja.json').then(function(r){ if(!r.ok)throw 0; return r.json(); }),
-      fetch('datos/gastos_admin.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
+      fetch('datos/gastos_admin.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; }),
+      /* ocupacion.json es OPCIONAL: si falta, la pestaña Ocupación oculta los mapas de
+         calor y el resto del tablero sigue funcionando igual. Nunca romper el panel
+         entero por una capa nueva. */
+      fetch('datos/ocupacion.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
-    FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3];
+    FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3]; OCU=res[4];
     const um=(FIN.ultimo_mes_cerrado||4)-1;
     document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
@@ -2127,6 +2161,119 @@ function filterLabel(){
 function footnoteMetrica(){
   return '<div class="footnote"><b>Metodología:</b> volumen, tiempos y ocupación usan <b>todos los registros</b>. Facturación, ticket y $/hora usan solo registros con <b>factura completa</b> (excluye campos de valor parcial sin honorarios).</div>';
 }
+/* ════════════════════════════════════════
+   MAPA DE CALOR DE OCUPACIÓN  (datos/ocupacion.json)
+   ════════════════════════════════════════
+   Fuente distinta a comercial.json: aquí cada fila trae FECHA y HORA reales de
+   entrada/salida de quirófano. Cubre nov-2024 en adelante salvo ene-mar 2025
+   (no hay informe con hora en ese tramo) — la UI lo declara, no lo disimula.
+   Rejilla 6:00-20:00: cubre el 99,88% de los minutos de quirófano registrados. */
+const HM_H0=6, HM_H1=20;                       // franja de la rejilla (horas)
+const HM_QX_SEDE={0:'Tesoro',1:'Oviedo'};
+const OCOL={f:0,sede:1,qx:2,ini:3,fin:4};
+/* estado propio del mapa: rango de fechas + vista. No toca los filtros globales. */
+const HMF={desde:null,hasta:null,vista:'qx',rapido:'todo'};
+
+function ocuOk(){ return !!(OCU && OCU.rows && OCU.rows.length); }
+function ocuFechas(){ return OCU.fechas; }
+/* rango efectivo: si no hay selección, todo el histórico disponible */
+function hmRango(){
+  const F=ocuFechas();
+  return {d: HMF.desde || F[0], h: HMF.hasta || F[F.length-1]};
+}
+/* filas dentro del rango, respetando los filtros globales de SEDE y QUIRÓFANO
+   (los de año/mes NO se aplican: el mapa tiene su propio selector de fechas y
+   mezclarlos daría intersecciones vacías sin que se entienda por qué). */
+function ocuRows(){
+  if(!ocuOk()) return [];
+  const R=hmRango(), F=ocuFechas();
+  const i0=F.findIndex(function(x){return x>=R.d;});
+  let i1=-1; for(var k=F.length-1;k>=0;k--){ if(F[k]<=R.h){ i1=k; break; } }
+  if(i0<0||i1<0||i1<i0) return [];
+  const sedeOn=OF.sede.size>0, qxOn=OF.qx.size>0;
+  /* OF.qx guarda índices de COM.qxs; el mapa usa OCU.qxs. Se traduce por NOMBRE. */
+  let qxNames=null;
+  if(qxOn){ qxNames={}; OF.qx.forEach(function(i){ if(COM.qxs[i]) qxNames[COM.qxs[i]]=1; }); }
+  return OCU.rows.filter(function(r){
+    if(r[OCOL.f]<i0 || r[OCOL.f]>i1) return false;
+    if(sedeOn && !OF.sede.has(r[OCOL.sede])) return false;
+    if(qxNames && !qxNames[OCU.qxs[r[OCOL.qx]]]) return false;
+    return true;
+  });
+}
+/* minutos de una cirugía que caen dentro de la franja [h, h+1) */
+function ocuSolape(ini,fin,h){
+  const a=Math.max(ini,h*60), b=Math.min(fin,(h+1)*60);
+  return b>a ? b-a : 0;
+}
+/* Agrega minutos ocupados por (clave de fila) × hora, y cuenta los DÍAS de operación
+   de cada fila — el denominador honesto: un quirófano que no operó un día cuenta 0%,
+   pero un domingo sin actividad en toda la sede no diluye la lectura.
+
+   FUSIONA LOS INTERVALOS SOLAPADOS antes de sumar. En los informes hay 943 cirugías
+   (6,9%) que se solapan con otra en el MISMO quirófano y día — el sistema registra la
+   ocupación del bloque, no siempre de la cirugía individual. Sumarlas dobles inflaba la
+   ocupación un 8%: había celdas con hasta 355 minutos dentro de una hora de 60. Un
+   quirófano ocupado por dos cirugías a la vez sigue siendo UN quirófano ocupado, así que
+   se unen los intervalos por (quirófano, día) y recién ahí se reparte en franjas.
+   Para la fila consolidada se fusiona por quirófano y DESPUÉS se suman los quirófanos:
+   ahí sí la capacidad es la suma de las salas. */
+function ocuAgg(rows, claveFn){
+  /* 1) intervalos por (día, quirófano) */
+  const porDQ={};
+  rows.forEach(function(r){
+    const kk=r[OCOL.f]+'|'+r[OCOL.qx];
+    (porDQ[kk]||(porDQ[kk]=[])).push([r[OCOL.ini],r[OCOL.fin],r]);
+  });
+  const cel={}, dias={}, diasSede={};
+  Object.keys(porDQ).forEach(function(kk){
+    const iv=porDQ[kk].sort(function(a,b){ return a[0]-b[0]; });
+    const k=claveFn(iv[0][2]);
+    if(k===null) return;
+    if(!cel[k]) cel[k]=new Array(HM_H1-HM_H0).fill(0);
+    const f=iv[0][2][OCOL.f];
+    /* 2) fusión de solapados */
+    let a=iv[0][0], b=iv[0][1];
+    const merged=[];
+    for(var i=1;i<iv.length;i++){
+      if(iv[i][0]<=b){ b=Math.max(b,iv[i][1]); }
+      else { merged.push([a,b]); a=iv[i][0]; b=iv[i][1]; }
+    }
+    merged.push([a,b]);
+    /* 3) reparto en franjas */
+    merged.forEach(function(m){
+      for(var h=HM_H0;h<HM_H1;h++){
+        const x=ocuSolape(m[0],m[1],h);
+        if(x>0) cel[k][h-HM_H0]+=x;
+      }
+    });
+    (dias[k]||(dias[k]={}))[f]=1;
+    diasSede[f]=1;
+  });
+  const nDiasTot=Object.keys(diasSede).length;
+  const out={};
+  Object.keys(cel).forEach(function(k){
+    out[k]={min:cel[k], dias:Object.keys(dias[k]).length, diasTot:nDiasTot};
+  });
+  return {filas:out, nDias:nDiasTot};
+}
+/* % de ocupación de una celda: minutos ocupados / (días de operación × 60).
+   El denominador son los días en que la SEDE operó, no los días del calendario:
+   así un quirófano cerrado un día se lee como 0% y no como "sin dato". */
+function ocuPct(min, nDias){ return nDias>0 ? Math.min(100, min/(nDias*60)*100) : 0; }
+/* rampa verde (libre) -> dorado -> rojo (saturado), paleta Qlub */
+function hmColor(p){
+  const stops=[[0,26,107,53],[50,212,168,67],[100,192,57,43]];
+  if(p<=0) return {bg:'#EAF2EC', tx:'#8aa08f'};
+  let i=0; while(i<stops.length-2 && p>stops[i+1][0]) i++;
+  const a=stops[i], b=stops[i+1];
+  const t=(p-a[0])/(b[0]-a[0]);
+  const r=Math.round(a[1]+(b[1]-a[1])*t), g=Math.round(a[2]+(b[2]-a[2])*t), bl=Math.round(a[3]+(b[3]-a[3])*t);
+  const lum=(0.299*r+0.587*g+0.114*bl)/255;
+  return {bg:'rgb('+r+','+g+','+bl+')', tx: lum>0.62?'#0E2240':'#fff'};
+}
+function hmHoras(){ const a=[]; for(var h=HM_H0;h<HM_H1;h++) a.push(h); return a; }
+
 function estOcupacion(rows){
   if(!rows.length) return 0;
   const totMin=rows.reduce(function(s,r){ return s+(r[COL.tmin]>0?r[COL.tmin]:0); },0);
@@ -2411,6 +2558,134 @@ function buildOpeSedes(){
 }
 
 /* ─────────── OPE: OCUPACIÓN ─────────── */
+/* ─── bloque completo de mapas de calor que se inyecta en la pestaña Ocupación ─── */
+function hmBloque(){
+  if(!ocuOk()) return '';
+  const R=hmRango();
+  const filas=ocuRows();
+  const rango = (R.d===R.h) ? fechaLarga(R.d) : (fechaLarga(R.d)+' a '+fechaLarga(R.h));
+  const haySede = function(i){ return filas.some(function(r){return r[OCOL.sede]===i;}); };
+  return '<div class="sec-title" style="margin-top:26px">Mapa de calor de quirófanos '+
+      '<span class="st-badge">'+rango+'</span></div>'+
+    '<div class="sec-sub">Ocupación real por franja horaria, calculada con la hora de entrada y salida de quirófano de cada cirugía. '+
+      'Rejilla '+HM_H0+':00–'+HM_H1+':00. El número es el <strong>% de la hora que el quirófano estuvo ocupado</strong>, '+
+      'promediado sobre los días en que la sede operó.</div>'+
+    hmControles()+
+    (filas.length===0
+      ? '<div class="insight neg">No hay cirugías con hora de quirófano en el rango seleccionado. Amplía el rango o revisa los filtros de sede y quirófano.</div>'
+      : (haySede(0)? hmTabla(filas,0,'Sede Tesoro','Qlub Quirófanos'):'')+
+        (haySede(1)? hmTabla(filas,1,'Sede Oviedo','Qlub Oviedo'):'')+
+        ((haySede(0)&&haySede(1))? hmTabla(filas,null,'Consolidado · ambas sedes','Tesoro + Oviedo'):'')
+    )+
+    hmCobertura();
+}
+/* '2026-07-15' -> '15 jul 2026' (sin new Date: evita el corrimiento de zona horaria) */
+function fechaLarga(iso){
+  const M=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const p=String(iso).split('-');
+  return p.length===3 ? (+p[2])+' '+M[+p[1]-1]+' '+p[0] : iso;
+}
+/* ─── render de un mapa: filas = quirófanos de la sede (+ fila consolidada) ─── */
+function hmTabla(rows, sedeIdx, titulo, sub){
+  const horas=hmHoras();
+  const esCons = sedeIdx===null;
+  const propios = rows.filter(function(r){ return esCons || r[OCOL.sede]===sedeIdx; });
+  if(!propios.length){
+    return '<div class="card"><div class="card-hdr"><h3>'+titulo+'</h3></div>'+
+      '<div class="card-body"><div class="insight">Sin cirugías con hora de quirófano en el período seleccionado.</div></div></div>';
+  }
+  /* fila por quirófano */
+  const A=ocuAgg(propios, function(r){ return OCU.qxs[r[OCOL.qx]]; });
+  /* fila consolidada: la sede entera, con su capacidad = nº de quirófanos activos */
+  const nQx=Object.keys(A.filas).length;
+  const T=ocuAgg(propios, function(){ return '_'; });
+  const orden=Object.keys(A.filas).sort();
+  let cuerpo='';
+  orden.forEach(function(q){
+    const fila=A.filas[q];
+    cuerpo+='<tr><th>'+q.replace('QUIROFANOOVI','OVI ').replace('QUIROFANO ','QX ')+'</th>'+
+      horas.map(function(h,i){
+        const pct=ocuPct(fila.min[i], A.nDias);
+        const c=hmColor(pct);
+        const hrs=(fila.min[i]/60);
+        return '<td style="--c:'+c.bg+';--t:'+c.tx+'" title="'+q+' · '+h+':00–'+(h+1)+':00\n'+
+               Math.round(pct)+'% ocupado · '+hrs.toFixed(1)+' h en '+A.nDias+' días de operación">'+
+               (pct>=1?Math.round(pct):'·')+'</td>';
+      }).join('')+'</tr>';
+  });
+  /* consolidado: minutos totales / (días × 60 × nº quirófanos) */
+  const tf=T.filas['_'];
+  cuerpo+='<tr class="tot"><th>Consolidado</th>'+
+    horas.map(function(h,i){
+      const pct=nQx? Math.min(100, tf.min[i]/(T.nDias*60*nQx)*100) : 0;
+      const c=hmColor(pct);
+      return '<td style="--c:'+c.bg+';--t:'+c.tx+'" title="'+(esCons?'Ambas sedes':HM_QX_SEDE[sedeIdx])+' · '+h+':00–'+(h+1)+':00\n'+
+             Math.round(pct)+'% de la capacidad ('+nQx+' quirófanos × '+T.nDias+' días)">'+
+             (pct>=1?Math.round(pct):'·')+'</td>';
+    }).join('')+'</tr>';
+  const totMin=tf.min.reduce(function(a,b){return a+b;},0);
+  const ocupProm=nQx? totMin/(T.nDias*60*nQx*horas.length)*100 : 0;
+  let pico=0, hPico=horas[0];
+  horas.forEach(function(h,i){ const v=tf.min[i]; if(v>pico){pico=v;hPico=h;} });
+  return '<div class="card"><div class="card-hdr"><h3>'+titulo+'</h3></div><div class="card-body">'+
+    '<div class="sec-sub" style="margin:-4px 0 10px">'+sub+' · '+nQx+' quirófanos · '+
+      T.nDias+' días de operación · '+fmtNum(propios.length)+' cirugías</div>'+
+    '<div class="hm-wrap"><table class="hm"><thead><tr><th>Quirófano</th>'+
+      horas.map(function(h){return '<th>'+h+'</th>';}).join('')+
+    '</tr></thead><tbody>'+cuerpo+'</tbody></table></div>'+
+    '<div class="hm-leg"><span>libre</span><span class="bar"></span><span>saturado</span>'+
+      '<span style="margin-left:auto">Ocupación media <b style="color:#0E2240">'+fmtPct(ocupProm)+
+      '</b> · hora pico <b style="color:#0E2240">'+hPico+':00</b></span></div>'+
+    '</div></div>';
+}
+/* controles de fecha del mapa */
+function hmControles(){
+  const F=ocuFechas(), R=hmRango();
+  const qk=[['dia','Último día'],['sem','Última semana'],['mes','Último mes'],['todo','Todo el histórico']];
+  return '<div class="hm-ctl">'+
+    '<div><label>Desde</label><input type="date" id="hm-d" value="'+R.d+'" min="'+F[0]+'" max="'+F[F.length-1]+'" onchange="hmFecha(\'desde\',this.value)"></div>'+
+    '<div><label>Hasta</label><input type="date" id="hm-h" value="'+R.h+'" min="'+F[0]+'" max="'+F[F.length-1]+'" onchange="hmFecha(\'hasta\',this.value)"></div>'+
+    '<div class="qk">'+qk.map(function(k){
+      return '<button class="'+(HMF.rapido===k[0]?'on':'')+'" onclick="hmRapido(\''+k[0]+'\')">'+k[1]+'</button>';
+    }).join('')+'</div>'+
+  '</div>';
+}
+function hmFecha(cual,val){
+  if(!val) return;
+  HMF[cual]=val; HMF.rapido=null;
+  if(HMF.desde && HMF.hasta && HMF.desde>HMF.hasta){
+    if(cual==='desde') HMF.hasta=val; else HMF.desde=val;
+  }
+  buildOpeOcup();
+}
+/* atajos: se calculan sobre la ÚLTIMA FECHA CON ACTIVIDAD, no sobre hoy — el
+   tablero se mira meses después del cierre y "hoy" daría siempre vacío. */
+function hmRapido(k){
+  const F=ocuFechas(), ult=F[F.length-1];
+  HMF.rapido=k;
+  if(k==='todo'){ HMF.desde=null; HMF.hasta=null; }
+  else{
+    const d=new Date(ult+'T00:00:00');
+    const n=(k==='dia')?0:(k==='sem')?6:29;
+    d.setDate(d.getDate()-n);
+    HMF.desde=d.toISOString().slice(0,10); HMF.hasta=ult;
+  }
+  buildOpeOcup();
+}
+/* aviso de cobertura: qué meses del tablero NO tienen hora de quirófano */
+function hmCobertura(){
+  const cob=OCU.cobertura||{};
+  const faltan=[];
+  Object.keys(COM.rows.reduce(function(a,r){ a[r[COL.anio]+'-'+String(r[COL.mes]).padStart(2,'0')]=1; return a; },{}))
+    .sort().forEach(function(k){ if(!cob[k]) faltan.push(k); });
+  if(!faltan.length) return '';
+  return '<div class="insight warn"><strong>Cobertura del mapa:</strong> '+
+    fmtNum(OCU.rows.length)+' cirugías tienen hora de quirófano registrada. '+
+    'No la tienen '+faltan.length+' meses ('+faltan[0]+' a '+faltan[faltan.length-1]+
+    '), porque el informe de esos períodos no trae hora de entrada y salida. '+
+    'Esos meses sí cuentan en el resto del tablero; aquí quedan fuera.</div>';
+}
+
 function buildOpeOcup(){
   const el=document.getElementById('ope-ocup');
   const MD=metDef();
@@ -2442,6 +2717,7 @@ function buildOpeOcup(){
     '</div>'+
     '<div class="gfull">'+card('Distribución por duración de cirugía','','oo-dur','short')+'</div>'+
     '<div class="insight">La carga se concentra entre semana; el sábado opera a media máquina (7h vs 11h diarias). '+(diaCx[5]<diaCx[2]*0.5?'Abrir agenda comercial el sábado en la tarde es capacidad lista para vender sin nuevo CapEx.':'')+'</div>'+
+    hmBloque()+
     footnoteMetrica();
   mkChart('oo-dia','bar',diasLbl,[{label:MD.lbl,data:diaAgg.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
     {plugins:{legend:{display:false},tooltip:{callbacks:metTooltip(diaAgg)}},scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
