@@ -1693,7 +1693,12 @@ function buildFinFlujo(){
   const el=document.getElementById('fin-flujo');
   const s=FF.sede, y=finYear(), yp=y-1, ytdOn=FF.ytd;
   const selYears=finYearsSorted();
-  const nM=ultMes(), rng='Ene-'+MESES[nM-1];
+  /* El flujo se arma de los BP y puede ir un mes atrás del P&G (que sale del ERI
+     definitivo). El rango se deriva de los meses CON DATO de caja, no de ultMes(),
+     o la etiqueta diría 'YTD Ene-Jul' mientras suma solo hasta junio. */
+  const _fact=fluMonthsActive(s,y);
+  const nM=Math.min(ultMes(), _fact.length ? _fact[_fact.length-1]+1 : ultMes());
+  const rng='Ene-'+MESES[nM-1];
   const mesExpl=finMesesExpl(), mesLbl=finMesesLbl();
 
   /* índices del período: meses explícitos (∩ meses con dato de caja) > YTD > todos con dato.
