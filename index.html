@@ -2628,8 +2628,9 @@ function hmTabla(rows, sedeIdx, titulo, sub){
   let pico=0, hPico=horas[0];
   horas.forEach(function(h,i){ const v=tf.min[i]; if(v>pico){pico=v;hPico=h;} });
   return '<div class="card"><div class="card-hdr"><h3>'+titulo+'</h3></div><div class="card-body">'+
-    '<div class="sec-sub" style="margin:-4px 0 10px">'+sub+' · '+nQx+' quirófanos · '+
-      T.nDias+' días de operación · '+fmtNum(propios.length)+' cirugías</div>'+
+    '<div class="sec-sub" style="margin:-4px 0 10px">'+sub+' · '+nQx+(nQx===1?' quirófano':' quirófanos')+' · '+
+      T.nDias+(T.nDias===1?' día':' días')+' de operación · '+fmtNum(propios.length)+
+      (propios.length===1?' cirugía':' cirugías')+'</div>'+
     '<div class="hm-wrap"><table class="hm"><thead><tr><th>Quirófano</th>'+
       horas.map(function(h){return '<th>'+h+'</th>';}).join('')+
     '</tr></thead><tbody>'+cuerpo+'</tbody></table></div>'+
