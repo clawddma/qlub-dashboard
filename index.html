@@ -490,6 +490,7 @@ table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
   <nav class="top-tabs" id="top-tabs">
     <div class="ttab active" data-tab="fin" onclick="switchTab('fin')"><span class="ti">💰</span> Financiero</div>
     <div class="ttab" data-tab="ope" onclick="switchTab('ope')"><span class="ti">📊</span> Administrativo</div>
+    <div class="ttab" data-tab="rep" onclick="switchTab('rep')"><span class="ti">📑</span> Reportes</div>
   </nav>
   <div class="hdr-meta">Cierre: <span id="hdr-range">Abr-2026</span><br><span id="hdr-rows">—</span></div>
 </header>
@@ -504,6 +505,7 @@ table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
 <nav id="bottom-nav">
   <div class="bnav-btn active" data-tab="fin" onclick="switchTab('fin')"><div class="bnav-icon">💰</div><div class="bnav-lbl">Finan.</div></div>
   <div class="bnav-btn" data-tab="ope" onclick="switchTab('ope')"><div class="bnav-icon">📊</div><div class="bnav-lbl">Admin.</div></div>
+  <div class="bnav-btn" data-tab="rep" onclick="switchTab('rep')"><div class="bnav-icon">📑</div><div class="bnav-lbl">Report.</div></div>
 </nav>
 
 <!-- ═══ CONTENT ═══ -->
@@ -533,7 +535,11 @@ table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
 </section>
 
 <!-- ============ REPORTES / HALLAZGOS ============ -->
-<section class="sec" id="sec-rep"></section>
+<section class="sec" id="sec-rep">
+  <div class="subsec active" id="rep-julio"></div>
+  <div class="subsec" id="rep-agenda"></div>
+  <div class="subsec" id="rep-sedes"></div>
+</section>
 
 <!-- ============ PLAN DE ACCIÓN ============ -->
 <section class="sec" id="sec-acc"></section>
@@ -686,7 +692,7 @@ const tipPct   = function(c){ return ' '+c.dataset.label+': '+(c.parsed.y).toFix
 /* ════════════════════════════════════════
    DATA LOAD
    ════════════════════════════════════════ */
-let FIN=null, COM=null, FLU=null, GAD=null, OCU=null;
+let FIN=null, COM=null, FLU=null, GAD=null, OCU=null, PRG=null;
 const COL={anio:0,mes:1,sede:2,esp:3,cir:4,eps:5,qx:6,dia:7,tmin:8,valM:9,met:10};
 
 async function loadData(){
@@ -699,9 +705,12 @@ async function loadData(){
       /* ocupacion.json es OPCIONAL: si falta, la pestaña Ocupación oculta los mapas de
          calor y el resto del tablero sigue funcionando igual. Nunca romper el panel
          entero por una capa nueva. */
-      fetch('datos/ocupacion.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
+      fetch('datos/ocupacion.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; }),
+      /* programacion.json: la agenda MANUAL (lo programado), distinta de lo ejecutado.
+         También opcional — si falta, el informe oculta el bloque de agenda. */
+      fetch('datos/programacion.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
-    FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3]; OCU=res[4];
+    FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3]; OCU=res[4]; PRG=res[5];
     const um=(FIN.ultimo_mes_cerrado||4)-1;
     document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
@@ -723,9 +732,11 @@ const SUBSECS = {
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
        ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
-  rep:[], acc:[]
+  rep:[['rep-julio','📄','Cierre de Julio'],['rep-agenda','🗓️','Agenda y Ocupación'],
+       ['rep-sedes','🏛️','Las dos sedes']],
+  acc:[]
 };
-let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio'};
+let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio', rep:'rep-julio'};
 
 function switchTab(t){
   TAB=t;
@@ -735,8 +746,7 @@ function switchTab(t){
   for(let i=0;i<btns.length;i++) btns[i].classList.toggle('active', btns[i].dataset.tab===t);
   buildSubNav(t);
   buildPeriodBar(t);
-  if(t==='fin'||t==='ope'){ switchSub(SUBSEC[t]); }
-  else if(t==='rep'){ buildReportes(); }
+  if(t==='fin'||t==='ope'||t==='rep'){ switchSub(SUBSEC[t]); }
   else if(t==='acc'){ buildAcciones(); }
   window.scrollTo(0,0);
 }
@@ -768,7 +778,8 @@ function buildSub(id){
     'fin-inicio':buildFinInicio,'fin-pnl':buildFinPnl,'fin-margen':buildFinMargen,
     'fin-costos':buildFinCostos,'fin-gadmin':buildFinGAdmin,'fin-balance':buildFinBalance,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnual,
     'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
-    'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps
+    'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps,
+    'rep-julio':buildRepJulio,'rep-agenda':buildRepAgenda,'rep-sedes':buildRepSedes
   };
   if(map[id]) map[id]();
 }
@@ -2170,7 +2181,7 @@ function footnoteMetrica(){
    Rejilla 6:00-20:00: cubre el 99,88% de los minutos de quirófano registrados. */
 const HM_H0=6, HM_H1=20;                       // franja de la rejilla (horas)
 const HM_QX_SEDE={0:'Tesoro',1:'Oviedo'};
-const OCOL={f:0,sede:1,qx:2,ini:3,fin:4};
+const OCOL={f:0,sede:1,qx:2,ini:3,fin:4,cir:5,esp:6};
 /* estado propio del mapa: rango de fechas + vista. No toca los filtros globales. */
 const HMF={desde:null,hasta:null,vista:'qx',rapido:'todo'};
 
@@ -2190,14 +2201,26 @@ function ocuRows(){
   const i0=F.findIndex(function(x){return x>=R.d;});
   let i1=-1; for(var k=F.length-1;k>=0;k--){ if(F[k]<=R.h){ i1=k; break; } }
   if(i0<0||i1<0||i1<i0) return [];
-  const sedeOn=OF.sede.size>0, qxOn=OF.qx.size>0;
-  /* OF.qx guarda índices de COM.qxs; el mapa usa OCU.qxs. Se traduce por NOMBRE. */
-  let qxNames=null;
-  if(qxOn){ qxNames={}; OF.qx.forEach(function(i){ if(COM.qxs[i]) qxNames[COM.qxs[i]]=1; }); }
+  const sedeOn=OF.sede.size>0;
+  /* OF.qx / OF.cir / OF.esp guardan índices de los catálogos de COM; el mapa usa los
+     suyos. Se traducen por NOMBRE — nunca por índice, que no coincide entre archivos.
+     El nombre del cirujano se normaliza igual que en el build (mayúsculas sin tildes). */
+  function mapa(dimSet, comCat, ocuCat, norm){
+    if(!dimSet.size || !ocuCat) return null;
+    const want={}; dimSet.forEach(function(i){ if(comCat[i]) want[norm?norm(comCat[i]):comCat[i]]=1; });
+    return want;
+  }
+  const canon=function(x){ return String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); };
+  const qxW=mapa(OF.qx,COM.qxs,OCU.qxs,null);
+  const cirW=mapa(OF.cir,COM.cirs,OCU.cirs,canon);
+  const espW=mapa(OF.esp,COM.esps,OCU.esps,null);
   return OCU.rows.filter(function(r){
     if(r[OCOL.f]<i0 || r[OCOL.f]>i1) return false;
     if(sedeOn && !OF.sede.has(r[OCOL.sede])) return false;
-    if(qxNames && !qxNames[OCU.qxs[r[OCOL.qx]]]) return false;
+    if(qxW && !qxW[OCU.qxs[r[OCOL.qx]]]) return false;
+    if(cirW && (r[OCOL.cir]<0 || !cirW[OCU.cirs[r[OCOL.cir]]])) return false;
+    if(espW && (r[OCOL.esp]<0 || !espW[OCU.esps[r[OCOL.esp]]])) return false;
     return true;
   });
 }
@@ -2558,6 +2581,84 @@ function buildOpeSedes(){
 }
 
 /* ─────────── OPE: OCUPACIÓN ─────────── */
+/* ════════════════════════════════════════
+   AGENDA PROGRAMADA  (datos/programacion.json)
+   ════════════════════════════════════════
+   Lo que se PROGRAMÓ, que no es lo que se operó. Del cuadro manual salen tres cosas
+   que el sistema no registra: la fecha real de programación, la cancelación con su
+   motivo, y los bloques de RESERVA apartados sin paciente. */
+const PCOL={f:0,sede:1,qx:2,ini:3,fin:4,durProg:5,cir:6,esp:7,aseg:8,tipo:9,
+            fprog:10,fcanc:11,motivo:12,prog:13,pre:14,aut:15};
+function prgOk(){ return !!(PRG && PRG.rows && PRG.rows.length); }
+/* filas de un rango de meses de 2026 (1-based, inclusive) */
+function prgRows(m0,m1,sede){
+  if(!prgOk()) return [];
+  return PRG.rows.filter(function(r){
+    const f=PRG.fechas[r[PCOL.f]];
+    const mm=+f.slice(5,7);
+    if(!f.startsWith('2026') || mm<m0 || mm>m1) return false;
+    if(sede!==undefined && sede!==null && r[PCOL.sede]!==sede) return false;
+    return true;
+  });
+}
+/* resumen de agenda de un período: programado, cancelado, reservas, y el detalle
+   que explica si la capacidad perdida era recuperable o no. */
+function prgResumen(m0,m1,sede){
+  const R=prgRows(m0,m1,sede);
+  const pac=R.filter(function(r){ return r[PCOL.tipo]===0; });
+  const canc=pac.filter(function(r){ return r[PCOL.fcanc]>=0; });
+  const res=R.filter(function(r){ return r[PCOL.tipo]===1; });
+  const lib=res.filter(function(r){ return r[PCOL.fcanc]>=0; });
+  /* días de aviso: fecha de cirugía menos fecha de cancelación */
+  function aviso(r){
+    if(r[PCOL.fcanc]<0) return null;
+    const a=new Date(PRG.fechas[r[PCOL.f]]+'T00:00:00');
+    const b=new Date(PRG.fechas[r[PCOL.fcanc]]+'T00:00:00');
+    return Math.round((a-b)/86400000);
+  }
+  const av=canc.map(aviso).filter(function(x){ return x!==null && x>=-30 && x<=180; });
+  const tardias=av.filter(function(x){ return x<=1; }).length;
+  const horasRes=res.reduce(function(a,r){ return a+(r[PCOL.fin]-r[PCOL.ini]); },0)/60;
+  const horasLib=lib.reduce(function(a,r){ return a+(r[PCOL.fin]-r[PCOL.ini]); },0)/60;
+  const horasCancTarde=canc.filter(function(r){ const x=aviso(r); return x!==null&&x<=1; })
+                           .reduce(function(a,r){ return a+r[PCOL.durProg]; },0)/60;
+  /* oportunidad: de la fecha de programación a la cirugía */
+  const op=pac.map(function(r){
+    if(r[PCOL.fprog]<0) return null;
+    const a=new Date(PRG.fechas[r[PCOL.f]]+'T00:00:00');
+    const b=new Date(PRG.fechas[r[PCOL.fprog]]+'T00:00:00');
+    const d=Math.round((a-b)/86400000);
+    return (d>=0&&d<=365)?d:null;
+  }).filter(function(x){ return x!==null; }).sort(function(a,b){ return a-b; });
+  const meses=m1-m0+1;
+  return {prog:pac.length, canc:canc.length, reservas:res.length, liberadas:lib.length,
+          tasaCanc: pac.length? canc.length/pac.length*100 : 0,
+          avisos: av, tardias: tardias,
+          pctTardias: av.length? tardias/av.length*100 : 0,
+          horasRes: horasRes, horasLib: horasLib, horasCancTarde: horasCancTarde,
+          horasMes: (horasLib+horasCancTarde)/meses,
+          opMediana: op.length? op[Math.floor(op.length/2)] : 0,
+          opP90: op.length? op[Math.floor(op.length*0.9)] : 0,
+          meses: meses};
+}
+/* conteo por motivo de cancelación */
+function prgMotivos(m0,m1,sede){
+  const R=prgRows(m0,m1,sede).filter(function(r){ return r[PCOL.tipo]===0 && r[PCOL.fcanc]>=0; });
+  const c={};
+  R.forEach(function(r){ const m=r[PCOL.motivo]>=0?PRG.motivos[r[PCOL.motivo]]:'Sin motivo registrado';
+    c[m]=(c[m]||0)+1; });
+  return Object.keys(c).map(function(k){ return {n:k, v:c[k]}; })
+    .sort(function(a,b){ return b.v-a.v; });
+}
+/* cirugías EJECUTADAS de comercial.json en un rango de meses de 2026 */
+function ejecutadas(m0,m1,sede){
+  return COM.rows.filter(function(r){
+    if(r[COL.anio]!==2026 || r[COL.mes]<m0 || r[COL.mes]>m1) return false;
+    if(sede!==undefined && sede!==null && r[COL.sede]!==sede) return false;
+    return true;
+  }).length;
+}
+
 /* ─── bloque completo de mapas de calor que se inyecta en la pestaña Ocupación ─── */
 function hmBloque(){
   if(!ocuOk()) return '';
@@ -2728,6 +2829,234 @@ function buildOpeOcup(){
     [{label:'Cirugías',data:buckets,backgroundColor:[C.consol,C.tesoro,C.oviedo,C.acento,C.neg]}],{_tooltipLabel:tipNum,plugins:{legend:{display:false}}});
 }
 
+/* ════════════════════════════════════════
+   REPORTES — Cierre de Julio 2026
+   ════════════════════════════════════════ */
+/* helpers de P&G para un rango de meses */
+function repP(sede,anio,cod,m0,m1){
+  const a=pygArr(sede,anio,cod); let t=0;
+  for(var i=m0-1;i<=m1-1;i++) t+=(a[i]||0);
+  return t;
+}
+function repBloque(anio,m0,m1){
+  const o={};
+  ['Tesoro','Oviedo','Consolidado'].forEach(function(sd){
+    const g=function(c){ return repP(sd,anio,c,m0,m1); };
+    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160'), abajo=g('53');
+    o[sd]={ing:ing, cop:cop, ga:ga, ub:ing-cop, uop:ing-cop-ga,
+            ebitda:ing-cop-ga+da, neta:ing-cop-ga-abajo};
+  });
+  return o;
+}
+function repFilaTabla(lbl,f,B,pct){
+  return '<tr><td>'+lbl+'</td>'+['Tesoro','Oviedo','Consolidado'].map(function(sd){
+    const v=f(B[sd]);
+    return '<td>'+(pct? fmtPct(v) : fmtMd(v,0))+'</td>';
+  }).join('')+'</tr>';
+}
+
+function buildRepJulio(){
+  const el=document.getElementById('rep-julio');
+  const uM=ultMes();
+  const M=repBloque(2026,uM,uM), Y=repBloque(2026,1,uM), Yp=repBloque(2025,1,uM);
+  const cxMes=ejecutadas(uM,uM), cxYtd=ejecutadas(1,uM);
+  const A=prgOk()? prgResumen(uM,uM) : null;
+  const AY=prgOk()? prgResumen(1,uM) : null;
+  const varIng=Yp.Consolidado.ing? (Y.Consolidado.ing/Yp.Consolidado.ing-1)*100 : 0;
+  const varGa =Yp.Consolidado.ga ? (Y.Consolidado.ga /Yp.Consolidado.ga -1)*100 : 0;
+  const varCop=Yp.Consolidado.cop? (Y.Consolidado.cop/Yp.Consolidado.cop-1)*100 : 0;
+  el.innerHTML=
+    '<div class="sec-title">Cierre de '+MESES[uM-1]+' 2026 <span class="st-badge">informe de gestión</span></div>'+
+    '<div class="sec-sub">Lectura del mes y del acumulado del año, por sede y consolidado. '+
+      'Cifras en millones de pesos, tomadas de los estados financieros definitivos.</div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','Ingresos del mes',fmtMd(M.Consolidado.ing,0),fmtNum(cxMes)+' cirugías')+
+      kpi(M.Consolidado.ebitda>0?'green':'red','EBITDA del mes',fmtMd(M.Consolidado.ebitda,0),
+          fmtPct(M.Consolidado.ing? M.Consolidado.ebitda/M.Consolidado.ing*100:0)+' de margen')+
+      kpi(M.Consolidado.neta>0?'green':'red','Utilidad neta del mes',fmtMd(M.Consolidado.neta,0),'después de todo')+
+      kpi(varIng>0?'green':'red','Ingresos YTD vs 2025',(varIng>0?'+':'')+fmtPct(varIng),'Ene-'+MESES[uM-1])+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>El mes de '+MESES[uM-1]+'</h3></div><div class="card-body">'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Concepto</th><th>Tesoro</th><th>Oviedo</th><th>Consolidado</th></tr></thead><tbody>'+
+      repFilaTabla('Ingresos operacionales',function(x){return x.ing;},M)+
+      repFilaTabla('Costos de operación',function(x){return x.cop;},M)+
+      repFilaTabla('Utilidad bruta',function(x){return x.ub;},M)+
+      repFilaTabla('Gastos de administración',function(x){return x.ga;},M)+
+      repFilaTabla('Utilidad operacional',function(x){return x.uop;},M)+
+      repFilaTabla('EBITDA',function(x){return x.ebitda;},M)+
+      repFilaTabla('Utilidad neta',function(x){return x.neta;},M)+
+      '</tbody></table></div></div></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Acumulado Enero – '+MESES[uM-1]+' 2026</h3></div><div class="card-body">'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Concepto</th><th>Tesoro</th><th>Oviedo</th><th>Consolidado</th></tr></thead><tbody>'+
+      repFilaTabla('Ingresos operacionales',function(x){return x.ing;},Y)+
+      repFilaTabla('Costos de operación',function(x){return x.cop;},Y)+
+      repFilaTabla('Utilidad bruta',function(x){return x.ub;},Y)+
+      repFilaTabla('Gastos de administración',function(x){return x.ga;},Y)+
+      repFilaTabla('Utilidad operacional',function(x){return x.uop;},Y)+
+      repFilaTabla('EBITDA',function(x){return x.ebitda;},Y)+
+      repFilaTabla('Utilidad neta',function(x){return x.neta;},Y)+
+      '<tr class="sep"><td>Margen bruto</td>'+['Tesoro','Oviedo','Consolidado'].map(function(sd){
+        return '<td>'+fmtPct(Y[sd].ing? Y[sd].ub/Y[sd].ing*100:0)+'</td>';}).join('')+'</tr>'+
+      '<tr><td>Margen EBITDA</td>'+['Tesoro','Oviedo','Consolidado'].map(function(sd){
+        return '<td>'+fmtPct(Y[sd].ing? Y[sd].ebitda/Y[sd].ing*100:0)+'</td>';}).join('')+'</tr>'+
+      '<tr><td>Gastos admin / ingresos</td>'+['Tesoro','Oviedo','Consolidado'].map(function(sd){
+        return '<td>'+fmtPct(Y[sd].ing? Y[sd].ga/Y[sd].ing*100:0)+'</td>';}).join('')+'</tr>'+
+      '</tbody></table></div></div></div>'+
+    '<div class="card"><div class="card-hdr"><h3>Contra el mismo período de 2025</h3></div><div class="card-body">'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Concepto</th><th>Ene-'+MESES[uM-1]+' 2025</th><th>Ene-'+MESES[uM-1]+' 2026</th><th>Variación</th></tr></thead><tbody>'+
+      [['Ingresos','ing'],['Costos de operación','cop'],['Gastos de administración','ga'],
+       ['Utilidad operacional','uop'],['EBITDA','ebitda']].map(function(x){
+        const a=Yp.Consolidado[x[1]], b=Y.Consolidado[x[1]];
+        const v=a? (b/a-1)*100 : 0;
+        const cls=(x[1]==='ga'||x[1]==='cop')? (v>varIng?'neg':'pos') : (v>0?'pos':'neg');
+        return '<tr><td>'+x[0]+'</td><td>'+fmtMd(a,0)+'</td><td>'+fmtMd(b,0)+'</td>'+
+               '<td class="'+cls+'">'+(v>0?'+':'')+fmtPct(v)+'</td></tr>';
+      }).join('')+
+      '</tbody></table></div>'+
+      '<div class="insight '+(varGa>varIng?'neg':'')+'"><strong>Los ingresos crecen '+fmtPct(varIng)+
+      ' pero los gastos de administración crecen '+fmtPct(varGa)+'.</strong> '+
+      (varGa>varIng
+        ? 'La estructura administrativa crece más rápido que el negocio: por cada peso adicional de ingreso, el gasto fijo sube más. Ese es el motivo por el que el crecimiento en ventas no llega a la utilidad.'
+        : 'La estructura crece por debajo del negocio.')+
+      ' Los costos de operación, que sí son variables, crecen '+fmtPct(varCop)+'.</div>'+
+      '</div></div>'+
+    (A? '<div class="card"><div class="card-hdr"><h3>La agenda de '+MESES[uM-1]+'</h3></div><div class="card-body">'+
+      '<div class="kpis k4">'+
+        kpi('','Programadas con paciente',fmtNum(A.prog),'en el cuadro de agenda')+
+        kpi('gold','Ejecutadas',fmtNum(cxMes),fmtPct(A.prog? cxMes/A.prog*100:0)+' de lo programado')+
+        kpi(A.tasaCanc>12?'red':'gold','Canceladas',fmtNum(A.canc),fmtPct(A.tasaCanc)+' del programado')+
+        kpi('red','Con 1 día o menos de aviso',fmtNum(A.tardias),fmtPct(A.pctTardias)+' de las cancelaciones')+
+      '</div>'+
+      '<div class="insight neg"><strong>De cada 100 cirugías programadas se operan '+
+      Math.round(A.prog? cxMes/A.prog*100:0)+'.</strong> El '+Math.round(A.pctTardias)+
+      '% de las cancelaciones llega con un día o menos de aviso, y ese cupo ya no se puede revender: '+
+      'el quirófano queda abierto y vacío. A eso se suman '+fmtNum(A.reservas)+' bloques de reserva, '+
+      'de los que se liberaron '+fmtNum(A.liberadas)+'.</div>'+
+      '</div></div>' : '')+
+    '<div class="footnote"><b>Cómo leer este informe.</b> Las cifras financieras salen de los estados definitivos del contador, con el contrato de cuentas en participación aplicado: Tesoro es Qlub Quirófanos SAS y Oviedo es la participación del 73% de Torre Médica. Las cirugías salen del informe operativo y la agenda del cuadro de programación de cada sede.</div>';
+}
+
+function buildRepAgenda(){
+  const el=document.getElementById('rep-agenda');
+  const uM=ultMes();
+  if(!prgOk()){ el.innerHTML='<div class="insight">No está cargada la capa de programación.</div>'; return; }
+  const A=prgResumen(1,uM), T=prgResumen(1,uM,0), O=prgResumen(1,uM,1);
+  const mot=prgMotivos(1,uM);
+  const totMot=mot.reduce(function(a,b){ return a+b.v; },0);
+  const cxT=ejecutadas(1,uM,0), cxO=ejecutadas(1,uM,1);
+  const horasMes=A.horasMes;
+  el.innerHTML=
+    '<div class="sec-title">Agenda y ocupación <span class="st-badge">Ene-'+MESES[uM-1]+' 2026</span></div>'+
+    '<div class="sec-sub">Qué se programó, qué se operó y dónde se pierde la capacidad. '+
+      'Fuente: los cuadros manuales de programación de las dos sedes, '+fmtNum(A.prog+A.reservas)+' renglones.</div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','Programadas',fmtNum(A.prog),'con paciente asignado')+
+      kpi('gold','Tasa de cancelación',fmtPct(A.tasaCanc),fmtNum(A.canc)+' cirugías')+
+      kpi('red','Aviso de 1 día o menos',fmtPct(A.pctTardias),'del total cancelado')+
+      kpi('red','Capacidad no recuperable',fmtNum(horasMes)+' h/mes','reservas liberadas + cancelación tardía')+
+    '</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Programado contra ejecutado, por sede</h3></div><div class="card-body">'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Indicador</th><th>Tesoro</th><th>Oviedo</th><th>Consolidado</th></tr></thead><tbody>'+
+      '<tr><td>Cirugías programadas</td><td>'+fmtNum(T.prog)+'</td><td>'+fmtNum(O.prog)+'</td><td>'+fmtNum(A.prog)+'</td></tr>'+
+      '<tr><td>Cirugías ejecutadas</td><td>'+fmtNum(cxT)+'</td><td>'+fmtNum(cxO)+'</td><td>'+fmtNum(cxT+cxO)+'</td></tr>'+
+      '<tr><td>Cumplimiento</td><td>'+fmtPct(T.prog?cxT/T.prog*100:0)+'</td><td>'+fmtPct(O.prog?cxO/O.prog*100:0)+'</td><td>'+fmtPct(A.prog?(cxT+cxO)/A.prog*100:0)+'</td></tr>'+
+      '<tr><td>Canceladas</td><td>'+fmtNum(T.canc)+'</td><td>'+fmtNum(O.canc)+'</td><td>'+fmtNum(A.canc)+'</td></tr>'+
+      '<tr><td>Tasa de cancelación</td><td>'+fmtPct(T.tasaCanc)+'</td><td>'+fmtPct(O.tasaCanc)+'</td><td>'+fmtPct(A.tasaCanc)+'</td></tr>'+
+      '<tr class="sep"><td>Bloques de reserva</td><td>'+fmtNum(T.reservas)+'</td><td>'+fmtNum(O.reservas)+'</td><td>'+fmtNum(A.reservas)+'</td></tr>'+
+      '<tr><td>Reservas liberadas</td><td>'+fmtNum(T.liberadas)+'</td><td>'+fmtNum(O.liberadas)+'</td><td>'+fmtNum(A.liberadas)+'</td></tr>'+
+      '<tr><td>Horas apartadas en reservas</td><td>'+fmtNum(T.horasRes)+' h</td><td>'+fmtNum(O.horasRes)+' h</td><td>'+fmtNum(A.horasRes)+' h</td></tr>'+
+      '<tr class="sep"><td>Oportunidad (mediana)</td><td>'+T.opMediana+' días</td><td>'+O.opMediana+' días</td><td>'+A.opMediana+' días</td></tr>'+
+      '<tr><td>Oportunidad (percentil 90)</td><td>'+T.opP90+' días</td><td>'+O.opP90+' días</td><td>'+A.opP90+' días</td></tr>'+
+      '</tbody></table></div></div></div>'+
+    '<div class="g2">'+
+      card('Por qué se cancela','participación sobre el total cancelado','rep-mot','')+
+      card('Con cuánto aviso se cancela','días entre el aviso y la cirugía','rep-avi','')+
+    '</div>'+
+    '<div class="insight neg"><strong>El cuello de botella no es la demanda: es la capacidad que se aparta y se devuelve tarde.</strong> '+
+      'Hay '+fmtNum(A.reservas)+' bloques de reserva que suman '+fmtNum(A.horasRes)+' horas de quirófano, y se libera el '+
+      fmtPct(A.reservas? A.liberadas/A.reservas*100:0)+' de ellos. Sumadas las cancelaciones con un día o menos de aviso, '+
+      'son <strong>'+fmtNum(horasMes)+' horas-quirófano al mes</strong> que quedan abiertas sin posibilidad de revenderse. '+
+      'Es prácticamente la misma magnitud que las horas libres de la franja de la tarde.</div>'+
+    '<div class="insight"><strong>La oportunidad real es de '+A.opMediana+' días</strong> entre que se programa y se opera '+
+      '(percentil 90: '+A.opP90+' días). El sistema reporta 1 día porque registra la orden cuando la cirugía ya está agendada; '+
+      'el cuadro manual conserva la fecha verdadera.</div>'+
+    hmBloque()+
+    '<div class="footnote"><b>Fuente.</b> Cuadros «Programación 2026» de Tesoro y Oviedo, una hoja por día. '+
+      'Programado incluye solo renglones con paciente; las reservas se cuentan aparte. El cumplimiento compara contra '+
+      'las cirugías del informe operativo, que puede diferir en algunos casos por registros de la misma cirugía en dos sistemas.</div>';
+  /* gráficos */
+  const top=mot.slice(0,7);
+  mkChart('rep-mot','bar',top.map(function(m){return m.n.length>26?m.n.slice(0,26)+'…':m.n;}),
+    [{label:'Cancelaciones',data:top.map(function(m){return m.v;}),backgroundColor:C.neg}],
+    {indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
+      return ' '+fmtNum(c.parsed.x)+' ('+fmtPct(totMot?c.parsed.x/totMot*100:0)+')'; }}}},
+     scales:{y:{ticks:{font:{size:9.5}}}}});
+  const b=[0,0,0,0,0];
+  A.avisos.forEach(function(x){ b[x<=0?0:(x===1?1:(x<=3?2:(x<=7?3:4)))]++; });
+  mkChart('rep-avi','bar',['Mismo día','1 día','2-3 días','4-7 días','+7 días'],
+    [{label:'Cancelaciones',data:b,backgroundColor:[C.neg,C.neg,C.acento,C.tesoro,C.pos]}],
+    {plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){
+      return ' '+fmtNum(c.parsed.y)+' ('+fmtPct(A.avisos.length?c.parsed.y/A.avisos.length*100:0)+')'; }}}}});
+}
+
+function buildRepSedes(){
+  const el=document.getElementById('rep-sedes');
+  const uM=ultMes();
+  const Y=repBloque(2026,1,uM);
+  const gaT=Y.Tesoro.ga/Y.Tesoro.ing*100, gaO=Y.Oviedo.ga/Y.Oviedo.ing*100;
+  const partIng=Y.Consolidado.ing? Y.Oviedo.ing/Y.Consolidado.ing*100:0;
+  const partGa =Y.Consolidado.ga ? Y.Oviedo.ga /Y.Consolidado.ga *100:0;
+  /* ahorro teórico si Oviedo operara al ratio administrativo de Tesoro */
+  const ahorro=Y.Oviedo.ga - Y.Oviedo.ing*(gaT/100);
+  const grupos=(GAD&&GAD.data)?GAD.data:null;
+  let filasG='';
+  if(grupos && grupos['Tesoro_2026'] && grupos['Oviedo_2026']){
+    const nombres={};
+    Object.keys(grupos['Tesoro_2026']).forEach(function(k){ nombres[k]=1; });
+    Object.keys(grupos['Oviedo_2026']).forEach(function(k){ nombres[k]=1; });
+    const arr=Object.keys(nombres).map(function(k){
+      const sum=function(a){ let t=0; for(var i=0;i<uM;i++) t+=((a&&a[k]&&a[k][i])||0); return t; };
+      return {n:k, t:sum(grupos['Tesoro_2026']), o:sum(grupos['Oviedo_2026'])};
+    }).filter(function(x){ return x.t+x.o>1; }).sort(function(a,b){ return (b.t+b.o)-(a.t+a.o); });
+    filasG=arr.map(function(x){
+      const dup=/PERSONAL|HONORARIO|LEGALES|DIVERSOS/i.test(x.n);
+      return '<tr><td>'+x.n+(dup?' <span class="st-badge" style="font-size:9px">duplicable</span>':'')+
+        '</td><td>'+fmtMd(x.t,0)+'</td><td>'+fmtMd(x.o,0)+'</td><td>'+fmtMd(x.t+x.o,0)+'</td></tr>';
+    }).join('');
+  }
+  el.innerHTML=
+    '<div class="sec-title">Las dos sedes <span class="st-badge">Ene-'+MESES[uM-1]+' 2026 · uso interno</span></div>'+
+    '<div class="sec-sub">Comparación estructural entre Tesoro y Oviedo. Insumo para evaluar si la operación '+
+      'conjunta bajo una sola estructura administrativa cambia el resultado.</div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','Oviedo · ingresos',fmtPct(partIng),'del consolidado')+
+      kpi(partGa>partIng?'red':'gold','Oviedo · gastos admin',fmtPct(partGa),'del consolidado')+
+      kpi('','Carga admin Tesoro',fmtPct(gaT),'sobre sus ingresos')+
+      kpi(gaO>gaT?'red':'green','Carga admin Oviedo',fmtPct(gaO),'sobre sus ingresos')+
+    '</div>'+
+    '<div class="insight '+(partGa>partIng?'neg':'')+'"><strong>Oviedo aporta el '+fmtPct(partIng)+
+      ' de los ingresos y consume el '+fmtPct(partGa)+' de los gastos de administración.</strong> '+
+      'Su carga administrativa es '+fmtPct(gaO)+' de sus ingresos contra '+fmtPct(gaT)+' en Tesoro. '+
+      'Si operara al ratio de Tesoro, la diferencia sería de <strong>'+fmtMd(ahorro,0)+'</strong> en el acumulado del año '+
+      '('+fmtMd(ahorro/uM*12,0)+' anualizados).</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Estructura comparada</h3></div><div class="card-body">'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Concepto</th><th>Tesoro</th><th>Oviedo</th><th>Consolidado</th></tr></thead><tbody>'+
+      repFilaTabla('Ingresos',function(x){return x.ing;},Y)+
+      repFilaTabla('Utilidad bruta',function(x){return x.ub;},Y)+
+      repFilaTabla('Gastos de administración',function(x){return x.ga;},Y)+
+      repFilaTabla('EBITDA',function(x){return x.ebitda;},Y)+
+      repFilaTabla('Utilidad neta',function(x){return x.neta;},Y)+
+      '</tbody></table></div></div></div>'+
+    (filasG? '<div class="card"><div class="card-hdr"><h3>Gasto administrativo por rubro</h3></div><div class="card-body">'+
+      '<div class="sec-sub" style="margin:-4px 0 10px">Los rubros marcados como duplicables son los que, en una sola sociedad, '+
+      'no se pagarían dos veces. Es una hipótesis de trabajo: confirmar cuáles son de sede y cuáles corporativos.</div>'+
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Rubro</th><th>Tesoro</th><th>Oviedo</th><th>Total</th></tr></thead><tbody>'+
+      filasG+'</tbody></table></div></div></div>' : '')+
+    '<div class="footnote"><b>Advertencia.</b> Este análisis es una hipótesis de estructura, no una valoración. '+
+      'No incluye los efectos jurídicos, tributarios ni societarios de una integración, que son los que definen si es viable. '+
+      'La clasificación de rubros duplicables debe validarse con el contador antes de usarse en cualquier decisión.</div>';
+}
+
 /* ─────────── OPE: EPS ─────────── */
 function buildOpeEps(){
   const el=document.getElementById('ope-eps');
@@ -2773,7 +3102,12 @@ function buildOpeEps(){
 /* ════════════════════════════════════════
    REPORTES / HALLAZGOS — Sala de Estrategia
    ════════════════════════════════════════ */
-function buildReportes(){
+/* DESACTIVADA (19-ago-2026). Escribía sobre #sec-rep completo y borraba las tres
+   subsecciones del informe. Sus cifras venían de una estimación anterior — hablaba de
+   58% de ocupación y 91% los sábados en Oviedo, cuando la medición con hora real de
+   quirófano da 40-42% y 40%. Se conserva el código por si se quiere rescatar la
+   narrativa, pero no se invoca desde ningún lado. */
+function buildReportes_DESACTIVADA(){
   const hallazgos=[];
   const sevCls={alta:'sev-alta',media:'sev-media',op:'sev-op'};
   const sevTag={alta:['alta','Severidad alta'],media:['media','Atención media'],op:['op','Oportunidad']};
