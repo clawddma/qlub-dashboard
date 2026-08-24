@@ -656,6 +656,8 @@ function buildChartOpts(datasets, opts, type){
   if(o.scales && opts.scales){ for(const k in opts.scales){ o.scales[k]=Object.assign(o.scales[k]||{},opts.scales[k]); } }
   if(opts.plugins){ for(const k in opts.plugins){ o.plugins[k]=Object.assign(o.plugins[k]||{},opts.plugins[k]); } }
   for(const k in opts){ if(k!=='scales'&&k!=='plugins'&&k.charAt(0)!=='_') o[k]=opts[k]; }
+  /* barras horizontales: el hover debe buscar por eje Y, no X (default de Chart.js) */
+  if(o.indexAxis==='y' && !opts.interaction) o.interaction={mode:'nearest',axis:'y',intersect:false};
   if(opts._tooltipLabel) o.plugins.tooltip.callbacks.label = opts._tooltipLabel;
   if(o.scales && opts._yMoney) o.scales.y.ticks.callback = function(v){ return fmtM(v); };
   if(o.scales && opts._yPct) o.scales.y.ticks.callback = function(v){ return v+'%'; };
