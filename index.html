@@ -2842,7 +2842,7 @@ function repBloque(anio,m0,m1){
   const o={};
   ['Tesoro','Oviedo','Consolidado'].forEach(function(sd){
     const g=function(c){ return repP(sd,anio,c,m0,m1); };
-    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160'), abajo=g('53');
+    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160')+g('5165'), abajo=g('53');
     o[sd]={ing:ing, cop:cop, ga:ga, ub:ing-cop, uop:ing-cop-ga,
             ebitda:ing-cop-ga+da, neta:ing-cop-ga-abajo};
   });
