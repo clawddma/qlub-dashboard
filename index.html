@@ -100,6 +100,7 @@ a{text-decoration:none;color:inherit;}
 }
 .chip:hover{border-color:rgba(212,168,67,.5);color:#fff;}
 .chip.on{background:var(--qlub-acento);color:var(--qlub-dark);border-color:var(--qlub-acento);}
+.view-chip{display:inline-flex;align-items:center;gap:4px;}
 .chip-clear{background:transparent;border-color:rgba(192,57,43,.5);color:#e8a59c;}
 .chip-clear:hover{background:rgba(192,57,43,.18);color:#fff;}
 .pb-select{
@@ -438,6 +439,7 @@ a{text-decoration:none;color:inherit;}
   .action-grid{grid-template-columns:1fr;}
   .pb-select{font-size:16px;}
   .chip{font-size:13px;padding:6px 14px;}
+  .view-chip{min-height:44px;}
   .ms-btn{font-size:13px;padding:7px 11px;}
   .dd-item{font-size:14px;padding:9px 8px;}
   .ms-pop{min-width:240px;}
@@ -620,76 +622,177 @@ Chart.defaults.color = C.txt;
 const _charts = {};
 const _chartSpecs = {}; // id -> {type, labels, datasets, opts} para re-render en modal
 /* ════════════════════════════════════════════════════════════════
-   MODO DE VISTA: mes a mes  ·  acumulado del año
+   MODO TEMPORAL — molde OET: año vs año · línea de tiempo · acumulado
    ════════════════════════════════════════════════════════════════
-   No es una sección aparte: es un MODO que transforma TODAS las gráficas de
-   serie mensual del tablero. En "acumulado" cada serie se convierte en suma
-   corrida del año, así cualquier métrica que ya existe se puede leer contra los
-   años anteriores a la misma altura del calendario.
+   La misma serie mensual responde tres preguntas distintas:
+     aa · ¿cómo queda cada mes contra el mismo mes de los otros años?
+     lt · ¿cuál es la secuencia cronológica completa, sin reiniciar el eje en enero?
+     ac · ¿cuánto lleva acumulado cada año a la misma altura del calendario?
 
-   Se intercepta en mkChart (un solo punto) en vez de tocar los 46 builders.
-
-   NO se acumula: porcentajes y ratios (un margen acumulado no es la suma de los
-   márgenes), las gráficas que ya son acumuladas, y todo lo que no sea una serie
-   de meses (rankings, doughnuts, comparativos por año). */
-let VIEW_ACUM = false;
-function toggleAcum(t){
-  VIEW_ACUM=!VIEW_ACUM;
-  if(t==='fin'){ buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+   Se resuelve en mkChart para que el selector mande sobre todas las series mensuales
+   sin duplicar lógica en cada builder. Rankings, tortas y comparativos no temporales
+   conservan su forma. Porcentajes, ratios y saldos no se suman. */
+let VIEW_MODE = 'aa';
+function setViewMode(t,m){
+  if(['aa','lt','ac'].indexOf(m)<0 || VIEW_MODE===m) return;
+  VIEW_MODE=m;
+  if(t==='fin'){ FIN_DD=null; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
   else { OPEN_DD=null; renderOpeFilters(); buildSub(SUBSEC.ope); }
 }
-/* Serie para TABLAS: en modo acumulado cada mes lleva la suma corrida de los
-   meses anteriores del período. `noAcum` para los SALDOS (caja inicial/final),
-   que ya son una posición a esa fecha y no se suman. */
+function vistaEsAcum(){ return VIEW_MODE==='ac'; }
+function vistaLbl(){
+  return VIEW_MODE==='lt' ? 'línea de tiempo'
+       : VIEW_MODE==='ac' ? 'acumulado desde enero' : 'año contra año';
+}
+function vistaBtns(t){
+  return '<div class="pb-group"><span class="pb-lbl">Ver por</span>'+[
+    ['aa','📊','Año vs año','Compara cada mes contra el mismo mes de los otros años'],
+    ['lt','📈','Línea de tiempo','Ordena todos los meses seleccionados en una sola secuencia cronológica'],
+    ['ac','Σ','Acumulado','Suma desde enero hasta cada mes y compara el avance entre años']
+  ].map(function(v){
+    return '<button class="chip view-chip '+(VIEW_MODE===v[0]?'on':'')+'" onclick="setViewMode(\''+t+'\',\''+v[0]+'\')" title="'+v[3]+'"><span aria-hidden="true">'+v[1]+'</span> '+v[2]+'</button>';
+  }).join('')+'</div>';
+}
+/* Serie para TABLAS: solo Acumulado convierte cada mes en suma corrida.
+   `noAcum` protege saldos como caja inicial/final, que ya son una posición. */
 function vistaSerie(arr, act, noAcum){
-  if(!VIEW_ACUM || noAcum || !arr) return arr;
+  if(!vistaEsAcum() || noAcum || !arr) return arr;
   const out=arr.slice(); let c=0;
   act.forEach(function(i){ c+=(+arr[i]||0); out[i]=c; });
   return out;
 }
-/* etiqueta para el subtítulo de las secciones */
-function vistaLbl(){ return VIEW_ACUM? 'acumulado a cada mes' : 'mes a mes'; }
-/* ids que nunca se acumulan (ya lo son, o no tiene sentido) */
-const NO_ACUM = {};
-/* ¿los labels son una serie de meses? */
+/* ids ya acumulados o con ventana comparable propia: nunca se vuelven a acumular */
+const NO_ACUM = {'oi-acum':1,'oi-ytd':1,'ff-pos':1};
+/* ids cuya lectura ya es explícitamente acumulada/comparable y no se convierte en timeline */
+const NO_TIMELINE = {'oi-acum':1,'oi-ytd':1};
 function _esSerieMes(labels){
   if(!labels || labels.length<2) return false;
   return labels.every(function(l){ return MESES.indexOf(String(l))>=0; });
 }
-/* ¿el dataset mide un porcentaje/ratio? entonces no se suma */
 function _esRatio(ds,opts){
   if(opts && opts._yPct) return true;
   const l=String(ds.label||'');
   return /%|margen|Margen|ocupaci|Ocupaci|ticket|Ticket|\/h|por hora|prom\.|Prom\./.test(l);
 }
-/* convierte los datasets a suma corrida, respetando null (mes sin cerrar) */
-function aplicarAcumulado(id,type,labels,datasets,opts){
-  if(!VIEW_ACUM || NO_ACUM[id]) return datasets;
-  if(type!=='bar' && type!=='line') return datasets;
-  if(!_esSerieMes(labels)) return datasets;
+function _dsYear(ds){
+  const raw=String((ds&&ds._year)||'')+' '+String((ds&&ds.label)||'')+' '+String((ds&&ds.stack)||'');
+  const m=raw.match(/20(?:24|25|26)/);
+  return m?+m[0]:null;
+}
+function _dsBaseLabel(ds){
+  const l=String(ds.label||'').replace(/20(?:24|25|26)/g,'').replace(/\bYTD\b/gi,'')
+    .replace(/[·|—–-]+$/g,'').replace(/\s+/g,' ').trim();
+  return l||'Serie';
+}
+function _cloneModoOpts(opts){
+  const o=Object.assign({},opts||{});
+  if(opts&&opts.scales){ o.scales={}; Object.keys(opts.scales).forEach(function(k){o.scales[k]=Object.assign({},opts.scales[k]);}); }
+  if(opts&&opts.plugins){
+    o.plugins=Object.assign({},opts.plugins);
+    if(opts.plugins.tooltip){
+      o.plugins.tooltip=Object.assign({},opts.plugins.tooltip);
+      if(opts.plugins.tooltip.callbacks) o.plugins.tooltip.callbacks=Object.assign({},opts.plugins.tooltip.callbacks);
+    }
+  }
+  return o;
+}
+/* Conserva los tooltips enriquecidos de cada builder después de aplanar el eje.
+   El callback recibe el índice/label original aunque la gráfica muestre Ene 2024… */
+function _timelineTooltip(opts,labels){
+  const o=_cloneModoOpts(opts), tt=o.plugins&&o.plugins.tooltip;
+  if(!tt||!tt.callbacks) return o;
+  const cb=tt.callbacks;
+  function ctx(c){
+    const mi=c.dataset._srcMonth&&c.dataset._srcMonth[c.dataIndex];
+    const sl=c.dataset._srcLabel&&c.dataset._srcLabel[c.dataIndex];
+    const sy=c.dataset._srcYear&&c.dataset._srcYear[c.dataIndex];
+    const p=Object.assign({},c,{dataIndex:mi===undefined?c.dataIndex:mi});
+    p.dataset=Object.assign({},c.dataset,{label:sl||c.dataset.label,_year:sy||c.dataset._year});
+    return p;
+  }
+  ['label','afterLabel','beforeLabel'].forEach(function(k){ if(typeof cb[k]==='function'){ const f=cb[k]; cb[k]=function(c){return f(ctx(c));}; } });
+  ['footer','afterFooter','beforeFooter'].forEach(function(k){ if(typeof cb[k]==='function'){ const f=cb[k]; cb[k]=function(items){return f(items.map(ctx));}; } });
+  cb.title=function(items){ return items.length?labels[items[0].dataIndex]:''; };
+  return o;
+}
+/* Año vs año ya viene preparado por los builders. Línea de tiempo aplana las series
+   por año en un eje Ene 2024 → Ago 2026. Acumulado conserva un dataset por año. */
+function aplicarModoTemporal(id,type,labels,datasets,opts){
+  const base={type:type,labels:labels,datasets:datasets,opts:opts||{}};
+  if((type!=='bar'&&type!=='line') || !_esSerieMes(labels)) return base;
+  if(VIEW_MODE==='aa') return base;
+  if(VIEW_MODE==='lt'){
+    if(NO_TIMELINE[id]) return base;
+    const years=Array.from(new Set(datasets.map(_dsYear).filter(function(y){return y!==null;}))).sort();
+    if(years.length<2){
+      const one=years[0] || (id.indexOf('f')===0?finYear():null);
+      return {type:type,labels:labels.map(function(m){return one?m+' '+one:m;}),datasets:datasets,opts:opts||{}};
+    }
+    const points=[];
+    years.forEach(function(y){
+      labels.forEach(function(m,i){
+        const vivo=datasets.some(function(ds){return _dsYear(ds)===y && Array.isArray(ds.data) && ds.data[i]!==null && ds.data[i]!==undefined;});
+        if(vivo) points.push({y:y,i:i,m:m});
+      });
+    });
+    const keys=[];
+    datasets.forEach(function(ds){ const k=_dsBaseLabel(ds)+'|'+String(ds.type||type)+'|'+String(ds.yAxisID||'y'); if(keys.indexOf(k)<0)keys.push(k); });
+    const out=keys.map(function(k){
+      const group=datasets.filter(function(ds){return _dsBaseLabel(ds)+'|'+String(ds.type||type)+'|'+String(ds.yAxisID||'y')===k;});
+      const proto=Object.assign({},group[0]);
+      proto.label=_dsBaseLabel(group[0])==='Serie'?(group.length===datasets.length?'Meses corridos':'Serie'):_dsBaseLabel(group[0]);
+      proto.data=[]; proto._srcMonth=[]; proto._srcLabel=[]; proto._srcYear=[];
+      const bg=[], bd=[]; let bgArray=false,bdArray=false;
+      points.forEach(function(p){
+        const src=group.find(function(ds){return _dsYear(ds)===p.y;});
+        proto.data.push(src&&Array.isArray(src.data)?src.data[p.i]:null);
+        proto._srcMonth.push(MESES.indexOf(String(p.m)));
+        proto._srcLabel.push(src?src.label:proto.label); proto._srcYear.push(p.y);
+        if(src){
+          if(Array.isArray(src.backgroundColor)){bgArray=true;bg.push(src.backgroundColor[p.i]);}else bg.push(src.backgroundColor);
+          if(Array.isArray(src.borderColor)){bdArray=true;bd.push(src.borderColor[p.i]);}else bd.push(src.borderColor);
+        }else{bg.push(null);bd.push(null);}
+      });
+      if(bgArray || (type==='bar'&&bg.some(Boolean))) proto.backgroundColor=bg;
+      if(bdArray) proto.borderColor=bd;
+      if(group.some(function(ds){return ds.stack!==undefined;})) proto.stack='timeline'; else delete proto.stack;
+      delete proto._year;
+      return proto;
+    });
+    const tl=points.map(function(p){return p.m+' '+p.y;});
+    const o=_timelineTooltip(opts||{},tl);
+    if(o.scales&&o.scales.x) o.scales.x=Object.assign({},o.scales.x,{ticks:Object.assign({},o.scales.x.ticks||{},{maxRotation:50,minRotation:35})});
+    return {type:type,labels:tl,datasets:out,opts:o};
+  }
+  if(NO_ACUM[id] || datasets.some(function(ds){return _esRatio(ds,opts);})) return base;
   let tocado=false;
   const out=datasets.map(function(ds){
-    if(ds.type && ds.type!=='bar' && ds.type!=='line') return ds;
-    if(_esRatio(ds,opts)) return ds;
+    if(ds.type&&ds.type!=='bar'&&ds.type!=='line') return ds;
     if(!Array.isArray(ds.data)) return ds;
-    let c=0, vistos=false;
+    let c=0;
     const data=ds.data.map(function(v){
-      if(v===null||v===undefined) return vistos? null : null;
-      vistos=true; c+=(+v||0); return +c.toFixed(2);
+      if(v===null||v===undefined) return null;
+      c+=(+v||0); return +c.toFixed(2);
     });
     tocado=true;
     const nd=Object.assign({},ds,{data:data});
-    if(nd.label) nd.label=nd.label+' (acum.)';
+    if(nd.label&&!/acum\./i.test(nd.label)) nd.label=nd.label+' (acum.)';
+    if(!nd.stack){ nd.type='line'; nd.borderColor=nd.borderColor||nd.backgroundColor; nd.backgroundColor='transparent'; nd.borderWidth=2.4; nd.tension=.25; nd.pointRadius=2; }
     return nd;
   });
-  return tocado? out : datasets;
+  if(!tocado) return base;
+  const stacked=out.some(function(ds){return ds.stack!==undefined;});
+  const o=_cloneModoOpts(opts||{});
+  if(!stacked&&o.scales){ if(o.scales.x)o.scales.x.stacked=false; if(o.scales.y)o.scales.y.stacked=false; }
+  return {type:stacked?type:'line',labels:labels,datasets:out,opts:o};
 }
 function mkChart(id, type, labels, datasets, opts){
   opts = opts || {};
   const el = document.getElementById(id);
   if(!el) return;
   if(_charts[id]){ try{_charts[id].destroy();}catch(e){} }
-  datasets = aplicarAcumulado(id, type, labels, datasets, opts);
+  const temporal=aplicarModoTemporal(id,type,labels,datasets,opts);
+  type=temporal.type; labels=temporal.labels; datasets=temporal.datasets; opts=temporal.opts;
   datasets.forEach(function(ds){ if((!ds.type||ds.type==='bar') && ds.borderRadius===undefined) ds.borderRadius=4; });
   _chartSpecs[id] = {type:type, labels:labels, datasets:datasets, opts:opts};
   const o = buildChartOpts(datasets, opts, type);
@@ -928,10 +1031,7 @@ function buildPeriodBar(t){
     pb.style.display='flex';
     pb.innerHTML =
       '<button class="ytd-toggle'+(FF.ytd?' on':'')+'" onclick="toggleFinYTD()"><span class="yt-dot"></span>YTD '+(FF.ytd?'ON':'OFF')+'</button>'+
-      '<div class="pb-group"><span class="pb-lbl">Vista</span>'+
-        '<button class="chip '+(VIEW_ACUM?'':'on')+'" onclick="if(VIEW_ACUM)toggleAcum(\'fin\')" title="Cada mes con su valor">Mes a mes</button>'+
-        '<button class="chip '+(VIEW_ACUM?'on':'')+'" onclick="if(!VIEW_ACUM)toggleAcum(\'fin\')" title="Suma corrida del año — compara contra años anteriores a la misma altura del calendario">Acumulado</button>'+
-      '</div>'+
+      vistaBtns('fin')+
       '<div class="pb-group"><span class="pb-lbl">Sede</span>'+
         ['Consolidado','Tesoro','Oviedo'].map(function(s){ return '<button class="chip '+(FF.sede===s?'on':'')+'" onclick="setFin(\'sede\',\''+s+'\')">'+s+'</button>'; }).join('')+
       '</div>'+
@@ -939,15 +1039,25 @@ function buildPeriodBar(t){
         [2024,2025,2026].map(function(y){ return '<button class="chip '+(FF.anios.has(y)?'on':'')+'" onclick="toggleFinYear('+y+')">'+y+'</button>'; }).join('')+
       '</div>'+
       finMesDropdown();
+    ajustarPeriodo();
   } else if(t==='ope'){
     content.classList.add('has-period');
     pb.style.display='flex';
     renderOpeFilters();
   } else {
     content.classList.remove('has-period');
+    content.style.paddingTop='';
     pb.style.display='none';
   }
 }
+/* La barra crece según el ancho y los filtros activos. Medirla evita que una segunda
+   fila tape el título, tanto en escritorio como en móvil. */
+function ajustarPeriodo(){
+  const pb=document.getElementById('period-bar'), content=document.getElementById('content');
+  if(!pb||!content||pb.style.display==='none'||!content.classList.contains('has-period')) return;
+  content.style.paddingTop=(pb.getBoundingClientRect().bottom+12)+'px';
+}
+window.addEventListener('resize',ajustarPeriodo);
 function setFin(k,v){ FF[k]=v; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
 function toggleFinYear(y){ if(FF.anios.has(y)) FF.anios.delete(y); else FF.anios.add(y); if(FF.anios.size===0) FF.anios.add(2026); buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
 function toggleFinYTD(){ FF.ytd=!FF.ytd; buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
@@ -1029,12 +1139,12 @@ function buildFinInicio(){
       kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'EBIT '+fmtPct(mEbit))+
     '</div>'+
     '<div class="g6040">'+
-      card('Ingresos '+(mesExpl?'de '+mesLbl:'mensuales')+' — '+s+' · '+chartYears.join(' vs '),'millones COP · '+periodTxt,'fi-ing','')+
+      card('Ingresos — '+vistaLbl()+' · '+s+' · '+chartYears.join(' vs '),'millones COP · '+periodTxt,'fi-ing','')+
       card('Composición '+periodTxt+(mesExpl?'':' '+y),'','fi-comp','')+
     '</div>'+
     '<div class="g2">'+
       card('Comparativo '+(mesExpl?mesLbl:('YTD '+rng))+' · '+chartYears.join(' · '),'ingresos · EBIT · utilidad neta','fi-cmp','')+
-      card('Utilidad Neta '+(VIEW_ACUM?'acumulada':'mensual')+' — '+y,'tras impuestos'+(mesExpl?' · '+mesLbl+' resaltado':''),'fi-neto','')+
+      card('Utilidad Neta — '+vistaLbl()+' · '+y,'tras impuestos'+(mesExpl?' · '+mesLbl+' resaltado':''),'fi-neto','')+
     '</div>'+
     '<div class="insight"><strong>Lectura '+periodTxt+':</strong> '+s+' suma <strong>'+fmtM(A.ing)+'</strong> en ingresos ('+(vIng!==null?(vIng>=0?'+':'')+vIng.toFixed(1)+'%':'—')+' vs '+yp+'), un EBIT de <strong>'+fmtM(A.ebit)+'</strong> y una <strong>utilidad neta de '+fmtM(A.neto)+'</strong> (margen '+fmtPct(mNeto)+'). El costo directo absorbe el '+fmtPct(mCd)+' de la facturación — es la palanca número uno de rentabilidad.</div>';
 
@@ -1278,7 +1388,7 @@ function buildFinPnl(){
       kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
       kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>P&amp;G '+(VIEW_ACUM?'acumulado':'mensual')+' — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
+    '<div class="card"><div class="card-hdr"><h3>P&amp;G '+(vistaEsAcum()?'acumulado':'mensual')+' — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
         '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th><th class="pct-col">% Ing.</th></tr></thead><tbody>'+
           row('Ingresos',ing,'',T.ing)+
@@ -1436,7 +1546,7 @@ function buildFinMargen(){
       kpi('gold','Mejor mes (EBIT%)',(bi>=0?MESES[bi]:'—'),(bi>=0?fmtPct(bv):''))+
     '</div>'+
     '<div class="gfull">'+card('Margen Bruto vs Margen EBIT — '+y,'% sobre ingresos','fm-chart','')+'</div>'+
-    '<div class="gfull">'+card('Utilidad Bruta vs EBIT mensual (millones)','','fm-abs','short')+'</div>'+
+    '<div class="gfull">'+card('Utilidad Bruta vs EBIT — '+vistaLbl()+' (millones)','','fm-abs','short')+'</div>'+
     '<div class="insight">El margen EBIT promedio del periodo es <strong>'+fmtPct(tIng?tEbit/tIng*100:0)+'</strong>. La brecha contra el margen bruto ('+fmtPct(tIng?tUb/tIng*100:0)+') muestra el peso de nómina y administración sobre la operación.</div>';
   const lbls=act.map(function(i){return MESES[i];});
   mkChart('fm-chart','line',lbls,[
@@ -1468,7 +1578,7 @@ function buildFinCostos(){
     '</div>'+
     '<div class="g4060">'+
       card('Mix de costos','','fc-dona','')+
-      card('Costos por mes (apilado)','millones COP','fc-stack','')+
+      card('Costos — '+vistaLbl()+' (apilado)','millones COP','fc-stack','')+
     '</div>'+
     '<div class="gfull" style="margin-top:16px">'+card('Costos y gastos por sede — % del ingreso de cada sede','compara qué pesa más cada rubro en Tesoro vs Oviedo · '+y,'fc-sedes','')+'</div>'+
     '<div class="insight">El <strong>costo directo</strong> (insumos, derechos de sala, honorarios) es '+fmtPct(tTot?tCd/tTot*100:0)+' de la estructura. Negociar tarifas de insumos de alto volumen mueve el margen más que cualquier ajuste de nómina.</div>';
@@ -1711,7 +1821,7 @@ function gaMesYoYCard(cmpYears){
   var avail={}; gaMyActiveCodes(s).forEach(function(r){avail[r.code]=1;});
   Array.from(GA_MY_CODES).forEach(function(c){ if(!avail[c]) GA_MY_CODES.delete(c); });
   const cid='ga-mesyoy';
-  const t='Comportamiento mes a mes — '+cmpYears.join(' / ');
+  const t='Comportamiento — '+vistaLbl()+' · '+cmpYears.join(' / ');
   return '<div class="card"><div class="card-hdr"><h3>'+t+'</h3><div class="card-acts">'+
     helpBtn(cid)+
     '<button class="expand-btn" title="Ampliar" onclick="openChartModal(\''+cid+'\',\''+t+'\')">⛶</button></div></div>'+
@@ -1878,7 +1988,7 @@ function buildFinFlujo(){
       card('Estado resumido '+(ytdOn?'YTD '+rng+' ':'')+y,'composición del flujo','ff-comp','tall')+
     '</div>'+
     '<div class="g2">'+
-      card('FCO '+(VIEW_ACUM?'acumulado':'mensual')+' — '+s+' · '+chartYears.join(' vs '),'flujo de caja operativo · millones COP','ff-fco','')+
+      card('FCO — '+vistaLbl()+' · '+s+' · '+chartYears.join(' vs '),'flujo de caja operativo · millones COP','ff-fco','')+
       card('Posición de caja (acumulada) — '+chartYears.join(' · '),'caja final mes a mes','ff-pos','')+
     '</div>'+
     '<div class="card"><div class="card-hdr"><h3>Estado de Flujo de Caja — '+s+' '+y+'</h3><span class="badge gold">Método indirecto</span></div>'+
@@ -2177,10 +2287,7 @@ function renderOpeFilters(){
   pb.innerHTML=
     metSel+
     '<button class="ytd-toggle'+(OPE_YTD?' on':'')+'" onclick="toggleOpeYTD()"><span class="yt-dot"></span>YTD '+(OPE_YTD?'ON':'OFF')+'</button>'+
-    '<div class="pb-group"><span class="pb-lbl">Vista</span>'+
-      '<button class="chip '+(VIEW_ACUM?'':'on')+'" onclick="if(VIEW_ACUM)toggleAcum(\'ope\')">Mes a mes</button>'+
-      '<button class="chip '+(VIEW_ACUM?'on':'')+'" onclick="if(!VIEW_ACUM)toggleAcum(\'ope\')">Acumulado</button>'+
-    '</div>'+
+    vistaBtns('ope')+
     md('anio','Año',[2024,2025,2026].map(function(y){return [y,String(y)];}))+
     md('mes','Mes',mesOpts)+
     md('sede','Sede',[[0,'Tesoro'],[1,'Oviedo']])+
@@ -2191,6 +2298,7 @@ function renderOpeFilters(){
     md('dia','Día',diaOpts)+
     '<button class="chip chip-clear" onclick="clearOpe()">✕ Limpiar filtros</button>'+
     activeChipsHtml();
+  ajustarPeriodo();
 }
 function toggleOpeYTD(){ OPE_YTD=!OPE_YTD; OPEN_DD=null; renderOpeFilters(); buildSub(SUBSEC.ope); }
 /* chips de lo que está seleccionado (color de marca), con ✕ para quitar */
@@ -2447,11 +2555,11 @@ function buildOpeInicio(){
       kpi('','Cirugías / mes',fmtNum(cxMes),'promedio')+
       kpi('green','Facturación / Hora',fmtMd(porHora,2),'rendimiento sala')+
     '</div>'+
-    '<div class="gfull">'+card(MD.noun+' por mes — año vs año','métrica: '+MD.lbl+' · todos los años','oi-mes','')+'</div>'+
+    '<div class="gfull">'+card(MD.noun+' — '+vistaLbl(),'métrica: '+MD.lbl+' · todos los años','oi-mes','')+'</div>'+
     cmpBlock+
     '<div class="g2">'+
       card('Ritmo acumulado del año (Ene → mes actual)','· '+MD.noun+' acumulado','oi-acum','')+
-      card('Facturación '+(VIEW_ACUM?'acumulada':'mensual'),'valor facturado disponible','oi-fac','')+
+      card('Facturación — '+vistaLbl(),'valor facturado disponible','oi-fac','')+
     '</div>'+
     '<div class="insight">Con los filtros actuales, el negocio realiza <strong>'+fmtNum(cxMes)+' cirugías/mes</strong> a un ticket de <strong>'+fmtMd(ticket,2)+'</strong> y rinde <strong>'+fmtMd(porHora,2)+' por hora</strong> de quirófano. La ocupación estimada es '+fmtPct(ocup)+' — hay sala disponible para crecer volumen sin CapEx.</div>'+
     footnoteMetrica();
@@ -2487,8 +2595,14 @@ function buildOpeInicio(){
         return ' '+c.dataset.label+' · '+MD.noun+' acum.: '+MD.fmt(MD.val(cum)); }
     }}},
     scales:{y:{ticks:{callback:function(v){return MD.axis(v);}}}}});
-  const facByMonth=new Array(12).fill(0); fac.forEach(function(r){facByMonth[r[COL.mes]-1]+=r[COL.valM];});
-  mkChart('oi-fac','bar',MESES,[{label:'Facturación',data:facByMonth.map(function(v){return v||null;}),backgroundColor:C.acento}],{_tooltipLabel:tipMoney,_yMoney:true});
+  /* Facturación separada por año: evita fusionar 2024+2025+2026 en una sola barra y
+     permite que Línea de tiempo construya la secuencia cronológica real. */
+  const dsFac=yrSet.map(function(y){
+    const v=new Array(12).fill(0);
+    fac.filter(function(r){return r[COL.anio]===y;}).forEach(function(r){v[r[COL.mes]-1]+=r[COL.valM];});
+    return {label:String(y),data:v.map(function(x){return x||null;}),backgroundColor:YR_CLR[y]||C.acento};
+  });
+  mkChart('oi-fac','bar',MESES,dsFac,{_tooltipLabel:tipMoney,_yMoney:true});
   /* barras comparativas YTD por mes — usa la MÉTRICA ACTIVA (no solo cirugías) */
   function ytdMetSeries(yy){
     const a=aggByYrMonth[yy]; const out=[];
