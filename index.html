@@ -619,11 +619,77 @@ Chart.defaults.font.size = 11;
 Chart.defaults.color = C.txt;
 const _charts = {};
 const _chartSpecs = {}; // id -> {type, labels, datasets, opts} para re-render en modal
+/* ════════════════════════════════════════════════════════════════
+   MODO DE VISTA: mes a mes  ·  acumulado del año
+   ════════════════════════════════════════════════════════════════
+   No es una sección aparte: es un MODO que transforma TODAS las gráficas de
+   serie mensual del tablero. En "acumulado" cada serie se convierte en suma
+   corrida del año, así cualquier métrica que ya existe se puede leer contra los
+   años anteriores a la misma altura del calendario.
+
+   Se intercepta en mkChart (un solo punto) en vez de tocar los 46 builders.
+
+   NO se acumula: porcentajes y ratios (un margen acumulado no es la suma de los
+   márgenes), las gráficas que ya son acumuladas, y todo lo que no sea una serie
+   de meses (rankings, doughnuts, comparativos por año). */
+let VIEW_ACUM = false;
+function toggleAcum(t){
+  VIEW_ACUM=!VIEW_ACUM;
+  if(t==='fin'){ buildPeriodBar('fin'); buildSub(SUBSEC.fin); }
+  else { OPEN_DD=null; renderOpeFilters(); buildSub(SUBSEC.ope); }
+}
+/* Serie para TABLAS: en modo acumulado cada mes lleva la suma corrida de los
+   meses anteriores del período. `noAcum` para los SALDOS (caja inicial/final),
+   que ya son una posición a esa fecha y no se suman. */
+function vistaSerie(arr, act, noAcum){
+  if(!VIEW_ACUM || noAcum || !arr) return arr;
+  const out=arr.slice(); let c=0;
+  act.forEach(function(i){ c+=(+arr[i]||0); out[i]=c; });
+  return out;
+}
+/* etiqueta para el subtítulo de las secciones */
+function vistaLbl(){ return VIEW_ACUM? 'acumulado a cada mes' : 'mes a mes'; }
+/* ids que nunca se acumulan (ya lo son, o no tiene sentido) */
+const NO_ACUM = {};
+/* ¿los labels son una serie de meses? */
+function _esSerieMes(labels){
+  if(!labels || labels.length<2) return false;
+  return labels.every(function(l){ return MESES.indexOf(String(l))>=0; });
+}
+/* ¿el dataset mide un porcentaje/ratio? entonces no se suma */
+function _esRatio(ds,opts){
+  if(opts && opts._yPct) return true;
+  const l=String(ds.label||'');
+  return /%|margen|Margen|ocupaci|Ocupaci|ticket|Ticket|\/h|por hora|prom\.|Prom\./.test(l);
+}
+/* convierte los datasets a suma corrida, respetando null (mes sin cerrar) */
+function aplicarAcumulado(id,type,labels,datasets,opts){
+  if(!VIEW_ACUM || NO_ACUM[id]) return datasets;
+  if(type!=='bar' && type!=='line') return datasets;
+  if(!_esSerieMes(labels)) return datasets;
+  let tocado=false;
+  const out=datasets.map(function(ds){
+    if(ds.type && ds.type!=='bar' && ds.type!=='line') return ds;
+    if(_esRatio(ds,opts)) return ds;
+    if(!Array.isArray(ds.data)) return ds;
+    let c=0, vistos=false;
+    const data=ds.data.map(function(v){
+      if(v===null||v===undefined) return vistos? null : null;
+      vistos=true; c+=(+v||0); return +c.toFixed(2);
+    });
+    tocado=true;
+    const nd=Object.assign({},ds,{data:data});
+    if(nd.label) nd.label=nd.label+' (acum.)';
+    return nd;
+  });
+  return tocado? out : datasets;
+}
 function mkChart(id, type, labels, datasets, opts){
   opts = opts || {};
   const el = document.getElementById(id);
   if(!el) return;
   if(_charts[id]){ try{_charts[id].destroy();}catch(e){} }
+  datasets = aplicarAcumulado(id, type, labels, datasets, opts);
   datasets.forEach(function(ds){ if((!ds.type||ds.type==='bar') && ds.borderRadius===undefined) ds.borderRadius=4; });
   _chartSpecs[id] = {type:type, labels:labels, datasets:datasets, opts:opts};
   const o = buildChartOpts(datasets, opts, type);
@@ -656,8 +722,6 @@ function buildChartOpts(datasets, opts, type){
   if(o.scales && opts.scales){ for(const k in opts.scales){ o.scales[k]=Object.assign(o.scales[k]||{},opts.scales[k]); } }
   if(opts.plugins){ for(const k in opts.plugins){ o.plugins[k]=Object.assign(o.plugins[k]||{},opts.plugins[k]); } }
   for(const k in opts){ if(k!=='scales'&&k!=='plugins'&&k.charAt(0)!=='_') o[k]=opts[k]; }
-  /* barras horizontales: el hover debe buscar por eje Y, no X (default de Chart.js) */
-  if(o.indexAxis==='y' && !opts.interaction) o.interaction={mode:'nearest',axis:'y',intersect:false};
   if(opts._tooltipLabel) o.plugins.tooltip.callbacks.label = opts._tooltipLabel;
   if(o.scales && opts._yMoney) o.scales.y.ticks.callback = function(v){ return fmtM(v); };
   if(o.scales && opts._yPct) o.scales.y.ticks.callback = function(v){ return v+'%'; };
@@ -734,7 +798,7 @@ const SUBSECS = {
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
        ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
-  rep:[['rep-julio','📄','Cierre de Julio'],['rep-agenda','🗓️','Agenda y Ocupación'],
+  rep:[['rep-julio','📄','Último cierre'],['rep-agenda','🗓️','Agenda y Ocupación'],
        ['rep-sedes','🏛️','Las dos sedes']],
   acc:[]
 };
@@ -864,6 +928,10 @@ function buildPeriodBar(t){
     pb.style.display='flex';
     pb.innerHTML =
       '<button class="ytd-toggle'+(FF.ytd?' on':'')+'" onclick="toggleFinYTD()"><span class="yt-dot"></span>YTD '+(FF.ytd?'ON':'OFF')+'</button>'+
+      '<div class="pb-group"><span class="pb-lbl">Vista</span>'+
+        '<button class="chip '+(VIEW_ACUM?'':'on')+'" onclick="if(VIEW_ACUM)toggleAcum(\'fin\')" title="Cada mes con su valor">Mes a mes</button>'+
+        '<button class="chip '+(VIEW_ACUM?'on':'')+'" onclick="if(!VIEW_ACUM)toggleAcum(\'fin\')" title="Suma corrida del año — compara contra años anteriores a la misma altura del calendario">Acumulado</button>'+
+      '</div>'+
       '<div class="pb-group"><span class="pb-lbl">Sede</span>'+
         ['Consolidado','Tesoro','Oviedo'].map(function(s){ return '<button class="chip '+(FF.sede===s?'on':'')+'" onclick="setFin(\'sede\',\''+s+'\')">'+s+'</button>'; }).join('')+
       '</div>'+
@@ -966,7 +1034,7 @@ function buildFinInicio(){
     '</div>'+
     '<div class="g2">'+
       card('Comparativo '+(mesExpl?mesLbl:('YTD '+rng))+' · '+chartYears.join(' · '),'ingresos · EBIT · utilidad neta','fi-cmp','')+
-      card('Utilidad Neta mensual — '+y,'tras impuestos'+(mesExpl?' · '+mesLbl+' resaltado':''),'fi-neto','')+
+      card('Utilidad Neta '+(VIEW_ACUM?'acumulada':'mensual')+' — '+y,'tras impuestos'+(mesExpl?' · '+mesLbl+' resaltado':''),'fi-neto','')+
     '</div>'+
     '<div class="insight"><strong>Lectura '+periodTxt+':</strong> '+s+' suma <strong>'+fmtM(A.ing)+'</strong> en ingresos ('+(vIng!==null?(vIng>=0?'+':'')+vIng.toFixed(1)+'%':'—')+' vs '+yp+'), un EBIT de <strong>'+fmtM(A.ebit)+'</strong> y una <strong>utilidad neta de '+fmtM(A.neto)+'</strong> (margen '+fmtPct(mNeto)+'). El costo directo absorbe el '+fmtPct(mCd)+' de la facturación — es la palanca número uno de rentabilidad.</div>';
 
@@ -1188,27 +1256,29 @@ function buildFinPnl(){
     }
   }
   function row(lbl,arr,cls,ingTot){
-    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
+    const _a=vistaSerie(arr,act);
+    const tds=act.map(function(i){ return '<td>'+fmtMd(_a[i],0)+'</td>'; }).join('');
     const tot=sumActive(arr,act);
     const pct=(ingTot&&ingTot!==0)?fmtPct(tot/ingTot*100):'—';
     return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtMd(tot,0)+'</strong></td><td class="pct-col">'+pct+'</td></tr>';
   }
   function rowPct(lbl,arr,baseArr){
-    const tds=act.map(function(i){ return '<td>'+fmtPct(baseArr[i]?arr[i]/baseArr[i]*100:0)+'</td>'; }).join('');
+    const _a=vistaSerie(arr,act), _b=vistaSerie(baseArr,act);
+    const tds=act.map(function(i){ return '<td>'+fmtPct(_b[i]?_a[i]/_b[i]*100:0)+'</td>'; }).join('');
     const totA=sumActive(arr,act), totB=sumActive(baseArr,act);
     return '<tr class="sub"><td>'+lbl+'</td>'+tds+'<td><strong>'+fmtPct(totB?totA/totB*100:0)+'</strong></td><td class="pct-col"></td></tr>';
   }
   const mHdr = act.map(function(i){ return '<th>'+MESES[i]+'</th>'; }).join('');
   el.innerHTML =
     '<div class="sec-title">Estado de Resultados <span class="st-badge">'+s+' · '+y+(mesExpl?' · '+mesLbl:'')+'</span></div>'+
-    '<div class="sec-sub">P&amp;G mensual hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
+    '<div class="sec-sub">P&amp;G '+vistaLbl()+' hasta utilidad neta · millones COP · '+(mesExpl?('meses: <strong>'+mesLbl+'</strong>'):(act.length+' '+(act.length===1?'mes':'meses')+' con datos'))+'</div>'+
     '<div class="kpis k4">'+
       kpi('navy','EBIT',fmtM(T.ebit),'margen '+fmtPct(mEbit))+
       kpi('','EBITDA',fmtM(T.ebitda),'+ D&amp;A '+fmtM(T.da))+
       kpi(T.neto>=0?'green':'red','Utilidad Neta',fmtM(T.neto),'tras impuesto '+fmtM(T.imp))+
       kpi(mNeto>=0?'gold':'red','Margen Neto',fmtPct(mNeto),'de ingresos')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>P&amp;G mensual — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
+    '<div class="card"><div class="card-hdr"><h3>P&amp;G '+(VIEW_ACUM?'acumulado':'mensual')+' — '+s+' '+y+(mesExpl?' · '+mesLbl:'')+'</h3><span class="badge gold">Cascada completa hasta Utilidad Neta</span></div>'+
       '<div class="card-body"><div class="tbl-wrap"><table class="tbl">'+
         '<thead><tr><th>Concepto</th>'+mHdr+'<th>Total</th><th class="pct-col">% Ing.</th></tr></thead><tbody>'+
           row('Ingresos',ing,'',T.ing)+
@@ -1808,7 +1878,7 @@ function buildFinFlujo(){
       card('Estado resumido '+(ytdOn?'YTD '+rng+' ':'')+y,'composición del flujo','ff-comp','tall')+
     '</div>'+
     '<div class="g2">'+
-      card('FCO mensual — '+s+' · '+chartYears.join(' vs '),'flujo de caja operativo · millones COP','ff-fco','')+
+      card('FCO '+(VIEW_ACUM?'acumulado':'mensual')+' — '+s+' · '+chartYears.join(' vs '),'flujo de caja operativo · millones COP','ff-fco','')+
       card('Posición de caja (acumulada) — '+chartYears.join(' · '),'caja final mes a mes','ff-pos','')+
     '</div>'+
     '<div class="card"><div class="card-hdr"><h3>Estado de Flujo de Caja — '+s+' '+y+'</h3><span class="badge gold">Método indirecto</span></div>'+
@@ -1894,7 +1964,8 @@ function buildFinFlujo(){
         cinA=fluArr(s,y,'caja_ini'),cfnA=fluArr(s,y,'caja_fin');
   const dCtA=ebA.map(function(v,i){return fcA[i]-v;}); /* Δ cap.trab+imp implícito */
   function rowF(lbl,arr,cls,balance){
-    const tds=act.map(function(i){ return '<td>'+fmtMd(arr[i],0)+'</td>'; }).join('');
+    const _a=vistaSerie(arr,act,(balance==='ini'||balance==='fin'));
+    const tds=act.map(function(i){ return '<td>'+fmtMd(_a[i],0)+'</td>'; }).join('');
     let tot;
     if(balance==='ini'){ tot = act.length? arr[act[0]] : 0; }            /* saldo de apertura: primer mes */
     else if(balance==='fin'){ tot = act.length? arr[act[act.length-1]] : 0; } /* saldo de cierre: último mes */
@@ -1966,8 +2037,8 @@ const HORAS_SEMANA_QX = 62; // L-V 11h*5 + Sáb 7h
 let OPEN_DD = null; // id del dropdown abierto
 let OPE_YTD = false; // toggle YTD operacional
 let OPE_METRICA = 'cx'; // selector de métrica global del Administrativo
-/* último mes con datos operacionales (1-based) = julio/7 en 2026 */
-function ultMesOpe(){ return 7; }
+/* último mes con datos operacionales (1-based) = agosto/8 en 2026 */
+function ultMesOpe(){ return 8; }
 
 /* ─────────── SELECTOR DE MÉTRICA — definiciones ───────────
    Cada métrica define: icono, etiqueta corta, si usa filas facturables,
@@ -2106,6 +2177,10 @@ function renderOpeFilters(){
   pb.innerHTML=
     metSel+
     '<button class="ytd-toggle'+(OPE_YTD?' on':'')+'" onclick="toggleOpeYTD()"><span class="yt-dot"></span>YTD '+(OPE_YTD?'ON':'OFF')+'</button>'+
+    '<div class="pb-group"><span class="pb-lbl">Vista</span>'+
+      '<button class="chip '+(VIEW_ACUM?'':'on')+'" onclick="if(VIEW_ACUM)toggleAcum(\'ope\')">Mes a mes</button>'+
+      '<button class="chip '+(VIEW_ACUM?'on':'')+'" onclick="if(!VIEW_ACUM)toggleAcum(\'ope\')">Acumulado</button>'+
+    '</div>'+
     md('anio','Año',[2024,2025,2026].map(function(y){return [y,String(y)];}))+
     md('mes','Mes',mesOpts)+
     md('sede','Sede',[[0,'Tesoro'],[1,'Oviedo']])+
@@ -2376,7 +2451,7 @@ function buildOpeInicio(){
     cmpBlock+
     '<div class="g2">'+
       card('Ritmo acumulado del año (Ene → mes actual)','· '+MD.noun+' acumulado','oi-acum','')+
-      card('Facturación mensual','valor facturado disponible','oi-fac','')+
+      card('Facturación '+(VIEW_ACUM?'acumulada':'mensual'),'valor facturado disponible','oi-fac','')+
     '</div>'+
     '<div class="insight">Con los filtros actuales, el negocio realiza <strong>'+fmtNum(cxMes)+' cirugías/mes</strong> a un ticket de <strong>'+fmtMd(ticket,2)+'</strong> y rinde <strong>'+fmtMd(porHora,2)+' por hora</strong> de quirófano. La ocupación estimada es '+fmtPct(ocup)+' — hay sala disponible para crecer volumen sin CapEx.</div>'+
     footnoteMetrica();
@@ -2832,7 +2907,7 @@ function buildOpeOcup(){
 }
 
 /* ════════════════════════════════════════
-   REPORTES — Cierre de Julio 2026
+   REPORTES — último cierre mensual de 2026
    ════════════════════════════════════════ */
 /* helpers de P&G para un rango de meses */
 function repP(sede,anio,cod,m0,m1){
@@ -2844,7 +2919,7 @@ function repBloque(anio,m0,m1){
   const o={};
   ['Tesoro','Oviedo','Consolidado'].forEach(function(sd){
     const g=function(c){ return repP(sd,anio,c,m0,m1); };
-    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160')+g('5165'), abajo=g('53');
+    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160'), abajo=g('53');
     o[sd]={ing:ing, cop:cop, ga:ga, ub:ing-cop, uop:ing-cop-ga,
             ebitda:ing-cop-ga+da, neta:ing-cop-ga-abajo};
   });
@@ -3100,7 +3175,6 @@ function buildOpeEps(){
     [{data:top5.map(function(a){return MD.dval(a);}).concat([otros5]),backgroundColor:[C.tesoro,C.acento,C.oviedo,C.consol,'#6E8AB5','#B0BBC9'],borderWidth:1.5,borderColor:'#fff'}],
     {cutout:'56%',plugins:{legend:{display:true,position:'bottom',labels:{font:{size:10},padding:8}},tooltip:{callbacks:{label:function(c){return ' '+c.label+': '+MD.dfmt(c.parsed);}}}}});
 }
-
 /* ════════════════════════════════════════
    REPORTES / HALLAZGOS — Sala de Estrategia
    ════════════════════════════════════════ */
