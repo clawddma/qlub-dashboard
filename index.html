@@ -978,7 +978,7 @@ const SUBSECS = {
   fin:[['fin-inicio','📋','Inicio'],['fin-pnl','📑','P&G'],['fin-margen','📐','Márgenes'],
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
-       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
+       ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','Aseguradoras/Entidades']],
   rep:[['rep-resumen','◫','Sala de junta'],['rep-tes-ago','T','Agosto · Tesoro'],
        ['rep-ovi-ago','O','Agosto · Oviedo'],['rep-tes-ytd','T','Ene–Ago · Tesoro'],
        ['rep-ovi-ytd','O','Ene–Ago · Oviedo'],['rep-agenda','🗓️','Agenda y capacidad'],
@@ -1313,8 +1313,8 @@ const HELP={
   'oo-dia':'Actividad por día de la semana. Revela los días más cargados y los más flojos para reorganizar la agenda.',
   'oo-hrs':'Horas de quirófano usadas por día de la semana. Complementa la ocupación mostrando dónde se concentra el uso real del recurso.',
   'oo-dur':'Distribución de las cirugías según su duración. Ayuda a entender la mezcla entre procedimientos cortos y largos para planear la agenda.',
-  'op-bar':'Ranking de las EPS y aseguradoras según la métrica elegida. Muestra qué pagadores aportan más volumen o facturación.',
-  'op-dona':'Participación de cada EPS/aseguradora en el total. Una porción muy grande (p. ej. una sola EPS) indica dependencia y riesgo de un solo pagador.'
+  'op-bar':'Ranking de las Aseguradoras/Entidades según la métrica elegida. Muestra qué pagadores aportan más volumen o facturación.',
+  'op-dona':'Participación de cada Aseguradora/Entidad en el total. Una porción muy grande indica dependencia y riesgo de un solo pagador.'
 };
 function card(title,badge,cid,wrapCls){
   const t=String(title).replace(/'/g,"\\'").replace(/&amp;/g,'&');
@@ -2207,7 +2207,7 @@ function buildFinFlujo(){
     '<div class="card"><div class="card-hdr"><h3>Estado de Flujo de Caja — '+s+' '+y+'</h3><span class="badge gold">Método indirecto</span></div>'+
       '<div class="card-body"><div class="tbl-wrap" id="ff-tbl-wrap"></div></div></div>'+
     centralNote+
-    '<div class="insight warn"><strong>Hallazgo a vigilar — días de cartera:</strong> en <strong>Consolidado 2025</strong> el EBITDA fue <strong>$3.122M</strong> pero el FCO cerró en <strong>$2.033M</strong>: el capital de trabajo (cartera con EPS) consumió cerca de <strong>$1.100M</strong> de la generación. Aun así, la caja pasó de <strong>−$1.984M a +$820M</strong> en el año. El negocio genera caja, pero la <strong>cartera creciente la drena</strong> — vigilar de cerca los días de cartera.</div>';
+    '<div class="insight warn"><strong>Hallazgo a vigilar — días de cartera:</strong> en <strong>Consolidado 2025</strong> el EBITDA fue <strong>$3.122M</strong> pero el FCO cerró en <strong>$2.033M</strong>: el capital de trabajo (cartera con Aseguradoras/Entidades) consumió cerca de <strong>$1.100M</strong> de la generación. Aun así, la caja pasó de <strong>−$1.984M a +$820M</strong> en el año. El negocio genera caja, pero la <strong>cartera creciente la drena</strong> — vigilar de cerca los días de cartera.</div>';
 
   /* ── 1) Cascada (waterfall) de caja ── */
   const wf=[
@@ -2523,7 +2523,7 @@ function renderOpeFilters(){
     md('esp','Especialidad',espOpts)+
     md('cir','Cirujano',cirOpts)+
     md('qx','Quirófano',qxOpts)+
-    md('eps','EPS',epsOpts)+
+    md('eps','Aseguradoras/Entidades',epsOpts)+
     md('dia','Día',diaOpts)+
     '<button class="chip chip-clear" onclick="clearOpe()">✕ Limpiar filtros</button>'+
     activeChipsHtml();
@@ -3649,7 +3649,7 @@ function buildRepSedes(){
       'La clasificación de rubros duplicables debe validarse con el contador antes de usarse en cualquier decisión.</div>';
 }
 
-/* ─────────── OPE: EPS ─────────── */
+/* ─────────── OPE: ASEGURADORAS/ENTIDADES ─────────── */
 function buildOpeEps(){
   const el=document.getElementById('ope-eps');
   const MD=metDef();
@@ -3664,7 +3664,7 @@ function buildOpeEps(){
   const top3=totFac?arr.slice(0,3).reduce(function(s,a){return s+a.fac;},0)/totFac*100:0;
   const top8=arr.slice(0,8);
   el.innerHTML=
-    '<div class="sec-title">EPS / Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
+    '<div class="sec-title">Aseguradoras/Entidades <span class="st-badge">'+filterLabel()+'</span></div>'+
     '<div class="sec-sub">'+arr.length+' entidades pagadoras · ranking por <strong>'+MD.noun+'</strong> · hover para todas las métricas</div>'+
     '<div class="kpis k3">'+
       kpi(suraPct>40?'red':'gold','Concentración SURA',fmtPct(suraPct),'de la facturación')+
