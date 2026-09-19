@@ -260,6 +260,38 @@ a{text-decoration:none;color:inherit;}
 .insight.warn{border-left-color:var(--warn);background:#fdf6e8;}
 .insight.neg{border-left-color:var(--neg);background:#fbeceb;}
 
+/* ═══ SALA DE REPORTERÍA ═══ */
+.rep-hero{background:linear-gradient(135deg,#0E2240 0%,#173a68 72%,#23588f 100%);color:#fff;
+  border-radius:14px;padding:22px 24px;margin-bottom:16px;box-shadow:0 10px 26px rgba(14,34,64,.16);}
+.rep-hero .eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:#d4a843;font-weight:800;margin-bottom:7px;}
+.rep-hero h2{font-family:'DM Serif Display',serif;font-size:27px;line-height:1.16;margin-bottom:8px;font-weight:400;}
+.rep-hero p{max-width:940px;color:#dce6f2;font-size:12.5px;line-height:1.6;}
+.rep-verdict{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center;background:#fff;border:1px solid #dfe6ef;
+  border-radius:12px;padding:16px 18px;margin-bottom:16px;box-shadow:var(--shadow);}
+.rep-verdict .rv-label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:#6b7f9c;font-weight:800;}
+.rep-verdict .rv-state{font-size:18px;font-weight:800;color:var(--qlub-dark);margin-top:3px;}
+.rep-verdict .rv-copy{font-size:12.5px;line-height:1.58;color:#3b4f68;}
+.rep-verdict.red{border-left:5px solid var(--neg);}.rep-verdict.gold{border-left:5px solid var(--qlub-acento);}
+.rep-score{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 16px;}
+.rep-score-item{background:#fff;border:1px solid #e1e7ef;border-radius:10px;padding:12px 13px;min-width:0;}
+.rep-score-item .rs-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:6px;}
+.rep-score-item .rs-name{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:#6b7f9c;font-weight:700;}
+.rep-score-item .rs-value{font-size:17px;color:var(--qlub-dark);font-weight:800;}
+.rep-score-item .rs-copy{font-size:11px;line-height:1.45;color:#64758c;}
+.rep-finding{display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid #edf0f4;}
+.rep-finding:last-child{border-bottom:0;}.rep-finding .rf-num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+  background:#f1e6c8;color:#6d5317;font-size:12px;font-weight:800;}
+.rep-finding.bad .rf-num{background:#f8dedd;color:#8d2e2a;}.rep-finding.good .rf-num{background:#dcefe2;color:#235e35;}
+.rep-finding h4{font-size:12px;color:var(--qlub-dark);margin-bottom:3px;}.rep-finding p{font-size:11.5px;color:#607188;line-height:1.48;}
+.rep-source{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;}.rep-source span{background:#eef3f8;color:#526781;border-radius:999px;
+  padding:4px 9px;font-size:10.5px;font-weight:650;}
+.rep-downloads{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#fff;border:1px solid #dfe6ef;border-radius:11px;
+  padding:11px 13px;margin:0 0 16px;box-shadow:var(--shadow);}.rep-downloads .rd-copy{flex:1;min-width:210px;font-size:11.5px;color:#607188;line-height:1.4;}
+.rep-downloads .rd-copy strong{display:block;color:var(--qlub-dark);font-size:12px;margin-bottom:2px;}
+.rep-downloads a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 13px;border-radius:20px;
+  text-decoration:none;font-size:11.5px;font-weight:750;white-space:nowrap;background:var(--qlub-dark);color:#fff;}
+.rep-downloads a.mobile{background:#fff;color:var(--qlub-dark);border:1.5px solid var(--qlub-dark);}
+
 /* ═══ FOOTNOTE ═══ */
 .footnote{font-size:11px;color:#7d8ca3;margin-top:10px;line-height:1.5;padding-left:2px;}
 .footnote b{color:#516181;}
@@ -472,6 +504,9 @@ a{text-decoration:none;color:inherit;}
   .kpis{gap:8px;margin-bottom:12px;}
   .kpis.k4,.kpis.k6{grid-template-columns:repeat(2,1fr);}
   .kpis.k3{grid-template-columns:repeat(2,1fr);}
+  .rep-hero{padding:18px 16px;border-radius:10px}.rep-hero h2{font-size:22px}.rep-verdict{grid-template-columns:1fr;gap:8px}
+  .rep-score{grid-template-columns:1fr}.rep-score-item{min-height:44px}
+  .rep-downloads a{width:100%;min-height:44px}.rep-downloads .rd-copy{min-width:100%}
   .kpi-val{font-size:18px;}
   .g2,.g3{grid-template-columns:1fr;gap:10px;}
   .chart-wrap{height:240px;}
@@ -577,7 +612,11 @@ table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
 
 <!-- ============ REPORTES / HALLAZGOS ============ -->
 <section class="sec" id="sec-rep">
-  <div class="subsec active" id="rep-julio"></div>
+  <div class="subsec active" id="rep-resumen"></div>
+  <div class="subsec" id="rep-tes-ago"></div>
+  <div class="subsec" id="rep-ovi-ago"></div>
+  <div class="subsec" id="rep-tes-ytd"></div>
+  <div class="subsec" id="rep-ovi-ytd"></div>
   <div class="subsec" id="rep-agenda"></div>
   <div class="subsec" id="rep-sedes"></div>
 </section>
@@ -940,11 +979,13 @@ const SUBSECS = {
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
        ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','EPS']],
-  rep:[['rep-julio','📄','Último cierre'],['rep-agenda','🗓️','Agenda y Ocupación'],
+  rep:[['rep-resumen','◫','Sala de junta'],['rep-tes-ago','T','Agosto · Tesoro'],
+       ['rep-ovi-ago','O','Agosto · Oviedo'],['rep-tes-ytd','T','Ene–Ago · Tesoro'],
+       ['rep-ovi-ytd','O','Ene–Ago · Oviedo'],['rep-agenda','🗓️','Agenda y capacidad'],
        ['rep-sedes','🏛️','Las dos sedes']],
   acc:[]
 };
-let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio', rep:'rep-julio'};
+let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio', rep:'rep-resumen'};
 
 function switchTab(t){
   TAB=t;
@@ -987,7 +1028,11 @@ function buildSub(id){
     'fin-costos':buildFinCostosV2,'fin-gadmin':buildFinGAdmin,'fin-balance':buildFinBalanceV2,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnualV2,
     'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
     'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps,
-    'rep-julio':buildRepJulio,'rep-agenda':buildRepAgenda,'rep-sedes':buildRepSedes
+    'rep-resumen':buildRepResumen,'rep-tes-ago':function(){buildRepSede('rep-tes-ago','Tesoro',0,8,8);},
+    'rep-ovi-ago':function(){buildRepSede('rep-ovi-ago','Oviedo',1,8,8);},
+    'rep-tes-ytd':function(){buildRepSede('rep-tes-ytd','Tesoro',0,1,8);},
+    'rep-ovi-ytd':function(){buildRepSede('rep-ovi-ytd','Oviedo',1,1,8);},
+    'rep-agenda':buildRepAgenda,'rep-sedes':buildRepSedes
   };
   if(map[id]) map[id]();
 }
@@ -2327,7 +2372,7 @@ function buildFinAnualV2(){
 /* Filtros MULTISELECT acumulables: cada dimensión es un Set de valores.
    Vacío = "Todos". OR dentro de dimensión, AND entre dimensiones. */
 const OF = { anio:new Set(), mes:new Set(), sede:new Set(), esp:new Set(), cir:new Set(), qx:new Set(), eps:new Set(), dia:new Set() };
-const HORAS_SEMANA_QX = 62; // L-V 11h*5 + Sáb 7h
+const HORAS_SEMANA_QX = 60; // Lun-Sáb 7:00-17:00 = 10h * 6 días
 let OPEN_DD = null; // id del dropdown abierto
 let OPE_YTD = false; // toggle YTD operacional
 let OPE_METRICA = 'cx'; // selector de métrica global del Administrativo
@@ -2547,8 +2592,8 @@ function footnoteMetrica(){
    Fuente distinta a comercial.json: aquí cada fila trae FECHA y HORA reales de
    entrada/salida de quirófano. Cubre nov-2024 en adelante salvo ene-mar 2025
    (no hay informe con hora en ese tramo) — la UI lo declara, no lo disimula.
-   Rejilla 6:00-20:00: cubre el 99,88% de los minutos de quirófano registrados. */
-const HM_H0=6, HM_H1=20;                       // franja de la rejilla (horas)
+   Rejilla 7:00-17:00: ventana operativa usada para medir capacidad y ocupación. */
+const HM_H0=7, HM_H1=17;                       // ventana quirúrgica real (horas)
 const HM_QX_SEDE={0:'Tesoro',1:'Oviedo'};
 const OCOL={f:0,sede:1,qx:2,ini:3,fin:4,cir:5,esp:6};
 /* estado propio del mapa: rango de fechas + vista. No toca los filtros globales. */
@@ -2905,7 +2950,7 @@ function buildOpeQx(){
       card(MD.noun+' por quirófano','métrica: '+MD.lbl,'oq-vol','')+
       card('Ocupación estimada por quirófano','% de capacidad','oq-oc','')+
     '</div>'+
-    '<div class="insight">La capacidad se mide sobre horario L-V 7-18h (11h) + Sáb 7-14h (7h) = 62h/semana por sala. '+(arrOc.some(function(a){return a.oc<60;})?'Hay salas por debajo del 60% de ocupación: redistribuir agenda o concentrar días libera capacidad para nuevas especialidades.':'Las salas operan con buena ocupación.')+'</div>'+
+    '<div class="insight">La capacidad se mide sobre la ventana quirúrgica de 7:00 a 17:00, lunes a sábado: 60 horas por semana y por sala. '+(arrOc.some(function(a){return a.oc<60;})?'Hay salas por debajo del 60% de ocupación: redistribuir agenda o concentrar días libera capacidad para nuevas especialidades.':'Las salas operan con buena ocupación.')+'</div>'+
     footnoteMetrica();
   mkChart('oq-vol','bar',arr.map(function(a){return a.name.replace('QUIROFANO','Q').replace('OVI','-OVI');}),
     [{label:MD.lbl,data:arr.map(function(a){return metVal(a);}),backgroundColor:arr.map(clr)}],
@@ -2991,12 +3036,16 @@ function prgResumen(m0,m1,sede){
     const b=new Date(PRG.fechas[r[PCOL.fcanc]]+'T00:00:00');
     return Math.round((a-b)/86400000);
   }
-  const av=canc.map(aviso).filter(function(x){ return x!==null && x>=-30 && x<=180; });
+  const av=canc.map(aviso).filter(function(x){ return x!==null && x>=0 && x<=180; });
   const tardias=av.filter(function(x){ return x<=1; }).length;
+  const avRes=lib.map(aviso).filter(function(x){ return x!==null && x>=0 && x<=180; });
+  const resTardias=avRes.filter(function(x){ return x<=1; }).length;
   const horasRes=res.reduce(function(a,r){ return a+(r[PCOL.fin]-r[PCOL.ini]); },0)/60;
   const horasLib=lib.reduce(function(a,r){ return a+(r[PCOL.fin]-r[PCOL.ini]); },0)/60;
-  const horasCancTarde=canc.filter(function(r){ const x=aviso(r); return x!==null&&x<=1; })
+  const horasCancTarde=canc.filter(function(r){ const x=aviso(r); return x!==null&&x>=0&&x<=1; })
                            .reduce(function(a,r){ return a+r[PCOL.durProg]; },0)/60;
+  const horasLibTarde=lib.filter(function(r){ const x=aviso(r); return x!==null&&x>=0&&x<=1; })
+                         .reduce(function(a,r){ return a+(r[PCOL.fin]-r[PCOL.ini]); },0)/60;
   /* oportunidad: de la fecha de programación a la cirugía */
   const op=pac.map(function(r){
     if(r[PCOL.fprog]<0) return null;
@@ -3010,8 +3059,10 @@ function prgResumen(m0,m1,sede){
           tasaCanc: pac.length? canc.length/pac.length*100 : 0,
           avisos: av, tardias: tardias,
           pctTardias: av.length? tardias/av.length*100 : 0,
+          avisosRes: avRes, resTardias:resTardias,
+          pctResTardias: avRes.length? resTardias/avRes.length*100 : 0,
           horasRes: horasRes, horasLib: horasLib, horasCancTarde: horasCancTarde,
-          horasMes: (horasLib+horasCancTarde)/meses,
+          horasLibTarde:horasLibTarde, horasMes: (horasLibTarde+horasCancTarde)/meses,
           opMediana: op.length? op[Math.floor(op.length/2)] : 0,
           opP90: op.length? op[Math.floor(op.length*0.9)] : 0,
           meses: meses};
@@ -3181,7 +3232,7 @@ function buildOpeOcup(){
   const durProm=durs.length?durs.reduce(function(a,b){return a+b;},0)/durs.length:0;
   el.innerHTML=
     '<div class="sec-title">Ocupación de Salas <span class="st-badge">'+filterLabel()+'</span></div>'+
-    '<div class="sec-sub">Distribución por día y duración · capacidad L-V 7-18h (11h) + Sáb 7-14h (7h)</div>'+
+    '<div class="sec-sub">Distribución por día y duración · ventana quirúrgica 7:00–17:00 · lunes a sábado</div>'+
     '<div class="kpis k4">'+
       kpi(ocup>=70?'green':'gold','Ocupación estimada',fmtPct(ocup),'sobre capacidad')+
       '<div class="kpi"><div class="kpi-lbl">Día más activo</div><div class="kpi-val" style="font-size:17px">'+diasLbl[bi]+'</div><div class="kpi-sub">'+fmtNum(Math.max.apply(null,diaCx))+' cx</div></div>'+
@@ -3217,9 +3268,11 @@ function repBloque(anio,m0,m1){
   const o={};
   ['Tesoro','Oviedo','Consolidado'].forEach(function(sd){
     const g=function(c){ return repP(sd,anio,c,m0,m1); };
-    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160'), abajo=g('53');
+    const ing=g('4'), cop=g('6')+g('7'), ga=g('5'), da=g('5160')+g('5165');
+    const oi=g('42'), gno=g('53'), imp=g('54');
     o[sd]={ing:ing, cop:cop, ga:ga, ub:ing-cop, uop:ing-cop-ga,
-            ebitda:ing-cop-ga+da, neta:ing-cop-ga-abajo};
+            ebitda:ing-cop-ga+da, neta:ing-cop-ga+oi-gno-imp,
+            oi:oi,gno:gno,imp:imp,da:da};
   });
   return o;
 }
@@ -3228,6 +3281,175 @@ function repFilaTabla(lbl,f,B,pct){
     const v=f(B[sd]);
     return '<td>'+(pct? fmtPct(v) : fmtMd(v,0))+'</td>';
   }).join('')+'</tr>';
+}
+
+/* ─── Reportería por sede: finanzas + cirugías + agenda + ocupación observada ─── */
+function repPctVar(a,b){ return b? (a/b-1)*100:null; }
+function repSigned(v){ return v===null?'—':(v>0?'+':'')+fmtPct(v); }
+function repOps(sede,anio,m0,m1){
+  const R=COM.rows.filter(function(r){return r[COL.sede]===sede&&r[COL.anio]===anio&&r[COL.mes]>=m0&&r[COL.mes]<=m1;});
+  const min=R.reduce(function(a,r){return a+(r[COL.tmin]>0?r[COL.tmin]:0);},0);
+  const fac=R.reduce(function(a,r){return a+(r[COL.valM]>0?r[COL.valM]:0);},0);
+  return {cx:R.length,min:min,hrs:min/60,fac:fac,dur:R.length?min/R.length:0,
+          ticket:R.length?fac/R.length:0,facHr:min?fac/(min/60):0};
+}
+function repQxNum(s){ const m=String(s||'').match(/\d+/g); return m?+m[m.length-1]:null; }
+function repMerge(ints){
+  ints.sort(function(a,b){return a[0]-b[0];}); const out=[];
+  ints.forEach(function(x){ if(!out.length||x[0]>out[out.length-1][1]) out.push([x[0],x[1]]); else out[out.length-1][1]=Math.max(out[out.length-1][1],x[1]); });
+  return out;
+}
+function repOcup(sede,m0,m1){
+  if(!OCU||!OCU.rows) return {hrs:0,roomDays:0,gaps:0,gapH:0,gapMed:0,gapPerDay:0,first:0,last:0,hourPct:new Array(10).fill(0),afternoon:0,peak:7};
+  const G={};
+  OCU.rows.forEach(function(r){
+    const f=OCU.fechas[r[OCOL.f]], mm=+f.slice(5,7);
+    if(!f.startsWith('2026')||mm<m0||mm>m1||r[OCOL.sede]!==sede) return;
+    const k=f+'|'+r[OCOL.qx]; (G[k]||(G[k]=[])).push([r[OCOL.ini],r[OCOL.fin]]);
+  });
+  let mins=0; const gaps=[],starts=[],ends=[],hn=new Array(10).fill(0),hd=new Array(10).fill(0);
+  Object.keys(G).forEach(function(k){
+    const f=k.slice(0,10), open=420, close=1020;
+    const ints=repMerge(G[k].map(function(x){return [Math.max(open,x[0]),Math.min(close,x[1])];}).filter(function(x){return x[1]>x[0];}));
+    if(!ints.length) return; starts.push(ints[0][0]); ends.push(ints[ints.length-1][1]);
+    ints.forEach(function(x){mins+=x[1]-x[0];});
+    for(let i=0;i<ints.length-1;i++){const g=ints[i+1][0]-ints[i][1];if(g>=30)gaps.push(g);}
+    for(let h=7;h<17;h++){const a=h*60,b=(h+1)*60;hd[h-7]+=60;
+      ints.forEach(function(x){hn[h-7]+=Math.max(0,Math.min(b,x[1])-Math.max(a,x[0]));});}
+  });
+  const hp=hn.map(function(v,i){return hd[i]?v/hd[i]*100:0;}), gs=gaps.slice().sort(function(a,b){return a-b;});
+  let peak=7; hp.forEach(function(v,i){if(v>hp[peak-7])peak=i+7;});
+  const aft=[7,8,9].filter(function(i){return hd[i]>0;});
+  return {hrs:mins/60,roomDays:Object.keys(G).length,gaps:gaps.length,gapH:gaps.reduce(function(a,b){return a+b;},0)/60,
+    gapMed:gs.length?gs[Math.floor(gs.length/2)]:0,gapPerDay:Object.keys(G).length?gaps.reduce(function(a,b){return a+b;},0)/60/Object.keys(G).length:0,
+    first:starts.length?starts.reduce(function(a,b){return a+b;},0)/starts.length:0,last:ends.length?ends.reduce(function(a,b){return a+b;},0)/ends.length:0,
+    hourPct:hp,afternoon:aft.length?aft.reduce(function(a,i){return a+hp[i];},0)/aft.length:0,peak:peak};
+}
+function repHora(m){ if(!m)return '—'; const h=Math.floor(m/60),n=Math.round(m%60);return h+':'+String(n).padStart(2,'0'); }
+function repRecovery(sede,m0,m1){
+  if(!prgOk()||!ocuOk()) return {slots:0,hours:0,overlapH:0,uncoveredH:0,recovered:0};
+  const A={}; OCU.rows.forEach(function(r){const f=OCU.fechas[r[OCOL.f]],mm=+f.slice(5,7);if(!f.startsWith('2026')||mm<m0||mm>m1||r[OCOL.sede]!==sede)return;
+    const k=f+'|'+repQxNum(OCU.qxs[r[OCOL.qx]]);(A[k]||(A[k]=[])).push([r[OCOL.ini],r[OCOL.fin]]);});
+  Object.keys(A).forEach(function(k){A[k]=repMerge(A[k]);});
+  let slots=0,total=0,over=0,recovered=0;
+  prgRows(m0,m1,sede).forEach(function(r){
+    if(r[PCOL.tipo]!==0||r[PCOL.fcanc]<0)return;
+    const f=PRG.fechas[r[PCOL.f]],fc=PRG.fechas[r[PCOL.fcanc]];
+    const aviso=Math.round((new Date(f+'T12:00:00')-new Date(fc+'T12:00:00'))/86400000); if(aviso<0||aviso>1)return;
+    const a=r[PCOL.ini],b=a+r[PCOL.durProg],dur=Math.max(0,b-a),ints=A[f+'|'+repQxNum(PRG.qxs[r[PCOL.qx]])]||[];
+    let ov=0;ints.forEach(function(x){ov+=Math.max(0,Math.min(b,x[1])-Math.max(a,x[0]));});ov=Math.min(dur,ov);
+    slots++;total+=dur;over+=ov;if(ov>=dur*.5)recovered++;
+  });
+  return {slots:slots,hours:total/60,overlapH:over/60,uncoveredH:(total-over)/60,recovered:recovered};
+}
+function repScore(name,value,copy){return '<div class="rep-score-item"><div class="rs-top"><span class="rs-name">'+name+'</span><span class="rs-value">'+value+'</span></div><div class="rs-copy">'+copy+'</div></div>';}
+function repFinding(n,title,copy,cls){return '<div class="rep-finding '+(cls||'')+'"><div class="rf-num">'+n+'</div><div><h4>'+title+'</h4><p>'+copy+'</p></div></div>';}
+function repDownloads(sede,ytd){
+  const stem='Qlub_'+(ytd?'Enero_Agosto':'Agosto')+'_2026_'+sede;
+  return '<div class="rep-downloads"><div class="rd-copy"><strong>Informe listo para compartir</strong>Dos versiones ya paginadas: A4 para computador, impresión y junta; móvil para leer sin zoom.</div>'+
+    '<a href="reportes/'+stem+'_A4.pdf" download>Descargar PDF · A4</a>'+
+    '<a class="mobile" href="reportes/'+stem+'_Movil.pdf" download>Descargar PDF · celular</a></div>';
+}
+
+function buildRepResumen(){
+  const el=document.getElementById('rep-resumen'), uM=ultMes();
+  const M=repBloque(2026,uM,uM),Y=repBloque(2026,1,uM),YP=repBloque(2025,1,uM);
+  const AT=prgResumen(1,uM,0),AO=prgResumen(1,uM,1),RT=repRecovery(0,1,uM),RO=repRecovery(1,1,uM);
+  const OT=repOcup(0,1,uM),OO=repOcup(1,1,uM);
+  const vIng=repPctVar(Y.Consolidado.ing,YP.Consolidado.ing),vE=repPctVar(Y.Consolidado.ebitda,YP.Consolidado.ebitda);
+  el.innerHTML=
+    '<div class="rep-hero"><div class="eyebrow">Sala de reportería · cierre agosto 2026</div><h2>El volumen crece; la rentabilidad y la agenda no avanzan al mismo ritmo.</h2><p>Lectura integrada de estados financieros, cirugías ejecutadas, cuadros manuales de programación y horas reales de quirófano. Cada sede tiene un informe mensual y otro acumulado para que la junta pueda separar resultado, costo y capacidad.</p></div>'+
+    '<div class="rep-source"><span>EEFF definitivos</span><span>21.732 cirugías históricas</span><span>Agenda manual 2026</span><span>Hora real de entrada y salida</span></div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','Ingresos agosto',fmtMd(M.Consolidado.ing,0),'Tesoro + Oviedo')+
+      kpi(M.Consolidado.ebitda>=0?'green':'red','EBITDA agosto',fmtMd(M.Consolidado.ebitda,0),fmtPct(M.Consolidado.ing?M.Consolidado.ebitda/M.Consolidado.ing*100:0)+' margen')+
+      kpi('gold','Ingresos Ene–Ago',repSigned(vIng),'vs 2025')+
+      kpi(vE>=0?'green':'red','EBITDA Ene–Ago',repSigned(vE),'vs 2025')+
+    '</div>'+
+    '<div class="rep-verdict red"><div><div class="rv-label">Conclusión para junta</div><div class="rv-state">Dos cuellos simultáneos</div></div><div class="rv-copy"><strong>La agenda sí es una restricción material, especialmente en Oviedo, pero no explica por sí sola el deterioro del resultado.</strong> También hay presión de costos y estructura administrativa. La decisión correcta es atacar ambos frentes y medir semanalmente la recuperación de bloques cancelados.</div></div>'+
+    '<div class="rep-score">'+
+      repScore('Tesoro · cancelación YTD',fmtPct(AT.tasaCanc),fmtNum(AT.canc)+' cancelaciones; '+fmtPct(AT.pctTardias)+' con un día o menos de aviso.')+
+      repScore('Oviedo · cancelación YTD',fmtPct(AO.tasaCanc),fmtNum(AO.canc)+' cancelaciones; '+fmtPct(AO.pctTardias)+' con un día o menos de aviso.')+
+      repScore('Bloques tardíos sin ocupación',fmtNum(RT.uncoveredH+RO.uncoveredH)+' h',fmtNum(RT.uncoveredH)+' h Tesoro + '+fmtNum(RO.uncoveredH)+' h Oviedo, Ene–Ago.')+
+    '</div>'+
+    '<div class="g2"><div class="card"><div class="card-hdr"><h3>Lectura por sede</h3></div><div class="card-body">'+
+      repFinding('T','Tesoro: crecimiento sin conversión completa','En el acumulado, el ingreso crece '+repSigned(repPctVar(Y.Tesoro.ing,YP.Tesoro.ing))+' y el EBITDA '+repSigned(repPctVar(Y.Tesoro.ebitda,YP.Tesoro.ebitda))+'. La agenda deja '+fmtNum(RT.uncoveredH)+' horas tardías sin ocupación observada.','bad')+
+      repFinding('O','Oviedo: el riesgo de agenda es más visible','En agosto canceló '+fmtPct(prgResumen(8,8,1).tasaCanc)+' de lo programado y '+fmtPct(prgResumen(8,8,1).pctTardias)+' de las cancelaciones llegaron con un día o menos.','bad')+
+      repFinding('↓','La tarde pierde densidad','En días-sala con actividad, la ocupación 14:00–17:00 promedia '+fmtPct(OT.afternoon)+' en Tesoro y '+fmtPct(OO.afternoon)+' en Oviedo.','')+
+    '</div></div><div class="card"><div class="card-hdr"><h3>Qué debe decidir la junta</h3></div><div class="card-body">'+
+      repFinding('1','Regla de liberación','Toda reserva sin paciente debe liberarse con antelación definida; el tablero ya separa liberación total de liberación tardía.','')+
+      repFinding('2','Lista de reemplazo','Medir cuántos bloques cancelados en 0–1 día se cubren con otra cirugía en el mismo quirófano y horario.','')+
+      repFinding('3','Economía por cirugía','La meta no puede ser solo número de casos: debe incluir costo directo, gasto administrativo y EBITDA por cirugía.','')+
+    '</div></div></div>'+
+    '<div class="footnote"><b>Lectura objetiva.</b> “Sin ocupación observada” significa que no aparece otra cirugía ejecutada cubriendo ese bloque, en el mismo quirófano y horario. No atribuye por sí solo causalidad sobre el resultado financiero.</div>';
+}
+
+function buildRepSede(id,sede,sedeIdx,m0,m1){
+  const el=document.getElementById(id), ytd=m0!==m1, pfx=id;
+  const F=repBloque(2026,m0,m1)[sede],B=repBloque(2025,m0,m1)[sede];
+  const O=repOps(sedeIdx,2026,m0,m1),OP=repOps(sedeIdx,2025,m0,m1);
+  const A=prgResumen(m0,m1,sedeIdx),Q=repOcup(sedeIdx,m0,m1),R=repRecovery(sedeIdx,m0,m1),mot=prgMotivos(m0,m1,sedeIdx);
+  const vIng=repPctVar(F.ing,B.ing),vCost=repPctVar(F.cop,B.cop),vGa=repPctVar(F.ga,B.ga),vEb=repPctVar(F.ebitda,B.ebitda),vCx=repPctVar(O.cx,OP.cx);
+  const agendaScore=(A.tasaCanc>=12?1:0)+(A.pctTardias>=35?1:0)+(Q.gapPerDay>=1.5?1:0)+(Q.afternoon<45?1:0);
+  const costPressure=(vCost!==null&&vCost>vIng)||(vGa!==null&&vGa>vIng), agendaMaterial=agendaScore>=2;
+  const periodo=ytd?'Enero – agosto 2026':'Agosto 2026',cmp=ytd?'Ene–Ago 2025':'Agosto 2025';
+  const verdict=agendaMaterial?'Cuello de botella material':'Fricción operativa visible';
+  const varCell=function(a,b,cost){const v=repPctVar(a,b),bad=v!==null&&(cost?v>vIng:v<0);return '<td class="'+(bad?'neg':'pos')+'">'+repSigned(v)+'</td>';};
+  const tr=function(n,a,b,cost){return '<tr><td>'+n+'</td><td>'+fmtMd(b,0)+'</td><td>'+fmtMd(a,0)+'</td>'+varCell(a,b,cost)+'</tr>';};
+  const eff=function(n,b,a,fmt){return '<tr><td>'+n+'</td><td>'+fmt(b)+'</td><td>'+fmt(a)+'</td><td>'+repSigned(repPctVar(a,b))+'</td></tr>';};
+  const finCx=function(x,n){return n?x/n:0;};
+  el.innerHTML=
+    '<div class="rep-hero"><div class="eyebrow">Informe individual · '+sede+'</div><h2>'+periodo+'</h2><p>Resultado financiero, economía por cirugía, cancelaciones, recuperación de bloques y patrón horario. Comparativo homogéneo contra '+cmp+'.</p></div>'+
+    repDownloads(sede,ytd)+
+    '<div class="rep-source"><span>EEFF definitivos</span><span>'+fmtNum(O.cx)+' cirugías ejecutadas</span><span>'+fmtNum(A.prog)+' renglones con paciente en agenda</span><span>'+fmtNum(Q.roomDays)+' días-sala activos</span></div>'+
+    '<div class="kpis k4">'+
+      kpi('navy','Ingresos',fmtMd(F.ing,0),repSigned(vIng)+' vs 2025')+
+      kpi(F.ebitda>=0?'green':'red','EBITDA',fmtMd(F.ebitda,0),fmtPct(F.ing?F.ebitda/F.ing*100:0)+' de margen')+
+      kpi(F.neta>=0?'green':'red','Utilidad neta',fmtMd(F.neta,0),fmtPct(F.ing?F.neta/F.ing*100:0)+' de margen')+
+      kpi('gold','Cirugías',fmtNum(O.cx),repSigned(vCx)+' vs 2025')+
+    '</div>'+
+    '<div class="rep-verdict '+(agendaMaterial?'red':'gold')+'"><div><div class="rv-label">Diagnóstico</div><div class="rv-state">'+verdict+'</div></div><div class="rv-copy"><strong>La agenda '+(agendaMaterial?'sí presenta evidencia suficiente para tratarla como restricción':'presenta oportunidades, aunque no domina por sí sola el resultado')+'.</strong> '+(costPressure?'Al mismo tiempo, costos o gastos crecen por encima del ingreso; corregir agenda sin corregir economía unitaria no recuperaría todo el margen.':'La estructura de costo crece por debajo o en línea con el ingreso.')+'</div></div>'+
+    '<div class="g2"><div class="card"><div class="card-hdr"><h3>P&amp;G comparado · $ millones</h3></div><div class="card-body"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Concepto</th><th>'+cmp+'</th><th>'+periodo+'</th><th>Variación</th></tr></thead><tbody>'+
+      tr('Ingresos',F.ing,B.ing,false)+tr('Costos de operación',F.cop,B.cop,true)+tr('Gastos de administración',F.ga,B.ga,true)+tr('EBITDA',F.ebitda,B.ebitda,false)+tr('Utilidad neta',F.neta,B.neta,false)+
+      '</tbody></table></div></div></div>'+card('Puente de resultado','2025 vs 2026 · $ millones',pfx+'-res','')+'</div>'+
+    '<div class="g2"><div class="card"><div class="card-hdr"><h3>Economía por cirugía</h3></div><div class="card-body"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Indicador</th><th>2025</th><th>2026</th><th>Variación</th></tr></thead><tbody>'+
+      eff('Cirugías',OP.cx,O.cx,fmtNum)+eff('Duración promedio',OP.dur,O.dur,function(x){return fmtNum(x)+' min';})+
+      eff('Ingreso contable / cirugía',finCx(B.ing,OP.cx),finCx(F.ing,O.cx),function(x){return fmtMd(x,2);})+
+      eff('Costo operativo / cirugía',finCx(B.cop,OP.cx),finCx(F.cop,O.cx),function(x){return fmtMd(x,2);})+
+      eff('Gasto admin / cirugía',finCx(B.ga,OP.cx),finCx(F.ga,O.cx),function(x){return fmtMd(x,2);})+
+      eff('EBITDA / cirugía',finCx(B.ebitda,OP.cx),finCx(F.ebitda,O.cx),function(x){return fmtMd(x,2);})+
+      '</tbody></table></div></div></div>'+card('Evolución mensual del margen EBITDA','enero–agosto · 2025 vs 2026',pfx+'-trend','')+'</div>'+
+    '<div class="sec-title" style="margin-top:24px">Agenda y uso de capacidad <span class="st-badge">'+sede+'</span></div>'+
+    '<div class="sec-sub">Separa cancelación, recuperación del bloque y baches entre cirugías. No confunde agenda manual con cirugía ejecutada.</div>'+
+    '<div class="kpis k4">'+
+      kpi(A.tasaCanc>=15?'red':'gold','Tasa de cancelación',fmtPct(A.tasaCanc),fmtNum(A.canc)+' de '+fmtNum(A.prog)+' programadas')+
+      kpi(A.pctTardias>=40?'red':'gold','Cancelación 0–1 día',fmtPct(A.pctTardias),fmtNum(A.tardias)+' casos')+
+      kpi('red','Bloque tardío no cubierto',fmtNum(R.uncoveredH)+' h',fmtNum(R.recovered)+' de '+fmtNum(R.slots)+' bloques cubiertos ≥50%')+
+      kpi(Q.afternoon<45?'red':'gold','Ocupación 14–17',fmtPct(Q.afternoon),'sobre días-sala activos')+
+    '</div>'+
+    '<div class="rep-score">'+
+      repScore('Baches internos',fmtNum(Q.gapH)+' h',fmtNum(Q.gaps)+' intervalos de 30+ min; mediana '+fmtNum(Q.gapMed)+' min.')+
+      repScore('Jornada observada',repHora(Q.first)+'–'+repHora(Q.last),'Promedio de primera entrada y última salida en días-sala con actividad.')+
+      repScore('Hora pico',Q.peak+':00',fmtPct(Q.hourPct[Q.peak-7])+' de ocupación en días-sala activos.')+
+    '</div>'+
+    '<div class="g2">'+card('Ocupación por hora','% del día-sala activo',pfx+'-hour','')+card('Motivos de cancelación','renglones cancelados',pfx+'-mot','')+'</div>'+
+    '<div class="g2"><div class="card"><div class="card-hdr"><h3>Prácticas que destruyen capacidad</h3></div><div class="card-body">'+
+      repFinding('1','Cancelación tardía',fmtNum(A.tardias)+' cancelaciones llegaron con un día o menos; '+fmtNum(R.uncoveredH)+' horas no muestran otra cirugía ocupando el mismo bloque.','bad')+
+      repFinding('2','Liberación tardía de reservas',fmtNum(A.resTardias)+' reservas se liberaron con un día o menos, equivalentes a '+fmtNum(A.horasLibTarde)+' horas de agenda.','bad')+
+      repFinding('3','Baches entre casos',fmtNum(Q.gaps)+' espacios de 30 minutos o más suman '+fmtNum(Q.gapH)+' horas dentro de jornadas que sí tuvieron cirugías.','bad')+
+    '</div></div><div class="card"><div class="card-hdr"><h3>Lectura ejecutiva</h3></div><div class="card-body">'+
+      repFinding('F','Resultado',sede+' convierte '+fmtPct(F.ing?F.ebitda/F.ing*100:0)+' del ingreso en EBITDA. Frente a 2025, el ingreso cambia '+repSigned(vIng)+' y el EBITDA '+repSigned(vEb)+'.',F.ebitda>=0?'good':'bad')+
+      repFinding('O','Operación','El volumen cambia '+repSigned(vCx)+' y la duración promedio '+repSigned(repPctVar(O.dur,OP.dur))+'. El volumen por sí solo no garantiza margen.','')+
+      repFinding('A','Agenda','El dato soporta intervenir cancelación, reservas y secuenciación. No soporta afirmar que toda hora libre tuvo demanda esperando.','')+
+    '</div></div></div>'+
+    '<div class="footnote"><b>Método.</b> Un bloque tardío se considera cubierto cuando la hora real registra ocupación de al menos 50% del mismo quirófano y horario. Un bache es un intervalo de 30 minutos o más entre dos cirugías ejecutadas en un día-sala activo. Los importes financieros están en millones de pesos.</div>';
+  const vals=function(X){return [X.ing,-X.cop,-X.ga,X.ebitda,X.neta];};
+  mkChart(pfx+'-res','bar',['Ingresos','Costos','G. admin','EBITDA','Util. neta'],[
+    {label:'2025',data:vals(B),backgroundColor:'#9AA8BD'},{label:'2026',data:vals(F),backgroundColor:sedeIdx===0?C.tesoro:C.oviedo}],{_tooltipLabel:tipMoney,_yMoney:true});
+  const m26=[],m25=[];for(let m=1;m<=8;m++){const a=repBloque(2026,m,m)[sede],b=repBloque(2025,m,m)[sede];m26.push(a.ing?a.ebitda/a.ing*100:0);m25.push(b.ing?b.ebitda/b.ing*100:0);}
+  mkChart(pfx+'-trend','line',MESES.slice(0,8),[{label:'2025',data:m25,borderColor:'#9AA8BD',backgroundColor:'transparent',tension:.28},{label:'2026',data:m26,borderColor:sedeIdx===0?C.tesoro:C.oviedo,backgroundColor:'transparent',tension:.28}],{_tooltipLabel:tipPct,_yPct:true});
+  mkChart(pfx+'-hour','bar',['7','8','9','10','11','12','13','14','15','16'],[{label:'Ocupación %',data:Q.hourPct.map(function(x){return +x.toFixed(1);}),backgroundColor:Q.hourPct.map(function(x){return x<40?C.neg:(x<60?C.acento:(sedeIdx===0?C.tesoro:C.oviedo));})}],{_tooltipLabel:tipPct,_yPct:true,plugins:{legend:{display:false}}});
+  const top=mot.slice(0,7);mkChart(pfx+'-mot','bar',top.map(function(x){return x.n.length>25?x.n.slice(0,25)+'…':x.n;}),[{label:'Cancelaciones',data:top.map(function(x){return x.v;}),backgroundColor:C.neg}],{indexAxis:'y',plugins:{legend:{display:false}},scales:{y:{ticks:{font:{size:9.5}}}}});
 }
 
 function buildRepJulio(){
@@ -3316,30 +3538,29 @@ function buildRepAgenda(){
   const uM=ultMes();
   if(!prgOk()){ el.innerHTML='<div class="insight">No está cargada la capa de programación.</div>'; return; }
   const A=prgResumen(1,uM), T=prgResumen(1,uM,0), O=prgResumen(1,uM,1);
+  const RT=repRecovery(0,1,uM),RO=repRecovery(1,1,uM),QT=repOcup(0,1,uM),QO=repOcup(1,1,uM);
   const mot=prgMotivos(1,uM);
   const totMot=mot.reduce(function(a,b){ return a+b.v; },0);
-  const cxT=ejecutadas(1,uM,0), cxO=ejecutadas(1,uM,1);
-  const horasMes=A.horasMes;
   el.innerHTML=
-    '<div class="sec-title">Agenda y ocupación <span class="st-badge">Ene-'+MESES[uM-1]+' 2026</span></div>'+
-    '<div class="sec-sub">Qué se programó, qué se operó y dónde se pierde la capacidad. '+
-      'Fuente: los cuadros manuales de programación de las dos sedes, '+fmtNum(A.prog+A.reservas)+' renglones.</div>'+
+    '<div class="rep-hero"><div class="eyebrow">Auditoría transversal · Ene–'+MESES[uM-1]+' 2026</div><h2>Agenda, cancelación y recuperación de capacidad</h2><p>La agenda manual explica qué se apartó y qué se canceló; la hora real permite comprobar si el mismo quirófano y horario volvió a ocuparse.</p></div>'+
+    '<div class="rep-source"><span>'+fmtNum(A.prog)+' cirugías programadas</span><span>'+fmtNum(A.reservas)+' reservas</span><span>'+fmtNum(ejecutadas(1,uM))+' cirugías ejecutadas</span><span>Cruce por sede + fecha + quirófano + hora</span></div>'+
     '<div class="kpis k4">'+
-      kpi('navy','Programadas',fmtNum(A.prog),'con paciente asignado')+
       kpi('gold','Tasa de cancelación',fmtPct(A.tasaCanc),fmtNum(A.canc)+' cirugías')+
-      kpi('red','Aviso de 1 día o menos',fmtPct(A.pctTardias),'del total cancelado')+
-      kpi('red','Capacidad no recuperable',fmtNum(horasMes)+' h/mes','reservas liberadas + cancelación tardía')+
+      kpi('red','Aviso de 1 día o menos',fmtPct(A.pctTardias),fmtNum(A.tardias)+' cancelaciones')+
+      kpi('red','Bloques tardíos sin ocupación',fmtNum(RT.uncoveredH+RO.uncoveredH)+' h','Ene–'+MESES[uM-1])+
+      kpi('red','Reservas liberadas tarde',fmtNum(T.resTardias+O.resTardias),fmtNum(T.horasLibTarde+O.horasLibTarde)+' horas')+
     '</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Programado contra ejecutado, por sede</h3></div><div class="card-body">'+
+    '<div class="card"><div class="card-hdr"><h3>Calidad de agenda por sede</h3></div><div class="card-body">'+
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Indicador</th><th>Tesoro</th><th>Oviedo</th><th>Consolidado</th></tr></thead><tbody>'+
       '<tr><td>Cirugías programadas</td><td>'+fmtNum(T.prog)+'</td><td>'+fmtNum(O.prog)+'</td><td>'+fmtNum(A.prog)+'</td></tr>'+
-      '<tr><td>Cirugías ejecutadas</td><td>'+fmtNum(cxT)+'</td><td>'+fmtNum(cxO)+'</td><td>'+fmtNum(cxT+cxO)+'</td></tr>'+
-      '<tr><td>Cumplimiento</td><td>'+fmtPct(T.prog?cxT/T.prog*100:0)+'</td><td>'+fmtPct(O.prog?cxO/O.prog*100:0)+'</td><td>'+fmtPct(A.prog?(cxT+cxO)/A.prog*100:0)+'</td></tr>'+
       '<tr><td>Canceladas</td><td>'+fmtNum(T.canc)+'</td><td>'+fmtNum(O.canc)+'</td><td>'+fmtNum(A.canc)+'</td></tr>'+
       '<tr><td>Tasa de cancelación</td><td>'+fmtPct(T.tasaCanc)+'</td><td>'+fmtPct(O.tasaCanc)+'</td><td>'+fmtPct(A.tasaCanc)+'</td></tr>'+
+      '<tr><td>Cancelación con 0–1 día</td><td>'+fmtPct(T.pctTardias)+'</td><td>'+fmtPct(O.pctTardias)+'</td><td>'+fmtPct(A.pctTardias)+'</td></tr>'+
+      '<tr><td>Horas tardías sin ocupación observada</td><td>'+fmtNum(RT.uncoveredH)+' h</td><td>'+fmtNum(RO.uncoveredH)+' h</td><td>'+fmtNum(RT.uncoveredH+RO.uncoveredH)+' h</td></tr>'+
       '<tr class="sep"><td>Bloques de reserva</td><td>'+fmtNum(T.reservas)+'</td><td>'+fmtNum(O.reservas)+'</td><td>'+fmtNum(A.reservas)+'</td></tr>'+
       '<tr><td>Reservas liberadas</td><td>'+fmtNum(T.liberadas)+'</td><td>'+fmtNum(O.liberadas)+'</td><td>'+fmtNum(A.liberadas)+'</td></tr>'+
-      '<tr><td>Horas apartadas en reservas</td><td>'+fmtNum(T.horasRes)+' h</td><td>'+fmtNum(O.horasRes)+' h</td><td>'+fmtNum(A.horasRes)+' h</td></tr>'+
+      '<tr><td>Reservas liberadas con 0–1 día</td><td>'+fmtNum(T.resTardias)+'</td><td>'+fmtNum(O.resTardias)+'</td><td>'+fmtNum(T.resTardias+O.resTardias)+'</td></tr>'+
+      '<tr><td>Horas de reserva liberadas tarde</td><td>'+fmtNum(T.horasLibTarde)+' h</td><td>'+fmtNum(O.horasLibTarde)+' h</td><td>'+fmtNum(T.horasLibTarde+O.horasLibTarde)+' h</td></tr>'+
       '<tr class="sep"><td>Oportunidad (mediana)</td><td>'+T.opMediana+' días</td><td>'+O.opMediana+' días</td><td>'+A.opMediana+' días</td></tr>'+
       '<tr><td>Oportunidad (percentil 90)</td><td>'+T.opP90+' días</td><td>'+O.opP90+' días</td><td>'+A.opP90+' días</td></tr>'+
       '</tbody></table></div></div></div>'+
@@ -3347,18 +3568,14 @@ function buildRepAgenda(){
       card('Por qué se cancela','participación sobre el total cancelado','rep-mot','')+
       card('Con cuánto aviso se cancela','días entre el aviso y la cirugía','rep-avi','')+
     '</div>'+
-    '<div class="insight neg"><strong>El cuello de botella no es la demanda: es la capacidad que se aparta y se devuelve tarde.</strong> '+
-      'Hay '+fmtNum(A.reservas)+' bloques de reserva que suman '+fmtNum(A.horasRes)+' horas de quirófano, y se libera el '+
-      fmtPct(A.reservas? A.liberadas/A.reservas*100:0)+' de ellos. Sumadas las cancelaciones con un día o menos de aviso, '+
-      'son <strong>'+fmtNum(horasMes)+' horas-quirófano al mes</strong> que quedan abiertas sin posibilidad de revenderse. '+
-      'Es prácticamente la misma magnitud que las horas libres de la franja de la tarde.</div>'+
-    '<div class="insight"><strong>La oportunidad real es de '+A.opMediana+' días</strong> entre que se programa y se opera '+
-      '(percentil 90: '+A.opP90+' días). El sistema reporta 1 día porque registra la orden cuando la cirugía ya está agendada; '+
-      'el cuadro manual conserva la fecha verdadera.</div>'+
-    hmBloque()+
-    '<div class="footnote"><b>Fuente.</b> Cuadros «Programación 2026» de Tesoro y Oviedo, una hoja por día. '+
-      'Programado incluye solo renglones con paciente; las reservas se cuentan aparte. El cumplimiento compara contra '+
-      'las cirugías del informe operativo, que puede diferir en algunos casos por registros de la misma cirugía en dos sistemas.</div>';
+    '<div class="rep-score">'+
+      repScore('Baches internos · Tesoro',fmtNum(QT.gapH)+' h',fmtNum(QT.gaps)+' intervalos de 30+ min en días-sala activos.')+
+      repScore('Baches internos · Oviedo',fmtNum(QO.gapH)+' h',fmtNum(QO.gaps)+' intervalos de 30+ min en días-sala activos.')+
+      repScore('Ocupación 14–17',fmtPct((QT.afternoon+QO.afternoon)/2),fmtPct(QT.afternoon)+' Tesoro · '+fmtPct(QO.afternoon)+' Oviedo.')+
+    '</div>'+
+    '<div class="insight neg"><strong>La evidencia confirma una restricción de agenda, no una ausencia general de demanda.</strong> De las cancelaciones de 0–1 día, '+fmtNum(RT.uncoveredH+RO.uncoveredH)+' horas no muestran otra cirugía ocupando al menos la mitad del mismo bloque. Oviedo concentra '+fmtNum(RO.uncoveredH)+' horas y una tasa de cancelación de '+fmtPct(O.tasaCanc)+'.</div>'+
+    '<div class="insight"><strong>La oportunidad mediana es de '+A.opMediana+' días</strong> entre programación y cirugía (percentil 90: '+A.opP90+' días). Esa ventana permite operar una lista de reemplazo, siempre que la liberación ocurra antes de las últimas 24–48 horas.</div>'+
+    '<div class="footnote"><b>Límite de comparación.</b> Agenda manual y reporte de cirugías ejecutadas no tienen identificador común de paciente/caso; por eso no se publica una tasa de cumplimiento programado→ejecutado. La recuperación se mide por ocupación del mismo quirófano y horario, no por identidad del paciente.</div>';
   /* gráficos */
   const top=mot.slice(0,7);
   mkChart('rep-mot','bar',top.map(function(m){return m.n.length>26?m.n.slice(0,26)+'…':m.n;}),
