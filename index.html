@@ -612,7 +612,8 @@ table.hm{border-collapse:separate;border-spacing:2px;width:100%;min-width:560px}
 
 <!-- ============ REPORTES / HALLAZGOS ============ -->
 <section class="sec" id="sec-rep">
-  <div class="subsec active" id="rep-resumen"></div>
+  <div class="subsec active" id="rep-fin-sep"></div>
+  <div class="subsec" id="rep-resumen"></div>
   <div class="subsec" id="rep-tes-ago"></div>
   <div class="subsec" id="rep-ovi-ago"></div>
   <div class="subsec" id="rep-tes-ytd"></div>
@@ -958,8 +959,12 @@ async function loadData(){
       fetch('datos/programacion.json').then(function(r){ return r.ok? r.json():null; }).catch(function(){ return null; })
     ]);
     FIN=res[0]; COM=res[1]; FLU=res[2]; GAD=res[3]; OCU=res[4]; PRG=res[5];
+    document.getElementById('fin-basis-note')?.remove();
+    const basis=document.createElement('div');basis.id='fin-basis-note';basis.className='footnote';
+    basis.textContent='Base 2026: Tesoro = Qlub Quirófanos SAS con participación; Oviedo = Torre Médica Oviedo SAS, estados propios. Consolidado = suma de gestión sin eliminaciones intercompañía. Operación disponible hasta agosto.';
+    document.getElementById('sec-fin').prepend(basis);
     const um=(FIN.ultimo_mes_cerrado||4)-1;
-    document.getElementById('hdr-range').textContent = MESES[um]+'-2026';
+    document.getElementById('hdr-range').textContent = MESES[um]+'-2026 · EEFF';
     document.getElementById('hdr-rows').textContent = COM.rows.length.toLocaleString('es-CO')+' cirugías';
     document.getElementById('loader').style.display='none';
     boot();
@@ -979,13 +984,13 @@ const SUBSECS = {
        ['fin-costos','🧮','Costos'],['fin-gadmin','🏢','G. Admin'],['fin-balance','🏛️','Balance'],['fin-flujo','💵','Flujo de Caja'],['fin-anual','📅','Anual']],
   ope:[['ope-inicio','📋','Inicio'],['ope-esp','🩺','Especialidades'],['ope-cir','👨‍⚕️','Cirujanos'],
        ['ope-qx','🏥','Quirófanos'],['ope-sedes','📍','Sedes'],['ope-ocup','🕐','Ocupación'],['ope-eps','🏦','Aseguradoras/Entidades']],
-  rep:[['rep-resumen','◫','Sala de junta'],['rep-tes-ago','T','Agosto · Tesoro'],
+  rep:[['rep-fin-sep','◫','Cierre septiembre'],['rep-resumen','◫','Agenda · agosto'],['rep-tes-ago','T','Agosto · Tesoro'],
        ['rep-ovi-ago','O','Agosto · Oviedo'],['rep-tes-ytd','T','Ene–Ago · Tesoro'],
        ['rep-ovi-ytd','O','Ene–Ago · Oviedo'],['rep-agenda','🗓️','Agenda y capacidad'],
        ['rep-sedes','🏛️','Las dos sedes']],
   acc:[]
 };
-let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio', rep:'rep-resumen'};
+let SUBSEC = {fin:'fin-inicio', ope:'ope-inicio', rep:'rep-fin-sep'};
 
 function switchTab(t){
   TAB=t;
@@ -1028,7 +1033,7 @@ function buildSub(id){
     'fin-costos':buildFinCostosV2,'fin-gadmin':buildFinGAdmin,'fin-balance':buildFinBalanceV2,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnualV2,
     'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
     'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps,
-    'rep-resumen':buildRepResumen,'rep-tes-ago':function(){buildRepSede('rep-tes-ago','Tesoro',0,8,8);},
+    'rep-fin-sep':buildRepFinSeptiembre,'rep-resumen':buildRepResumen,'rep-tes-ago':function(){buildRepSede('rep-tes-ago','Tesoro',0,8,8);},
     'rep-ovi-ago':function(){buildRepSede('rep-ovi-ago','Oviedo',1,8,8);},
     'rep-tes-ytd':function(){buildRepSede('rep-tes-ytd','Tesoro',0,1,8);},
     'rep-ovi-ytd':function(){buildRepSede('rep-ovi-ytd','Oviedo',1,1,8);},
@@ -2088,17 +2093,17 @@ function buildFinBalance(){
 }
 
 function buildFinBalanceV2(){
-  const el=document.getElementById('fin-balance'),years=finYearsSorted(),period=finMesesLbl();
-  const data={Tesoro:[],Oviedo:[]};
-  ['Tesoro','Oviedo'].forEach(function(s){data[s]=years.map(function(y){const a=finMesesIdx(s,y);return sumActive(pygArr(s,y,'4'),a);});});
-  const li=years.length-1,y=years[li],tot=data.Tesoro[li]+data.Oviedo[li],peso=tot?data.Oviedo[li]/tot*100:0;
-  el.innerHTML='<div class="sec-title">Escala de Operación por Sede <span class="st-badge">'+years.join(' vs ')+'</span></div><div class="sec-sub">Ingresos por sede · '+period+' · millones COP</div>'+
-    '<div class="filter-summary"><span>Años <b>'+years.join(', ')+'</b></span><span>Meses <b>'+period+'</b></span></div>'+
-    '<div class="kpis k3">'+kpi('','Tesoro '+y,fmtM(data.Tesoro[li]),period)+kpi('green','Oviedo '+y,fmtM(data.Oviedo[li]),period)+kpi('gold','Peso Oviedo '+y,fmtPct(peso),'del total de sedes')+'</div>'+
-    '<div class="gfull">'+card('Ingresos por sede · '+years.join(' vs '),period,'fb-chart','')+'</div>'+
-    '<div class="insight green">En '+y+', Oviedo representa <strong>'+fmtPct(peso)+'</strong> de los ingresos de ambas sedes para '+period+'.</div>'+
-    '<div class="footnote"><b>Nota:</b> esta vista usa ingresos de P&amp;G como indicador de escala. No sustituye un balance general.</div>';
-  mkChart('fb-chart','bar',years.map(String),[{label:'Tesoro',data:data.Tesoro,backgroundColor:C.tesoro},{label:'Oviedo',data:data.Oviedo,backgroundColor:C.oviedo}],{_tooltipLabel:tipMoney,_yMoney:true});
+  const el=document.getElementById('fin-balance'),years=finYearsSorted(),site=FF.sede;
+  const rows=[];
+  years.forEach(function(y){const src=FIN.esf&&FIN.esf[site]&&FIN.esf[site][y];
+    const ms=finMesesIdx(site,y);ms.forEach(function(i){if(src&&src[i+1])rows.push({year:y,month:i+1,d:src[i+1]});});});
+  const last=rows.length?rows[rows.length-1]:null,labels=rows.map(function(r){return MESES[r.month-1]+' '+r.year;});
+  el.innerHTML='<div class="sec-title">Balance general <span class="st-badge">'+site+'</span></div><div class="sec-sub">Saldos al cierre de cada mes · millones COP. Los saldos no se suman en acumulado.</div>'+
+    '<div class="kpis k3">'+kpi('','Activos',last?fmtM(last.d.activo):'Sin fuente',last?labels[labels.length-1]:'Sin BP para el período')+kpi('red','Pasivos',last?fmtM(last.d.pasivo):'—','Saldos de balance de prueba')+kpi('green','Patrimonio',last?fmtM(last.d.patrimonio):'—','Incluye resultado del ejercicio del BP')+'</div>'+
+    '<div class="gfull">'+card('Activos, pasivos y patrimonio','Saldo por mes, sin acumular','fb-chart','')+'</div>'+
+    '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Activo</th><th>Pasivo</th><th>Patrimonio</th><th>A − P − E</th></tr></thead><tbody>'+rows.map(function(r){return '<tr><td>'+MESES[r.month-1]+' '+r.year+'</td><td>'+fmtMd(r.d.activo,1)+'</td><td>'+fmtMd(r.d.pasivo,1)+'</td><td>'+fmtMd(r.d.patrimonio,1)+'</td><td>'+fmtMd(r.d.activo-r.d.pasivo-r.d.patrimonio,3)+'</td></tr>';}).join('')+'</tbody></table></div>'+
+    '<div class="footnote"><b>Base:</b> BP mensuales conciliados de 2026. Las hojas ESF de Torre Médica y del contrato presentan descuadres; no se usan como totales de balance. Para años sin BP cargado se muestra ausencia de fuente. Consolidado es suma de gestión sin eliminaciones intercompañía.</div>';
+  mkChart('fb-chart','bar',labels,[{label:'Activo',data:rows.map(r=>r.d.activo),backgroundColor:C.tesoro},{label:'Pasivo',data:rows.map(r=>r.d.pasivo),backgroundColor:C.neg},{label:'Patrimonio',data:rows.map(r=>r.d.patrimonio),backgroundColor:C.oviedo}],{_tooltipLabel:tipMoney,_yMoney:true});
 }
 
 /* ════════════════════════════════════════
@@ -3346,13 +3351,29 @@ function repScore(name,value,copy){return '<div class="rep-score-item"><div clas
 function repFinding(n,title,copy,cls){return '<div class="rep-finding '+(cls||'')+'"><div class="rf-num">'+n+'</div><div><h4>'+title+'</h4><p>'+copy+'</p></div></div>';}
 function repDownloads(sede,ytd){
   const stem='Qlub_'+(ytd?'Enero_Agosto':'Agosto')+'_2026_'+sede;
-  return '<div class="rep-downloads"><div class="rd-copy"><strong>Informe listo para compartir</strong>Dos versiones ya paginadas: A4 para computador, impresión y junta; móvil para leer sin zoom.</div>'+
+  return '<div class="rep-downloads"><div class="rd-copy"><strong>Archivo del cierre original de agosto</strong>Los PDF conservan las cifras emitidas en agosto, antes de la reexpresión de septiembre. La vista en pantalla usa los datos financieros actualizados.</div>'+
     '<a href="reportes/'+stem+'_A4.pdf" download>Descargar PDF · A4</a>'+
     '<a class="mobile" href="reportes/'+stem+'_Movil.pdf" download>Descargar PDF · celular</a></div>';
 }
 
+function buildRepFinSeptiembre(){
+  const el=document.getElementById('rep-fin-sep'),sites=['Tesoro','Oviedo','Consolidado'];
+  const values=function(s,from,to){const p=FIN.pyg[s+'_2026'],sum=function(c){return p[c].slice(from-1,to).reduce((a,b)=>a+b,0);};
+    const ing=sum('4'),cop=sum('6')+sum('7'),ga=sum('5'),ebit=ing-cop-ga;
+    return {ing,cop,ga,ebit,ebitda:ebit+sum('5160')+sum('5165'),neta:ebit+sum('42')-sum('53')-sum('54')};};
+  const month=values('Consolidado',9,9),ytd=values('Consolidado',1,9);
+  const table=function(from,to){return '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Entidad</th><th>Ingresos</th><th>Costos</th><th>G. admin</th><th>EBIT</th><th>EBITDA</th><th>Neta</th></tr></thead><tbody>'+sites.map(function(s){const v=values(s,from,to);return '<tr><td>'+s+'</td>'+['ing','cop','ga','ebit','ebitda','neta'].map(k=>'<td>'+v[k].toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>').join('')+'</tr>';}).join('')+'</tbody></table></div>';};
+  el.innerHTML='<div class="rep-hero"><div class="eyebrow">Cierre financiero · septiembre 2026</div><h2>Resultados oficiales y balance conciliado</h2><p>Septiembre y acumulado enero–septiembre. La base financiera se actualiza con los estados corregidos; las series operativas conservan su corte real de agosto.</p></div>'+
+    '<div class="kpis k4">'+kpi('navy','Ingresos septiembre',fmtMd(month.ing,1),'Suma de gestión')+kpi('green','EBITDA septiembre',fmtMd(month.ebitda,1),fmtPct(month.ebitda/month.ing*100))+kpi(month.neta>=0?'green':'red','Utilidad neta septiembre',fmtMd(month.neta,1),'ERI oficial')+kpi('gold','Ingresos Ene–Sep',fmtMd(ytd.ing,1),'Nueve meses cerrados')+'</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Septiembre · millones COP</h3></div><div class="card-body">'+table(9,9)+'</div></div>'+
+    '<div class="card" style="margin-top:18px"><div class="card-hdr"><h3>Enero–septiembre · millones COP</h3></div><div class="card-body">'+table(1,9)+'</div></div>'+
+    '<div class="insight">Tesoro aporta '+fmtMd(values('Tesoro',9,9).neta,1)+' de utilidad neta en septiembre; Torre Médica Oviedo registra '+fmtMd(values('Oviedo',9,9).neta,1)+'. El resultado conjunto de gestión es '+fmtMd(month.neta,1)+'.</div>'+
+    '<div class="footnote"><b>Trazabilidad:</b> ZIP ajuste, hoja ERI_Mensualizado, columna U para septiembre y E:U alternas para el acumulado. Oviedo usa su ERI legal real; ya no se estima multiplicando el contrato por 73%. Los meses enero–agosto de 2026 se reexpresan con estos archivos. Históricos 2024–2025 conservan su base publicada. Suma de gestión, sin eliminaciones intercompañía.</div>'+
+    '<div class="footnote"><b>Control de origen:</b> hojas ESF de Torre Médica y contrato con diferencias A − P − E de −$3.802,9 M y +$3.089,3 M. Balance y flujo del tablero usan BP mensuales conciliados; resultados usan ERI ajustado. El flujo de BP no se presenta como derivado del resultado ajustado. Debe solicitarse corrección de las hojas ESF al emisor.</div>';
+}
+
 function buildRepResumen(){
-  const el=document.getElementById('rep-resumen'), uM=ultMes();
+  const el=document.getElementById('rep-resumen'), uM=8;
   const M=repBloque(2026,uM,uM),Y=repBloque(2026,1,uM),YP=repBloque(2025,1,uM);
   const AT=prgResumen(1,uM,0),AO=prgResumen(1,uM,1),RT=repRecovery(0,1,uM),RO=repRecovery(1,1,uM);
   const OT=repOcup(0,1,uM),OO=repOcup(1,1,uM);
