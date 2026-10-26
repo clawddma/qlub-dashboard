@@ -2388,7 +2388,7 @@ function buildFinAnualV2(){
 /* Filtros MULTISELECT acumulables: cada dimensión es un Set de valores.
    Vacío = "Todos". OR dentro de dimensión, AND entre dimensiones. */
 const OF = { anio:new Set(), mes:new Set(), sede:new Set(), esp:new Set(), cir:new Set(), qx:new Set(), eps:new Set(), dia:new Set() };
-const HORAS_SEMANA_QX = 60; // Lun-Sáb 7:00-17:00 = 10h * 6 días
+const HORAS_SEMANA_QX = 55; // Lun–Vie 7–17 (50h), sábado 7–12 (5h)
 let OPEN_DD = null; // id del dropdown abierto
 let OPE_YTD = false; // toggle YTD operacional
 let OPE_METRICA = 'cx'; // selector de métrica global del Administrativo
@@ -2611,9 +2611,10 @@ function footnoteMetrica(){
    (no hay informe con hora en ese tramo) — la UI lo declara, no lo disimula.
    Rejilla 7:00-17:00: ventana operativa usada para medir capacidad y ocupación. */
 const HM_H0=7, HM_H1=17;                       // ventana quirúrgica real (horas)
+function hmFinDia(fecha){const d=new Date(fecha+'T12:00:00Z').getUTCDay();return d===0?HM_H0:d===6?12:HM_H1;}
 const HM_QX_SEDE={0:'Tesoro',1:'Oviedo'};
 const OCOL={f:0,sede:1,qx:2,ini:3,fin:4,cir:5,esp:6};
-/* estado propio del mapa: rango de fechas + vista. No toca los filtros globales. */
+/* El rango local refina los filtros superiores; nunca los sustituye. */
 const HMF={desde:null,hasta:null,vista:'qx',rapido:'todo'};
 
 function ocuOk(){ return !!(OCU && OCU.rows && OCU.rows.length); }
@@ -2623,15 +2624,15 @@ function hmRango(){
   const F=ocuFechas();
   return {d: HMF.desde || F[0], h: HMF.hasta || F[F.length-1]};
 }
-/* filas dentro del rango, respetando los filtros globales de SEDE y QUIRÓFANO
-   (los de año/mes NO se aplican: el mapa tiene su propio selector de fechas y
-   mezclarlos daría intersecciones vacías sin que se entienda por qué). */
-function ocuRows(){
+/* Mismos filtros de año, mes, día, sede y dimensiones que la barra superior.
+   ignoreRange solo se usa para anclar los atajos al período global seleccionado. */
+function ocuRows(ignoreRange){
   if(!ocuOk()) return [];
   const R=hmRango(), F=ocuFechas();
-  const i0=F.findIndex(function(x){return x>=R.d;});
-  let i1=-1; for(var k=F.length-1;k>=0;k--){ if(F[k]<=R.h){ i1=k; break; } }
-  if(i0<0||i1<0||i1<i0) return [];
+  /* La fuente horaria no tiene aseguradora ni ID de caso para unirla con COM.
+     No se ofrece un mapa sin filtrar cuando se solicita esa dimensión. */
+  if(OF.eps.size) return [];
+  const ym=(OPE_YTD && OF.mes.size===0)?ultMesOpe():0;
   const sedeOn=OF.sede.size>0;
   /* OF.qx / OF.cir / OF.esp guardan índices de los catálogos de COM; el mapa usa los
      suyos. Se traducen por NOMBRE — nunca por índice, que no coincide entre archivos.
@@ -2647,7 +2648,13 @@ function ocuRows(){
   const cirW=mapa(OF.cir,COM.cirs,OCU.cirs,canon);
   const espW=mapa(OF.esp,COM.esps,OCU.esps,null);
   return OCU.rows.filter(function(r){
-    if(r[OCOL.f]<i0 || r[OCOL.f]>i1) return false;
+    const f=F[r[OCOL.f]],year=+f.slice(0,4),month=+f.slice(5,7);
+    const day=(new Date(f+'T12:00:00Z').getUTCDay()+6)%7;
+    if(!ignoreRange && (f<R.d || f>R.h)) return false;
+    if(OF.anio.size && !OF.anio.has(year)) return false;
+    if(OF.mes.size && !OF.mes.has(month)) return false;
+    if(ym && month>ym) return false;
+    if(OF.dia.size && !OF.dia.has(day)) return false;
     if(sedeOn && !OF.sede.has(r[OCOL.sede])) return false;
     if(qxW && !qxW[OCU.qxs[r[OCOL.qx]]]) return false;
     if(cirW && (r[OCOL.cir]<0 || !cirW[OCU.cirs[r[OCOL.cir]]])) return false;
@@ -2696,7 +2703,7 @@ function ocuAgg(rows, claveFn){
     merged.push([a,b]);
     /* 3) reparto en franjas */
     merged.forEach(function(m){
-      for(var h=HM_H0;h<HM_H1;h++){
+      for(var h=HM_H0;h<hmFinDia(OCU.fechas[f]);h++){
         const x=ocuSolape(m[0],m[1],h);
         if(x>0) cel[k][h-HM_H0]+=x;
       }
@@ -2705,11 +2712,12 @@ function ocuAgg(rows, claveFn){
     diasSede[f]=1;
   });
   const nDiasTot=Object.keys(diasSede).length;
+  const capMin=hmHoras().map(h=>Object.keys(diasSede).filter(f=>h<hmFinDia(OCU.fechas[+f])).length*60);
   const out={};
   Object.keys(cel).forEach(function(k){
     out[k]={min:cel[k], dias:Object.keys(dias[k]).length, diasTot:nDiasTot};
   });
-  return {filas:out, nDias:nDiasTot};
+  return {filas:out, nDias:nDiasTot,capMin:capMin};
 }
 /* % de ocupación de una celda: minutos ocupados / (días de operación × 60).
    El denominador son los días en que la SEDE operó, no los días del calendario:
@@ -2740,7 +2748,8 @@ function estOcupacion(rows){
     nQx = (sedes.has(0)&&sedes.has(1))?8:(sedes.has(1)?6:4);
   }
   const semanas=months*4.33;
-  const capMin=nQx*HORAS_SEMANA_QX*60*semanas;
+  const hSemana=OF.dia.size?Array.from(OF.dia).reduce((t,d)=>t+(d<5?10:d===5?5:0),0):HORAS_SEMANA_QX;
+  const capMin=nQx*hSemana*60*semanas;
   return capMin? Math.min(totMin/capMin*100,100):0;
 }
 function shortName(n){ const p=n.split(' '); return p.length>2?(p[0]+' '+p[1]+' '+(p[2]?p[2].charAt(0)+'.':'')):n; }
@@ -3107,16 +3116,18 @@ function hmBloque(){
   if(!ocuOk()) return '';
   const R=hmRango();
   const filas=ocuRows();
-  const rango = (R.d===R.h) ? fechaLarga(R.d) : (fechaLarga(R.d)+' a '+fechaLarga(R.h));
+  const fechas=filas.map(r=>OCU.fechas[r[OCOL.f]]).sort();
+  const rango = fechas.length ? fechaLarga(fechas[0])+' a '+fechaLarga(fechas[fechas.length-1]) : 'Sin registros para la selección';
   const haySede = function(i){ return filas.some(function(r){return r[OCOL.sede]===i;}); };
   return '<div class="sec-title" style="margin-top:26px">Mapa de calor de quirófanos '+
       '<span class="st-badge">'+rango+'</span></div>'+
     '<div class="sec-sub">Ocupación real por franja horaria, calculada con la hora de entrada y salida de quirófano de cada cirugía. '+
-      'Rejilla '+HM_H0+':00–'+HM_H1+':00. El número es el <strong>% de la hora que el quirófano estuvo ocupado</strong>, '+
-      'promediado sobre los días en que la sede operó.</div>'+
+      'Lunes a viernes '+HM_H0+':00–'+HM_H1+':00; sábado 7:00–12:00. El número es el <strong>% de la hora que el quirófano estuvo ocupado</strong>, '+
+      'promediado sobre los días en que la sede operó. <strong>Filtros aplicados: '+filterLabel()+'</strong>. El rango Desde/Hasta se cruza con los filtros superiores; no los reemplaza.</div>'+
     hmControles()+
+    ((!OF.anio.size||OF.anio.has(2026))&&(!OF.mes.size||OF.mes.has(9))?'<div class="insight warn"><strong>Septiembre 2026: cobertura parcial.</strong> La fuente horaria solo contiene registros del 1 de septiembre. El mapa no representa la ocupación de todo el mes.</div>':'')+
     (filas.length===0
-      ? '<div class="insight neg">No hay cirugías con hora de quirófano en el rango seleccionado. Amplía el rango o revisa los filtros de sede y quirófano.</div>'
+      ? '<div class="insight neg">'+(OF.eps.size?'No se puede calcular este mapa por aseguradora: la fuente horaria no contiene esa dimensión ni un identificador de caso para cruzarla. Retira ese filtro para consultar ocupación.':'No hay cirugías con hora de quirófano para la combinación de año, mes, día y demás filtros seleccionados. No equivale a 0% de ocupación. Revisa también el rango Desde/Hasta.')+'</div>'
       : (haySede(0)? hmTabla(filas,0,'Sede Tesoro','Qlub Quirófanos'):'')+
         (haySede(1)? hmTabla(filas,1,'Sede Oviedo','Qlub Oviedo'):'')+
         ((haySede(0)&&haySede(1))? hmTabla(filas,null,'Consolidado · ambas sedes','Tesoro + Oviedo'):'')
@@ -3149,11 +3160,12 @@ function hmTabla(rows, sedeIdx, titulo, sub){
     const fila=A.filas[q];
     cuerpo+='<tr><th>'+q.replace('QUIROFANOOVI','OVI ').replace('QUIROFANO ','QX ')+'</th>'+
       horas.map(function(h,i){
-        const pct=ocuPct(fila.min[i], A.nDias);
+        if(!A.capMin[i])return '<td title="Fuera del horario operativo">—</td>';
+        const pct=ocuPct(fila.min[i], A.capMin[i]/60);
         const c=hmColor(pct);
         const hrs=(fila.min[i]/60);
         return '<td style="--c:'+c.bg+';--t:'+c.tx+'" title="'+q+' · '+h+':00–'+(h+1)+':00\n'+
-               Math.round(pct)+'% ocupado · '+hrs.toFixed(1)+' h en '+A.nDias+' días de operación">'+
+               Math.round(pct)+'% ocupado · '+hrs.toFixed(1)+' h en '+(A.capMin[i]/60)+' días con esta franja habilitada">'+
                (pct>=1?Math.round(pct):'·')+'</td>';
       }).join('')+'</tr>';
   });
@@ -3161,14 +3173,16 @@ function hmTabla(rows, sedeIdx, titulo, sub){
   const tf=T.filas['_'];
   cuerpo+='<tr class="tot"><th>Consolidado</th>'+
     horas.map(function(h,i){
-      const pct=nQx? Math.min(100, tf.min[i]/(T.nDias*60*nQx)*100) : 0;
+      if(!T.capMin[i])return '<td title="Fuera del horario operativo">—</td>';
+      const pct=nQx? Math.min(100, tf.min[i]/(T.capMin[i]*nQx)*100) : 0;
       const c=hmColor(pct);
       return '<td style="--c:'+c.bg+';--t:'+c.tx+'" title="'+(esCons?'Ambas sedes':HM_QX_SEDE[sedeIdx])+' · '+h+':00–'+(h+1)+':00\n'+
-             Math.round(pct)+'% de la capacidad ('+nQx+' quirófanos × '+T.nDias+' días)">'+
+             Math.round(pct)+'% de la capacidad ('+nQx+' quirófanos × '+(T.capMin[i]/60)+' días con esta franja habilitada)">'+
              (pct>=1?Math.round(pct):'·')+'</td>';
     }).join('')+'</tr>';
   const totMin=tf.min.reduce(function(a,b){return a+b;},0);
-  const ocupProm=nQx? totMin/(T.nDias*60*nQx*horas.length)*100 : 0;
+  const capTotal=T.capMin.reduce((a,b)=>a+b,0)*nQx;
+  const ocupProm=capTotal?totMin/capTotal*100:0;
   let pico=0, hPico=horas[0];
   horas.forEach(function(h,i){ const v=tf.min[i]; if(v>pico){pico=v;hPico=h;} });
   return '<div class="card"><div class="card-hdr"><h3>'+titulo+'</h3></div><div class="card-body">'+
@@ -3186,7 +3200,7 @@ function hmTabla(rows, sedeIdx, titulo, sub){
 /* controles de fecha del mapa */
 function hmControles(){
   const F=ocuFechas(), R=hmRango();
-  const qk=[['dia','Último día'],['sem','Última semana'],['mes','Último mes'],['todo','Todo el histórico']];
+  const qk=[['dia','Último día'],['sem','Última semana'],['mes','Último mes'],['todo','Todo el período filtrado']];
   return '<div class="hm-ctl">'+
     '<div><label>Desde</label><input type="date" id="hm-d" value="'+R.d+'" min="'+F[0]+'" max="'+F[F.length-1]+'" onchange="hmFecha(\'desde\',this.value)"></div>'+
     '<div><label>Hasta</label><input type="date" id="hm-h" value="'+R.h+'" min="'+F[0]+'" max="'+F[F.length-1]+'" onchange="hmFecha(\'hasta\',this.value)"></div>'+
@@ -3206,10 +3220,11 @@ function hmFecha(cual,val){
 /* atajos: se calculan sobre la ÚLTIMA FECHA CON ACTIVIDAD, no sobre hoy — el
    tablero se mira meses después del cierre y "hoy" daría siempre vacío. */
 function hmRapido(k){
-  const F=ocuFechas(), ult=F[F.length-1];
+  const F=ocuRows(true).map(r=>OCU.fechas[r[OCOL.f]]).sort(),ult=F[F.length-1];
   HMF.rapido=k;
   if(k==='todo'){ HMF.desde=null; HMF.hasta=null; }
   else{
+    if(!ult){ HMF.desde=null;HMF.hasta=null;buildOpeOcup();return; }
     const d=new Date(ult+'T00:00:00');
     const n=(k==='dia')?0:(k==='sem')?6:29;
     d.setDate(d.getDate()-n);
@@ -3249,11 +3264,11 @@ function buildOpeOcup(){
   const durProm=durs.length?durs.reduce(function(a,b){return a+b;},0)/durs.length:0;
   el.innerHTML=
     '<div class="sec-title">Ocupación de Salas <span class="st-badge">'+filterLabel()+'</span></div>'+
-    '<div class="sec-sub">Distribución por día y duración · ventana quirúrgica 7:00–17:00 · lunes a sábado</div>'+
+    '<div class="sec-sub">Distribución por día y duración · filtros sincronizados con el mapa de calor. La estimación superior usa cirugías registradas; el mapa usa exclusivamente horas reales y declara su cobertura.</div>'+
     '<div class="kpis k4">'+
-      kpi(ocup>=70?'green':'gold','Ocupación estimada',fmtPct(ocup),'sobre capacidad')+
-      '<div class="kpi"><div class="kpi-lbl">Día más activo</div><div class="kpi-val" style="font-size:17px">'+diasLbl[bi]+'</div><div class="kpi-sub">'+fmtNum(Math.max.apply(null,diaCx))+' cx</div></div>'+
-      kpi('navy','Duración promedio',fmtNum(durProm)+' min','por cirugía')+
+      kpi(ocup>=70?'green':'gold','Ocupación estimada',all.length?fmtPct(ocup):'—',all.length?'sobre capacidad del período y días seleccionados':'Sin cirugías en la fuente comercial para estos filtros')+
+      '<div class="kpi"><div class="kpi-lbl">Día más activo</div><div class="kpi-val" style="font-size:17px">'+(all.length?diasLbl[bi]:'Sin datos')+'</div><div class="kpi-sub">'+fmtNum(Math.max.apply(null,diaCx))+' cx</div></div>'+
+      kpi('navy','Duración promedio',durs.length?fmtNum(durProm)+' min':'—','por cirugía')+
       kpi('gold','Cirugías con día',fmtNum(conDia),'registran día')+
     '</div>'+
     '<div class="g2">'+
@@ -3261,7 +3276,7 @@ function buildOpeOcup(){
       card('Horas-quirófano por día','horas','oo-hrs','')+
     '</div>'+
     '<div class="gfull">'+card('Distribución por duración de cirugía','','oo-dur','short')+'</div>'+
-    '<div class="insight">La carga se concentra entre semana; el sábado opera a media máquina (7h vs 11h diarias). '+(diaCx[5]<diaCx[2]*0.5?'Abrir agenda comercial el sábado en la tarde es capacidad lista para vender sin nuevo CapEx.':'')+'</div>'+
+    '<div class="insight">Horario utilizado: lunes a viernes de 7:00 a 17:00 y sábados de 7:00 a 12:00. El mapa recalcula minutos ocupados y capacidad de las franjas habilitadas después de aplicar los filtros. Sin registros no significa ocupación de 0%.</div>'+
     hmBloque()+
     footnoteMetrica();
   mkChart('oo-dia','bar',diasLbl,[{label:MD.lbl,data:diaAgg.map(function(a){return metVal(a);}),backgroundColor:C.tesoro}],
