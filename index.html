@@ -3385,9 +3385,10 @@ function repFinding(n,title,copy,cls){return '<div class="rep-finding '+(cls||''
 const REP_MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 function repDownloads(sede,ytd){
   const mes=REP_MESES[ultMes()-1],stem='Qlub_'+(ytd?'Enero_':'')+mes+'_2026_'+sede;
+  const version='?v='+encodeURIComponent((COM.cobertura||{}).version||COM.rows.length);
   return '<div class="rep-downloads"><div class="rd-copy"><strong>Reporte financiero · '+(ytd?'enero–':'')+mes.toLowerCase()+' 2026</strong>PDF con las mismas cifras de esta vista. La información operativa conserva su propio corte, indicado por separado.</div>'+
-    '<a href="reportes/'+stem+'_A4.pdf" download>Descargar PDF · A4</a>'+
-    '<a class="mobile" href="reportes/'+stem+'_Movil.pdf" download>Descargar PDF · celular</a></div>';
+    '<a href="reportes/'+stem+'_A4.pdf'+version+'" download>Descargar PDF · A4</a>'+
+    '<a class="mobile" href="reportes/'+stem+'_Movil.pdf'+version+'" download>Descargar PDF · celular</a></div>';
 }
 
 function buildRepFinSeptiembre(){
