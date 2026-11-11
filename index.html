@@ -1038,7 +1038,7 @@ function buildSub(id){
     'fin-costos':buildFinCostosV2,'fin-gadmin':buildFinGAdmin,'fin-balance':buildFinBalanceV2,'fin-flujo':buildFinFlujo,'fin-anual':buildFinAnualV2,
     'ope-inicio':buildOpeInicio,'ope-esp':buildOpeEsp,'ope-cir':buildOpeCir,
     'ope-qx':buildOpeQx,'ope-sedes':buildOpeSedes,'ope-ocup':buildOpeOcup,'ope-eps':buildOpeEps,
-    'rep-fin-sep':buildRepFinSeptiembre,'rep-resumen':buildRepResumen,'rep-tes-ago':function(){buildRepSede('rep-tes-ago','Tesoro',0,ultMes(),ultMes());},
+    'rep-fin-sep':buildRepFinOctubre,'rep-resumen':buildRepResumen,'rep-tes-ago':function(){buildRepSede('rep-tes-ago','Tesoro',0,ultMes(),ultMes());},
     'rep-ovi-ago':function(){buildRepSede('rep-ovi-ago','Oviedo',1,ultMes(),ultMes());},
     'rep-tes-ytd':function(){buildRepSede('rep-tes-ytd','Tesoro',0,1,ultMes());},
     'rep-ovi-ytd':function(){buildRepSede('rep-ovi-ytd','Oviedo',1,1,ultMes());},
@@ -2393,7 +2393,7 @@ let OPEN_DD = null; // id del dropdown abierto
 let OPE_YTD = false; // toggle YTD operacional
 let OPE_METRICA = 'cx'; // selector de métrica global del Administrativo
 /* Corte operativo declarado por la fuente; nunca se infiere de una fecha aislada ni del cierre financiero. */
-const OPE_COBERTURA={ultimo_mes_completo:9,fuente:'INFORMES/Abril_Septiembre_2026.xlsx'};
+const OPE_COBERTURA={ultimo_mes_completo:10,fuente:'INFORMES/Cierre octubre 2026/Abril_Octubre_2026.xlsx'};
 function ultMesOpe(){ return COM&&COM.cobertura?COM.cobertura.ultimo_mes_completo:OPE_COBERTURA.ultimo_mes_completo; }
 /* Agenda manual: snapshot anterior, distinto a las cirugías ejecutadas. */
 function ultMesAgenda(){return 8;}
@@ -2603,7 +2603,7 @@ function filterLabel(){
   return p.length?p.join(' · '):'Todos los datos';
 }
 function footnoteMetrica(){
-  return '<div class="footnote"><b>Metodología:</b> cirugías según el informe operativo, con deduplicación por cirugía e informe y mes por fecha real en abril–septiembre 2026. Facturación, ticket y $/hora usan casos con valor registrado; no equivalen al ingreso del ERI contable. Las horas reales excluyen registros sin horario válido. Los comparativos conservan sus períodos y fuentes originales.</div>';
+  return '<div class="footnote"><b>Metodología:</b> cirugías según el informe operativo, con deduplicación por cirugía e informe y mes por fecha real en abril–octubre 2026. Facturación, ticket y $/hora usan casos con valor registrado; no equivalen al ingreso del ERI contable. Las horas reales excluyen registros sin horario válido. Los comparativos conservan sus períodos y fuentes originales.</div>';
 }
 /* ════════════════════════════════════════
    MAPA DE CALOR DE OCUPACIÓN  (datos/ocupacion.json)
@@ -3130,7 +3130,7 @@ function hmBloque(){
       'promediado sobre los días en que la sede operó. <strong>Filtros aplicados: '+filterLabel()+'</strong>. El rango Desde/Hasta se cruza con los filtros superiores; no los reemplaza.</div>'+
     hmControles()+
     '<div class="footnote">Fuente horaria actualizada hasta '+fechaLarga((OCU.actualizacion||{}).fecha_corte||OCU.fechas[OCU.fechas.length-1])+'. Solo casos con horas válidas; franjas laborales según el horario acordado.</div>'+
-    (OF.eps.size?'<div class="footnote">El filtro de aseguradora está disponible en la fuente horaria de abril–septiembre de 2026. Los períodos sin ese atributo quedan excluidos.</div>':'')+
+    (OF.eps.size?'<div class="footnote">El filtro de aseguradora está disponible en la fuente horaria de abril–octubre de 2026. Los períodos sin ese atributo quedan excluidos.</div>':'')+
     (filas.length===0
       ? '<div class="insight neg">No hay cirugías con hora de quirófano para la combinación de año, mes, día y demás filtros seleccionados. No equivale a 0% de ocupación. Revisa también el rango Desde/Hasta y la cobertura de aseguradora.</div>'
       : (haySede(0)? hmTabla(filas,0,'Sede Tesoro','Qlub Quirófanos'):'')+
@@ -3391,20 +3391,21 @@ function repDownloads(sede,ytd){
     '<a class="mobile" href="reportes/'+stem+'_Movil.pdf'+version+'" download>Descargar PDF · celular</a></div>';
 }
 
-function buildRepFinSeptiembre(){
+function buildRepFinOctubre(){
   const el=document.getElementById('rep-fin-sep'),sites=['Tesoro','Oviedo','Consolidado'];
   const values=function(s,from,to){const p=FIN.pyg[s+'_2026'],sum=function(c){return p[c].slice(from-1,to).reduce((a,b)=>a+b,0);};
     const ing=sum('4'),cop=sum('6')+sum('7'),ga=sum('5'),ebit=ing-cop-ga;
     return {ing,cop,ga,ebit,ebitda:ebit+sum('5160')+sum('5165'),neta:ebit+sum('42')-sum('53')-sum('54')};};
-  const month=values('Consolidado',9,9),ytd=values('Consolidado',1,9);
+  const cut=ultMes(),label=REP_MESES[cut-1].toLowerCase();
+  const month=values('Consolidado',cut,cut),ytd=values('Consolidado',1,cut);
   const table=function(from,to){return '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Entidad</th><th>Ingresos</th><th>Costos</th><th>G. admin</th><th>EBIT</th><th>EBITDA</th><th>Neta</th></tr></thead><tbody>'+sites.map(function(s){const v=values(s,from,to);return '<tr><td>'+s+'</td>'+['ing','cop','ga','ebit','ebitda','neta'].map(k=>'<td>'+v[k].toLocaleString('es-CO',{minimumFractionDigits:2,maximumFractionDigits:2})+'</td>').join('')+'</tr>';}).join('')+'</tbody></table></div>';};
-  el.innerHTML='<div class="rep-hero"><div class="eyebrow">Cierre financiero · septiembre 2026</div><h2>Resultados oficiales y balance conciliado</h2><p>Septiembre y acumulado enero–septiembre. Estados financieros y cirugías ejecutadas actualizados hasta septiembre. La agenda de cancelaciones conserva su fuente anterior, identificada por separado.</p></div>'+
-    '<div class="kpis k4">'+kpi('navy','Ingresos septiembre',fmtMd(month.ing,1),'Suma de gestión')+kpi('green','EBITDA septiembre',fmtMd(month.ebitda,1),fmtPct(month.ebitda/month.ing*100))+kpi(month.neta>=0?'green':'red','Utilidad neta septiembre',fmtMd(month.neta,1),'ERI oficial')+kpi('gold','Ingresos Ene–Sep',fmtMd(ytd.ing,1),'Nueve meses cerrados')+'</div>'+
-    '<div class="card"><div class="card-hdr"><h3>Septiembre · millones COP</h3></div><div class="card-body">'+table(9,9)+'</div></div>'+
-    '<div class="card" style="margin-top:18px"><div class="card-hdr"><h3>Enero–septiembre · millones COP</h3></div><div class="card-body">'+table(1,9)+'</div></div>'+
-    '<div class="insight">Tesoro aporta '+fmtMd(values('Tesoro',9,9).neta,1)+' de utilidad neta en septiembre; Torre Médica Oviedo registra '+fmtMd(values('Oviedo',9,9).neta,1)+'. El resultado conjunto de gestión es '+fmtMd(month.neta,1)+'.</div>'+
-    '<div class="footnote"><b>Trazabilidad:</b> ZIP ajuste, hoja ERI_Mensualizado, columna U para septiembre y E:U alternas para el acumulado. Oviedo usa su ERI legal real; ya no se estima multiplicando el contrato por 73%. Los meses enero–agosto de 2026 se reexpresan con estos archivos. Históricos 2024–2025 conservan su base publicada. Suma de gestión, sin eliminaciones intercompañía.</div>'+
-    '<div class="footnote"><b>Control de origen:</b> hojas ESF de Torre Médica y contrato con diferencias A − P − E de −$3.802,9 M y +$3.089,3 M. Balance y flujo del tablero usan BP mensuales conciliados; resultados usan ERI ajustado. El flujo de BP no se presenta como derivado del resultado ajustado. Debe solicitarse corrección de las hojas ESF al emisor.</div>';
+  el.innerHTML='<div class="rep-hero"><div class="eyebrow">Cierre financiero · octubre 2026</div><h2>Resultados oficiales y balance conciliado</h2><p>Octubre y acumulado enero–octubre. Estados financieros y cirugías ejecutadas actualizados hasta octubre. La agenda de cancelaciones conserva su fuente anterior, identificada por separado.</p></div>'+
+    '<div class="kpis k4">'+kpi('navy','Ingresos octubre',fmtMd(month.ing,1),'Suma de gestión')+kpi('green','EBITDA octubre',fmtMd(month.ebitda,1),fmtPct(month.ebitda/month.ing*100))+kpi(month.neta>=0?'green':'red','Utilidad neta octubre',fmtMd(month.neta,1),'ERI oficial')+kpi('gold','Ingresos Ene–Oct',fmtMd(ytd.ing,1),'Diez meses cerrados')+'</div>'+
+    '<div class="card"><div class="card-hdr"><h3>Octubre · millones COP</h3></div><div class="card-body">'+table(cut,cut)+'</div></div>'+
+    '<div class="card" style="margin-top:18px"><div class="card-hdr"><h3>Enero–octubre · millones COP</h3></div><div class="card-body">'+table(1,cut)+'</div></div>'+
+    '<div class="insight">Tesoro aporta '+fmtMd(values('Tesoro',cut,cut).neta,1)+' de utilidad neta en octubre; Torre Médica Oviedo registra '+fmtMd(values('Oviedo',cut,cut).neta,1)+'. El resultado conjunto de gestión es '+fmtMd(month.neta,1)+'.</div>'+
+    '<div class="footnote"><b>Trazabilidad:</b> Correo de Hermen del 10 de noviembre, hoja ERI_Mensualizado, columna W para octubre y E:W alternas para el acumulado. Oviedo usa su ERI legal real; ya no se estima multiplicando el contrato por 73%. Los meses enero–septiembre de 2026 se reexpresan con estos archivos. Históricos 2024–2025 conservan su base publicada. Suma de gestión, sin eliminaciones intercompañía.</div>'+
+    '<div class="footnote"><b>Control de origen:</b> '+((FIN.cierre&&FIN.cierre.notas)||[]).join(' ')+'</div>';
 }
 
 function buildRepResumen(){
@@ -3414,7 +3415,7 @@ function buildRepResumen(){
   const OT=repOcup(0,1,ultMesOpe()),OO=repOcup(1,1,ultMesOpe());
   const vIng=repPctVar(Y.Consolidado.ing,YP.Consolidado.ing),vE=repPctVar(Y.Consolidado.ebitda,YP.Consolidado.ebitda);
   el.innerHTML=
-    '<div class="rep-hero"><div class="eyebrow">Sala de reportería · cierre '+REP_MESES[uM-1].toLowerCase()+' 2026</div><h2>Resultado financiero y capacidad, con cortes explícitos.</h2><p>Finanzas y cirugías ejecutadas: enero–'+REP_MESES[uM-1].toLowerCase()+'. Agenda de cancelaciones: fuente anterior, actualizada el 19 de agosto. No se extrapolan cancelaciones de septiembre.</p></div>'+
+    '<div class="rep-hero"><div class="eyebrow">Sala de reportería · cierre '+REP_MESES[uM-1].toLowerCase()+' 2026</div><h2>Resultado financiero y capacidad, con cortes explícitos.</h2><p>Finanzas y cirugías ejecutadas: enero–'+REP_MESES[uM-1].toLowerCase()+'. Agenda de cancelaciones: fuente anterior, actualizada el 19 de agosto. No se extrapolan cancelaciones de septiembre y octubre.</p></div>'+
     '<div class="rep-source"><span>EEFF y cirugías Ene–'+MESES[uM-1]+'</span><span>'+fmtNum(COM.rows.length)+' cirugías históricas</span><span>Agenda: snapshot 19 Ago</span></div>'+
     '<div class="kpis k4">'+
       kpi('navy','Ingresos '+REP_MESES[uM-1].toLowerCase(),fmtMd(M.Consolidado.ing,0),'Tesoro + Oviedo')+
@@ -3430,7 +3431,7 @@ function buildRepResumen(){
     '</div>'+
     '<div class="g2"><div class="card"><div class="card-hdr"><h3>Lectura por sede</h3></div><div class="card-body">'+
       repFinding('T','Tesoro: crecimiento sin conversión completa','En el acumulado, el ingreso crece '+repSigned(repPctVar(Y.Tesoro.ing,YP.Tesoro.ing))+' y el EBITDA '+repSigned(repPctVar(Y.Tesoro.ebitda,YP.Tesoro.ebitda))+'. La agenda deja '+fmtNum(RT.uncoveredH)+' horas tardías sin ocupación observada.','bad')+
-      repFinding('O','Oviedo: agenda de '+REP_MESES[oM-1].toLowerCase(),'Canceló '+fmtPct(prgResumen(oM,oM,1).tasaCanc)+' de lo programado y '+fmtPct(prgResumen(oM,oM,1).pctTardias)+' de las cancelaciones llegaron con un día o menos. Septiembre aún no está completo.','bad')+
+      repFinding('O','Oviedo: agenda de '+REP_MESES[oM-1].toLowerCase(),'Canceló '+fmtPct(prgResumen(oM,oM,1).tasaCanc)+' de lo programado y '+fmtPct(prgResumen(oM,oM,1).pctTardias)+' de las cancelaciones llegaron con un día o menos. No hay programación nueva para septiembre ni octubre.','bad')+
       repFinding('↓','La tarde · Ene–'+MESES[ultMesOpe()-1],'En días-sala con actividad, la ocupación 14:00–17:00 promedia '+fmtPct(OT.afternoon)+' en Tesoro y '+fmtPct(OO.afternoon)+' en Oviedo.','')+
     '</div></div><div class="card"><div class="card-hdr"><h3>Qué debe decidir la junta</h3></div><div class="card-body">'+
       repFinding('1','Regla de liberación','Toda reserva sin paciente debe liberarse con antelación definida; el tablero ya separa liberación total de liberación tardía.','')+
@@ -3463,9 +3464,9 @@ function buildRepSede(id,sede,sedeIdx,m0,m1){
     card('Resultados comparados',cmp+' vs '+periodo,pfx+'-res','')+'</div>'+
     '<div class="gfull">'+card('Evolución mensual del margen EBITDA','Ene–'+MESES[m1-1]+' · mismos meses de 2025 y 2026',pfx+'-trend','')+'</div>'+
     '<div class="insight"><strong>'+sede+': '+fmtPct(F.ing?F.ebitda/F.ing*100:0)+' de margen EBITDA.</strong> En '+periodo+', los ingresos varían '+repSigned(repPctVar(F.ing,B.ing))+' y el EBITDA '+repSigned(repPctVar(F.ebitda,B.ebitda))+' frente al mismo período de 2025. El margen neto es '+fmtPct(F.ing?F.neta/F.ing*100:0)+'.</div>'+
-    '<div class="insight warn"><b>Cancelaciones de septiembre pendientes.</b> Cirugías ejecutadas, horarios y economía por cirugía ya incluyen septiembre. El Excel no contiene las cancelaciones ni las reservas liberadas; esos indicadores requieren los cuadros de programación actualizados.</div>'+
+    '<div class="insight warn"><b>Cancelaciones de septiembre y octubre pendientes.</b> Cirugías ejecutadas, horarios y economía por cirugía ya incluyen octubre. El Excel no contiene las cancelaciones ni las reservas liberadas; esos indicadores requieren los cuadros de programación actualizados.</div>'+
     '<div id="'+pfx+'-op"></div>'+
-    '<div class="footnote"><b>Fuente financiera:</b> ERI oficial ajustado del cierre de septiembre. Tesoro: Qlub Quirófanos SAS con participación; Oviedo: Torre Médica Oviedo SAS, estados propios. Históricos 2025 según base publicada. Los informes no sustituyen la conciliación entre entidades.</div>';
+    '<div class="footnote"><b>Fuente financiera:</b> ERI oficial del cierre de octubre. Tesoro: Qlub Quirófanos SAS con participación; Oviedo: Torre Médica Oviedo SAS, estados propios. Históricos 2025 según base publicada. Los informes no sustituyen la conciliación entre entidades.</div>';
   const vals=X=>[X.ing,-X.cop,-X.ga,X.uop,X.ebitda,X.neta];
   mkChart(pfx+'-res','bar',['Ingresos','Costos','G. admin','EBIT','EBITDA','Neta'],[
     {label:'2025',data:vals(B),backgroundColor:YR_CLR[2025]},{label:'2026',data:vals(F),backgroundColor:YR_CLR[2026]}],{_tooltipLabel:tipMoney,_yMoney:true});
@@ -3486,13 +3487,13 @@ function buildRepSede(id,sede,sedeIdx,m0,m1){
     kpi('navy','Duración promedio',fmtNum(O.dur)+' min',opLbl)+
     kpi('gold','Horas quirúrgicas',fmtNum(O.hrs)+' h','Duraciones registradas · '+opLbl)+
     kpi('gold','Baches internos',fmtNum(Q.gapH)+' h','Dentro de la jornada acordada · '+opLbl)+'</div>'+
-    '<div class="g2"><div class="card"><div class="card-hdr"><h3>Economía por cirugía · '+opLbl+'</h3></div><div class="card-body"><p>Finanzas y cirugías corresponden al mismo período, incluido septiembre.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Indicador</th><th>2025</th><th>2026</th><th>Variación</th></tr></thead><tbody>'+
+    '<div class="g2"><div class="card"><div class="card-hdr"><h3>Economía por cirugía · '+opLbl+'</h3></div><div class="card-body"><p>Finanzas y cirugías corresponden al mismo período, incluido octubre.</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Indicador</th><th>2025</th><th>2026</th><th>Variación</th></tr></thead><tbody>'+
     econ.map(r=>'<tr><td>'+r[0]+'</td><td>'+r[3](r[1])+'</td><td>'+r[3](r[2])+'</td><td>'+repSigned(repPctVar(r[2],r[1]))+'</td></tr>').join('')+'</tbody></table></div></div></div>'+
     card('Ocupación por hora · '+opLbl,'% del día-sala activo',pfx+'-hour','')+'</div>'+
     '<div class="rep-score">'+repScore('Baches internos · '+opLbl,fmtNum(Q.gapH)+' h',fmtNum(Q.gaps)+' intervalos de 30+ min; mediana '+fmtNum(Q.gapMed)+' min.')+
     repScore('Jornada observada · '+opLbl,repHora(Q.first)+'–'+repHora(Q.last),'Promedio de primera entrada y última salida en días-sala con actividad.')+
     repScore('Ocupación 14–17 · '+opLbl,fmtPct(Q.afternoon),'Solo días-sala activos; no es ocupación de toda la capacidad instalada.')+'</div>'+
-    (hayAgenda?'<div class="sec-title">Agenda histórica · '+agendaLbl+'</div><div class="sec-sub">No incluye cancelaciones de septiembre ni equivale a un cierre definitivo de agosto.</div><div class="kpis k3">'+
+    (hayAgenda?'<div class="sec-title">Agenda histórica · '+agendaLbl+'</div><div class="sec-sub">No incluye cancelaciones de septiembre y octubre ni equivale a un cierre definitivo de agosto.</div><div class="kpis k3">'+
     kpi('red','Tasa de cancelación',fmtPct(A.tasaCanc),fmtNum(A.canc)+' de '+fmtNum(A.prog)+' programadas · '+agendaLbl)+
     kpi('red','Cancelación 0–1 día',fmtPct(A.pctTardias),fmtNum(A.tardias)+' casos · '+agendaLbl)+
     kpi('gold','Bloque tardío sin cubrir',fmtNum(R.uncoveredH)+' h',agendaLbl)+'</div><div class="g2">'+card('Motivos de cancelación · '+agendaLbl,'renglones cancelados',pfx+'-mot','')+
@@ -3593,7 +3594,7 @@ function buildRepAgenda(){
   const mot=prgMotivos(1,uM);
   const totMot=mot.reduce(function(a,b){ return a+b.v; },0);
   el.innerHTML=
-    '<div class="rep-hero"><div class="eyebrow">Auditoría transversal · Ene–'+MESES[uM-1]+' 2026</div><h2>Agenda, cancelación y recuperación de capacidad</h2><p>La agenda manual explica qué se apartó y qué se canceló; la hora real permite comprobar si el mismo quirófano y horario volvió a ocuparse. Corte operativo distinto al financiero: septiembre pendiente de fuente completa.</p></div>'+
+    '<div class="rep-hero"><div class="eyebrow">Auditoría transversal · Ene–'+MESES[uM-1]+' 2026</div><h2>Agenda, cancelación y recuperación de capacidad</h2><p>La agenda manual explica qué se apartó y qué se canceló; la hora real permite comprobar si el mismo quirófano y horario volvió a ocuparse. Corte operativo distinto al financiero: programación de septiembre y octubre pendiente de fuente.</p></div>'+
     '<div class="rep-source"><span>'+fmtNum(A.prog)+' cirugías programadas</span><span>'+fmtNum(A.reservas)+' reservas</span><span>'+fmtNum(ejecutadas(1,uM))+' cirugías ejecutadas</span><span>Cruce por sede + fecha + quirófano + hora</span></div>'+
     '<div class="kpis k4">'+
       kpi('gold','Tasa de cancelación',fmtPct(A.tasaCanc),fmtNum(A.canc)+' cirugías')+
